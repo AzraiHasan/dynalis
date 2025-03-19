@@ -114,25 +114,28 @@
               <Icon name="i-lucide-wallet" class="text-gray-600" />
               <h3 class="text-sm text-gray-600">Total Rental</h3>
             </div>
-            <p class="text-2xl font-semibold">{{ formatCurrency(metrics.totalRental) }}</p>
+            <p class="text-2xl font-semibold">{{ (metrics.totalRental / 1000000).toFixed(2) }}M</p>
+            <p class="text-xs text-gray-400 mt-1">{{ formatCurrency(metrics.totalRental) }}</p>
           </div>
 
-          <!-- Payment to Pay -->
+          <!-- Due Payment -->
           <div class="p-4 bg-gray-50 rounded-lg">
             <div class="flex items-center gap-2 mb-2">
               <Icon name="i-lucide-credit-card" class="text-gray-600" />
-              <h3 class="text-sm text-gray-600">Payment to Pay</h3>
+              <h3 class="text-sm text-gray-600">Due Payment</h3>
             </div>
-            <p class="text-2xl font-semibold">{{ formatCurrency(metrics.totalPaymentToPay) }}</p>
+            <p class="text-2xl font-semibold">{{ (metrics.totalPaymentToPay / 1000000).toFixed(2) }}M</p>
+            <p class="text-xs text-gray-400 mt-1">{{ formatCurrency(metrics.totalPaymentToPay) }}</p>
           </div>
 
-          <!-- Total Deposit -->
+          <!-- Deposit -->
           <div class="p-4 bg-gray-50 rounded-lg">
             <div class="flex items-center gap-2 mb-2">
               <Icon name="i-lucide-piggy-bank" class="text-gray-600" />
-              <h3 class="text-sm text-gray-600">Total Deposit</h3>
+              <h3 class="text-sm text-gray-600">Deposit</h3>
             </div>
-            <p class="text-2xl font-semibold">{{ formatCurrency(metrics.totalDeposit) }}</p>
+            <p class="text-2xl font-semibold">{{ (metrics.totalDeposit / 1000000).toFixed(2) }}M</p>
+            <p class="text-xs text-gray-400 mt-1">{{ formatCurrency(metrics.totalDeposit) }}</p>
           </div>
         </div>
       </UCard>
@@ -191,7 +194,7 @@
     </div>
 
     <!-- Debug Data Display -->
-    <UCard class="mb-4">
+    <!-- <UCard class="mb-4">
       <template #header>
         <div class="flex items-center justify-between">
           <h2 class="text-lg font-semibold">Data Preview</h2>
@@ -206,22 +209,22 @@
         </div>
       </template>
       
-      <div v-if="storedData" class="space-y-4">
+      <div v-if="storedData" class="space-y-4"> -->
         <!-- Summary -->
-        <div class="text-sm text-gray-600">
+        <!-- <div class="text-sm text-gray-600">
           <p>Total Rows: {{ storedData.fileData.length }}</p>
           <p>Headers: {{ storedData.headers.join(', ') }}</p>
-        </div>
+        </div> -->
         
         <!-- Data Preview -->
-        <div class="overflow-auto max-h-96">
+        <!-- <div class="overflow-auto max-h-96">
           <pre class="text-xs bg-gray-50 p-4 rounded">{{ formattedData }}</pre>
         </div>
       </div>
       <div v-else class="text-gray-500 italic">
         No data available
       </div>
-    </UCard>
+    </UCard> -->
 
     <!-- Navigation Buttons -->
     <div class="flex justify-between mt-6">
@@ -474,6 +477,7 @@ watch(messages, scrollToBottom, { deep: true })
   border-radius: 3px;
 }
 </style>
+
 
 
 
