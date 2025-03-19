@@ -99,6 +99,9 @@
 <script setup lang="ts">
 import Papa from 'papaparse'
 import * as XLSX from 'xlsx'
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
 
 const selectedFileName = ref('')
 const errorMessage = ref('')
@@ -316,9 +319,37 @@ const clearAll = () => {
 }
 
 const handleProceed = () => {
-  alert('User decided to proceed with current file')
+  try {
+    // Store data in localStorage as JSON
+    const dataToStore = {
+      fileData: fileData.value,
+      headers: headers.value,
+      fileName: selectedFileName.value
+    }
+    localStorage.setItem('uploadedFileData', JSON.stringify(dataToStore))
+
+    // Navigate with just the filename in query
+    router.push({
+      path: '/analysis',
+      query: {
+        fileName: selectedFileName.value
+      }
+    })
+  } catch (error) {
+    console.error('Error storing file data:', error)
+    // Handle error appropriately
+  }
 }
+
+// Add cleanup on component unmount
+onUnmounted(() => {
+  localStorage.removeItem('uploadedFileData')
+})
 </script>
+
+
+
+
 
 
 
