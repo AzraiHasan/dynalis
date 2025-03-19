@@ -84,6 +84,112 @@
       </div>
     </UCard>
 
+    <!-- Metrics Overview -->
+    <div class="grid grid-cols-1 gap-4 mb-4">
+      <!-- Key Metrics Card -->
+      <UCard>
+        <template #header>
+          <div class="flex items-center gap-2">
+            <Icon name="i-lucide-chart-bar" class="text-gray-600" />
+            <h2 class="text-lg font-semibold">Key Metrics</h2>
+          </div>
+        </template>
+
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <!-- Total Sites -->
+          <div class="p-4 bg-gray-50 rounded-lg">
+            <div class="flex items-center gap-2 mb-2">
+              <Icon name="i-lucide-map-pin" class="text-gray-600" />
+              <h3 class="text-sm text-gray-600">Total Sites</h3>
+            </div>
+            <p class="text-2xl font-semibold">{{ metrics.totalSites }}</p>
+            <p v-if="metrics.missingSites" class="text-xs text-orange-600 mt-1">
+              {{ metrics.missingSites }} missing IDs
+            </p>
+          </div>
+
+          <!-- Total Rental -->
+          <div class="p-4 bg-gray-50 rounded-lg">
+            <div class="flex items-center gap-2 mb-2">
+              <Icon name="i-lucide-wallet" class="text-gray-600" />
+              <h3 class="text-sm text-gray-600">Total Rental</h3>
+            </div>
+            <p class="text-2xl font-semibold">{{ formatCurrency(metrics.totalRental) }}</p>
+          </div>
+
+          <!-- Payment to Pay -->
+          <div class="p-4 bg-gray-50 rounded-lg">
+            <div class="flex items-center gap-2 mb-2">
+              <Icon name="i-lucide-credit-card" class="text-gray-600" />
+              <h3 class="text-sm text-gray-600">Payment to Pay</h3>
+            </div>
+            <p class="text-2xl font-semibold">{{ formatCurrency(metrics.totalPaymentToPay) }}</p>
+          </div>
+
+          <!-- Total Deposit -->
+          <div class="p-4 bg-gray-50 rounded-lg">
+            <div class="flex items-center gap-2 mb-2">
+              <Icon name="i-lucide-piggy-bank" class="text-gray-600" />
+              <h3 class="text-sm text-gray-600">Total Deposit</h3>
+            </div>
+            <p class="text-2xl font-semibold">{{ formatCurrency(metrics.totalDeposit) }}</p>
+          </div>
+        </div>
+      </UCard>
+
+      <!-- Contract Expiration Card -->
+      <UCard>
+        <template #header>
+          <div class="flex items-center gap-2">
+            <Icon name="i-lucide-alarm-clock" class="text-gray-600" />
+            <h2 class="text-lg font-semibold">Contract Expirations</h2>
+          </div>
+        </template>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <!-- Expired -->
+          <div class="p-4 bg-red-50 rounded-lg transition-all hover:bg-red-100">
+            <div class="flex items-center gap-2 mb-2">
+              <Icon name="i-lucide-alert-circle" class="text-red-600" />
+              <h3 class="text-sm text-red-600">Expired</h3>
+            </div>
+            <p class="text-2xl font-semibold text-red-600">{{ expirationMetrics.expired }}</p>
+            <p class="text-xs text-red-500 mt-1">Past expiration date</p>
+          </div>
+
+          <!-- Within 30 Days -->
+          <div class="p-4 bg-orange-50 rounded-lg transition-all hover:bg-orange-100">
+            <div class="flex items-center gap-2 mb-2">
+              <Icon name="i-lucide-alarm" class="text-orange-600" />
+              <h3 class="text-sm text-orange-600">Within 30 Days</h3>
+            </div>
+            <p class="text-2xl font-semibold text-orange-600">{{ expirationMetrics.within30Days }}</p>
+            <p class="text-xs text-orange-500 mt-1">Urgent attention needed</p>
+          </div>
+
+          <!-- Within 60 Days -->
+          <div class="p-4 bg-yellow-50 rounded-lg transition-all hover:bg-yellow-100">
+            <div class="flex items-center gap-2 mb-2">
+              <Icon name="i-lucide-clock" class="text-yellow-600" />
+              <h3 class="text-sm text-yellow-600">Within 60 Days</h3>
+            </div>
+            <p class="text-2xl font-semibold text-yellow-600">{{ expirationMetrics.within60Days }}</p>
+            <p class="text-xs text-yellow-500 mt-1">Plan for renewal</p>
+          </div>
+
+          <!-- Within 90 Days -->
+          <div class="p-4 bg-blue-50 rounded-lg transition-all hover:bg-blue-100">
+            <div class="flex items-center gap-2 mb-2">
+              <Icon name="i-lucide-calendar" class="text-blue-600" />
+              <h3 class="text-sm text-blue-600">Within 90 Days</h3>
+            </div>
+            <p class="text-2xl font-semibold text-blue-600">{{ expirationMetrics.within90Days }}</p>
+            <p class="text-xs text-blue-500 mt-1">Early planning</p>
+          </div>
+        </div>
+      </UCard>
+    </div>
+
     <!-- Debug Data Display -->
     <UCard class="mb-4">
       <template #header>
@@ -138,6 +244,104 @@ const storedData = ref<{
   headers: string[];
   fileName: string;
 } | null>(null)
+
+const metrics = computed(() => {
+  if (!storedData.value?.fileData) return {
+    totalSites: 0,
+    missingSites: 0,
+    totalRental: 0,
+    totalPaymentToPay: 0,
+    totalDeposit: 0
+  }
+
+  const data = storedData.value.fileData
+
+  // Total Sites (excluding "NO ID")
+  const sitesData = data.filter(row => row['SITE ID'] && row['SITE ID'].toString().toUpperCase() !== 'NO ID')
+  const missingSites = data.filter(row => !row['SITE ID'] || row['SITE ID'].toString().toUpperCase() === 'NO ID').length
+
+  // Helper function to parse currency values
+  const parseCurrency = (value: any): number => {
+    if (!value) return 0
+    // Remove 'RM' and any commas, then convert to number
+    const numStr = value.toString().replace(/[RM,\s]/g, '')
+    return parseFloat(numStr) || 0
+  }
+
+  // Calculate totals
+  const totalRental = data.reduce((sum, row) => sum + parseCurrency(row['TOTAL RENTAL (RM)']), 0)
+  const totalPaymentToPay = data.reduce((sum, row) => sum + parseCurrency(row['TOTAL PAYMENT TO PAY (RM)']), 0)
+  const totalDeposit = data.reduce((sum, row) => sum + parseCurrency(row['DEPOSIT (RM)']), 0)
+
+  return {
+    totalSites: sitesData.length,
+    missingSites,
+    totalRental,
+    totalPaymentToPay,
+    totalDeposit
+  }
+})
+
+const expirationMetrics = computed(() => {
+  if (!storedData.value?.fileData) return {
+    expired: 0,
+    within30Days: 0,
+    within60Days: 0,
+    within90Days: 0
+  }
+
+  const data = storedData.value.fileData
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  // Helper function to calculate days until expiration
+  const getDaysUntilExpiration = (expDate: string): number => {
+    const exp = new Date(expDate)
+    const diffTime = exp.getTime() - today.getTime()
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+  }
+
+  // Initialize counters
+  let expired = 0
+  let within30Days = 0
+  let within60Days = 0
+  let within90Days = 0
+
+  // Process each row
+  data.forEach(row => {
+    const expDate = row['EXP DATE']
+    if (!expDate) return
+
+    const daysUntil = getDaysUntilExpiration(expDate)
+
+    if (daysUntil < 0) {
+      expired++
+    } else if (daysUntil <= 30) {
+      within30Days++
+    } else if (daysUntil <= 60) {
+      within60Days++
+    } else if (daysUntil <= 90) {
+      within90Days++
+    }
+  })
+
+  return {
+    expired,
+    within30Days,
+    within60Days,
+    within90Days
+  }
+})
+
+// Format currency helper
+const formatCurrency = (value: number): string => {
+  return new Intl.NumberFormat('en-MY', {
+    style: 'currency',
+    currency: 'MYR',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(value)
+}
 
 onMounted(() => {
   try {
@@ -270,5 +474,14 @@ watch(messages, scrollToBottom, { deep: true })
   border-radius: 3px;
 }
 </style>
+
+
+
+
+
+
+
+
+
 
 
