@@ -187,9 +187,40 @@ const processExcel = async (file: File) => {
   const firstSheetName = workbook.SheetNames[0]
   const worksheet = workbook.Sheets[firstSheetName]
   
-  const data = XLSX.utils.sheet_to_json(worksheet)
-  fileData.value = data
-  headers.value = Object.keys(data[0] || {})
+  // Convert to JSON with raw values
+  const data = XLSX.utils.sheet_to_json(worksheet, { raw: false })
+  
+  // Process the data to convert Excel dates
+  const processedData = data.map(row => {
+    const newRow = { ...row }
+    // Check for date fields
+    for (const key in newRow) {
+      if (key.toUpperCase().includes('DATE')) {
+        const value = newRow[key]
+        if (value) {
+          try {
+            // Convert Excel serial number to JavaScript Date
+            const excelDate = XLSX.SSF.parse_date_code(Number(value))
+            if (excelDate) {
+              const jsDate = new Date(
+                excelDate.y, 
+                excelDate.m - 1, 
+                excelDate.d
+              )
+              // Format as YYYY-MM-DD
+              newRow[key] = jsDate.toISOString().split('T')[0]
+            }
+          } catch (e) {
+            console.warn(`Failed to convert date for ${key}:`, e)
+          }
+        }
+      }
+    }
+    return newRow
+  })
+
+  fileData.value = processedData
+  headers.value = Object.keys(processedData[0] || {})
 }
 
 const isDateColumn = (header: string) => {
@@ -346,6 +377,7 @@ onUnmounted(() => {
   localStorage.removeItem('uploadedFileData')
 })
 </script>
+
 
 
 
