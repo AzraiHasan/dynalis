@@ -15,7 +15,10 @@
     "@iconify-json/lucide": "^1.2.31",
     "@iconify-json/simple-icons": "^1.2.29",
     "@nuxt/ui": "^3.0.0",
-    "nuxt": "^3.16.0"
+    "nuxt": "^3.16.0",
+    "papaparse": "^5.5.2",
+    "xlsx": "^0.18.5",
+    "zod": "^3.24.2"
   },
   "devDependencies": {
     "@nuxt/eslint": "^1.2.0",
