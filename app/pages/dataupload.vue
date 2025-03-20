@@ -63,21 +63,33 @@
         <template #header>
           <h2 class="text-lg font-semibold">Column Statistics</h2>
         </template>
-        <div class="space-y-4">
-          <div v-for="column in headers" :key="column" class="border-b pb-2">
-            <h3 class="font-medium">{{ column }}</h3>
-            <div class="space-y-1">
-              <div class="text-sm text-gray-600">
-                Empty Cells: {{ getColumnValidation(column).emptyCells }}
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <UCard
+            v-for="column in headers"
+            :key="column"
+            class="bg-gray-50"
+          >
+            <template #header>
+              <h3 class="font-medium text-sm">{{ column }}</h3>
+            </template>
+            <div class="space-y-2">
+              <div class="flex items-center gap-2">
+                <Icon name="i-lucide-alert-circle" class="text-gray-500" />
+                <span class="text-sm text-gray-600">
+                  Empty Cells: {{ getColumnValidation(column).emptyCells }}
+                </span>
               </div>
               <div 
                 v-if="getColumnValidation(column).irregularCells > 0"
-                class="text-sm text-orange-600"
+                class="flex items-center gap-2"
               >
-                Irregularities: {{ getColumnValidation(column).irregularCells }}
+                <Icon name="i-lucide-alert-triangle" class="text-orange-500" />
+                <span class="text-sm text-orange-600">
+                  Irregularities: {{ getColumnValidation(column).irregularCells }}
+                </span>
               </div>
             </div>
-          </div>
+          </UCard>
         </div>
       </UCard>
       <!-- Proceed Section -->

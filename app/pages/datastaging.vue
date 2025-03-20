@@ -49,7 +49,7 @@
           v-model="userInput"
           class="flex-1"
           :rows="1"
-          placeholder="Ask about your data staging..."
+          placeholder="Ask about your data ..."
           @keydown.enter.prevent="handleSend"
         />
         <UButton
@@ -166,7 +166,7 @@
           <!-- Within 30 Days -->
           <div class="p-4 bg-orange-50 rounded-lg transition-all hover:bg-orange-100">
             <div class="flex items-center gap-2 mb-2">
-              <Icon name="i-lucide-alarm" class="text-orange-600" />
+              <Icon name="i-lucide-clock-alert" class="text-orange-600" />
               <h3 class="text-sm text-orange-600">Within 30 Days</h3>
             </div>
             <p class="text-2xl font-semibold text-orange-600">{{ expirationMetrics.within30Days }}</p>
@@ -197,7 +197,7 @@
     </div>
 
     <!-- Debug Data Display -->
-    <UCard class="mb-4">
+    <!-- <UCard class="mb-4">
       <template #header>
         <div class="flex items-center justify-between">
           <h2 class="text-lg font-semibold">Data Preview</h2>
@@ -212,22 +212,22 @@
         </div>
       </template>
       
-      <div v-if="storedData" class="space-y-4">
+      <div v-if="storedData" class="space-y-4"> -->
         <!-- Summary -->
-        <div class="text-sm text-gray-600">
+        <!-- <div class="text-sm text-gray-600">
           <p>Total Rows: {{ storedData.fileData.length }}</p>
           <p>Headers: {{ storedData.headers.join(', ') }}</p>
-        </div>
+        </div> -->
         
         <!-- Data Preview -->
-        <div class="overflow-auto max-h-96">
+        <!-- <div class="overflow-auto max-h-96">
           <pre class="text-xs bg-gray-50 p-4 rounded">{{ formattedData }}</pre>
         </div>
       </div>
       <div v-else class="text-gray-500 italic">
         No data available
       </div>
-    </UCard>
+    </UCard> -->
 
     <!-- Navigation Buttons -->
     <div class="flex justify-between mt-6">

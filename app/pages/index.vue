@@ -8,7 +8,7 @@
       <UButton
         label="Enter"
         icon="i-lucide-square-play"
-        to="/dashboard"
+        to="/dataupload"
       />
 
       <UButton
