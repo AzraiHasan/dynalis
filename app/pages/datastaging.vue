@@ -241,6 +241,8 @@
 </template>
 
 <script setup lang="ts">
+import { parse, isValid, differenceInDays, format } from 'date-fns'
+
 const router = useRouter()
 const route = useRoute()
 
@@ -288,45 +290,76 @@ const metrics = computed(() => {
   }
 })
 
+// Define accepted date formats
+const DATE_FORMATS = [
+  'dd/MM/yyyy',
+  'dd-MM-yyyy',
+  'yyyy/MM/dd',
+  'yyyy-MM-dd',
+  'MM/dd/yyyy',
+  'MM-dd-yyyy'
+]
+
+const parseDate = (dateStr: string): Date | null => {
+  if (!dateStr || dateStr === '-' || dateStr.trim() === '') {
+    return null
+  }
+
+  // Try each format until one works
+  for (const dateFormat of DATE_FORMATS) {
+    try {
+      const parsedDate = parse(dateStr, dateFormat, new Date())
+      if (isValid(parsedDate)) {
+        return parsedDate
+      }
+    } catch (error) {
+      continue // Try next format
+    }
+  }
+
+  // If no format worked, try native Date parsing as fallback
+  const fallbackDate = new Date(dateStr)
+  return isValid(fallbackDate) ? fallbackDate : null
+}
+
+const getDaysUntilExpiration = (expDate: string): number | null => {
+  const parsedDate = parseDate(expDate)
+  
+  if (!parsedDate) {
+    return null
+  }
+
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  return differenceInDays(parsedDate, today)
+}
+
+// Add a helper to format dates consistently
+const formatDate = (date: Date): string => {
+  return format(date, 'dd/MM/yyyy')
+}
+
 const expirationMetrics = computed(() => {
   if (!storedData.value?.fileData) return {
     expired: 0,
     within30Days: 0,
     within60Days: 0,
-    within90Days: 0
+    within90Days: 0,
+    invalidDates: 0,
+    totalProcessed: 0,
+    invalidDatesList: [] as string[] // New field to track invalid dates
   }
 
   const data = storedData.value.fileData
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-
-  // Helper function to calculate days until expiration
-  const getDaysUntilExpiration = (expDate: string): number | null => {
-    if (!expDate || expDate === '-' || expDate.trim() === '') {
-      return null
-    }
-    
-    try {
-      const exp = new Date(expDate)
-      if (isNaN(exp.getTime())) {
-        return null
-      }
-      const diffTime = exp.getTime() - today.getTime()
-      return Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-    } catch (error) {
-      console.error(`Error parsing date: ${expDate}`, error)
-      return null
-    }
-  }
-
   let expired = 0
   let within30Days = 0
   let within60Days = 0
   let within90Days = 0
   let invalidDates = 0
   let totalProcessed = 0
+  let invalidDatesList: string[] = []
 
-  // Process each row
   data.forEach(row => {
     totalProcessed++
     const expDate = row['EXP DATE']
@@ -334,6 +367,7 @@ const expirationMetrics = computed(() => {
 
     if (daysUntil === null) {
       invalidDates++
+      invalidDatesList.push(`Row ${totalProcessed}: "${expDate}"`)
     } else if (daysUntil <= 0) {
       expired++
     } else if (daysUntil <= 30) {
@@ -345,14 +379,15 @@ const expirationMetrics = computed(() => {
     }
   })
 
-  // Debug logging
+  // Debug logging with more detail
   console.log('Expiration Metrics:', {
     totalProcessed,
     invalidDates,
     expired,
     within30Days,
     within60Days,
-    within90Days
+    within90Days,
+    invalidDatesList
   })
 
   return {
@@ -360,8 +395,9 @@ const expirationMetrics = computed(() => {
     within30Days,
     within60Days,
     within90Days,
-    invalidDates,  // Optional: if you want to display this in the UI
-    totalProcessed // Optional: if you want to display this in the UI
+    invalidDates,
+    totalProcessed,
+    invalidDatesList
   }
 })
 

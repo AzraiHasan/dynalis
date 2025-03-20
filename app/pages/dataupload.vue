@@ -126,14 +126,23 @@ import { ref, computed, onUnmounted } from "vue";
 import { useRouter } from "vue-router";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
+import { parse, isValid } from 'date-fns'
 
 interface FileRow {
   [key: string]: string | number | null;
 }
 
+interface ValidationError {
+  row: number;
+  column: string;
+  value: string;
+  error: string;
+}
+
 interface ColumnValidation {
   emptyCells: number;
   irregularCells: number;
+  errors: ValidationError[];
 }
 
 interface StoredData {
@@ -285,10 +294,34 @@ const getEmptyCellCount = (column: string): number => {
   ).length;
 };
 
+// Define accepted date formats
+const DATE_FORMATS = [
+  'dd/MM/yyyy',
+  'dd-MM-yyyy',
+  'yyyy/MM/dd',
+  'yyyy-MM-dd',
+  'MM/dd/yyyy',
+  'MM-dd-yyyy'
+]
+
 const isValidDate = (value: any): boolean => {
   if (!value) return false;
-  const date = new Date(value);
-  return date instanceof Date && !isNaN(date.getTime());
+  
+  // Try each format
+  for (const dateFormat of DATE_FORMATS) {
+    try {
+      const parsedDate = parse(value.toString(), dateFormat, new Date())
+      if (isValid(parsedDate)) {
+        return true
+      }
+    } catch (error) {
+      continue
+    }
+  }
+
+  // Fallback to native Date parsing
+  const date = new Date(value)
+  return isValid(date)
 }
 
 const isValidCurrency = (value: any): boolean => {
@@ -301,15 +334,23 @@ const isValidCurrency = (value: any): boolean => {
 const getColumnValidation = (column: string): ColumnValidation => {
   const emptyCells = getEmptyCellCount(column);
   let irregularCells = 0;
+  const errors: ValidationError[] = [];
 
-  fileData.value.forEach(row => {
+  fileData.value.forEach((row, index) => {
     const value = row[column];
     if (value !== null && value !== undefined && value !== '') {
-      // Check for irregularities based on column name
       const columnLower = column.toLowerCase();
       
       if (columnLower.includes('date')) {
-        if (!isValidDate(value)) irregularCells++;
+        if (!isValidDate(value)) {
+          irregularCells++;
+          errors.push({
+            row: index + 1,
+            column,
+            value: value.toString(),
+            error: `Invalid date format. Expected formats: ${DATE_FORMATS.join(', ')}`
+          });
+        }
       }
       else if (columnLower.includes('rental') || 
                columnLower.includes('payment') || 
@@ -325,7 +366,8 @@ const getColumnValidation = (column: string): ColumnValidation => {
 
   return {
     emptyCells,
-    irregularCells
+    irregularCells,
+    errors
   };
 };
 
