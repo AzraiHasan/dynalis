@@ -131,7 +131,7 @@
           <!-- Deposit -->
           <div class="p-4 bg-gray-50 rounded-lg">
             <div class="flex items-center gap-2 mb-2">
-              <Icon name="i-lucide-piggy-bank" class="text-gray-600" />
+              <Icon name="i-lucide-banknote" class="text-gray-600" />
               <h3 class="text-sm text-gray-600">Deposit</h3>
             </div>
             <p class="text-2xl font-semibold">{{ (metrics.totalDeposit / 1000000).toFixed(2) }}M</p>
@@ -236,6 +236,11 @@
         icon="i-lucide-arrow-left"
         @click="handleBack"
       />
+      <UButton
+        label="View Dashboard"
+        icon="i-lucide-arrow-right"
+        @click="handleDashboard"
+      />
     </div>
   </div>
 </template>
@@ -252,6 +257,19 @@ const storedData = ref<{
   headers: string[];
   fileName: string;
 } | null>(null)
+
+onMounted(() => {
+  try {
+    const stored = localStorage.getItem('uploadedFileData')
+    console.log('Initial localStorage check:', stored); // Debug log
+    if (stored) {
+      storedData.value = JSON.parse(stored)
+      console.log('Parsed stored data:', storedData.value); // Debug log
+    }
+  } catch (error) {
+    console.error('Error reading file data:', error)
+  }
+})
 
 const metrics = computed(() => {
   if (!storedData.value?.fileData) return {
@@ -411,17 +429,6 @@ const formatCurrency = (value: number): string => {
   }).format(value)
 }
 
-onMounted(() => {
-  try {
-    const stored = localStorage.getItem('uploadedFileData')
-    if (stored) {
-      storedData.value = JSON.parse(stored)
-    }
-  } catch (error) {
-    console.error('Error reading file data:', error)
-  }
-})
-
 const fileName = computed(() => {
   return storedData.value?.fileName || route.query.fileName || 'No file selected'
 })
@@ -447,11 +454,25 @@ const handleBack = () => {
   localStorage.removeItem('uploadedFileData')
   router.push('/dataupload')
 }
+const handleDashboard = () => {
+  const stored = localStorage.getItem('uploadedFileData')
+  console.log('Pre-navigation localStorage check:', stored); // Debug log
 
-// Clean up on component unmount
-onUnmounted(() => {
-  localStorage.removeItem('uploadedFileData')
-})
+  if (!stored) {
+    console.log('No data found in localStorage')
+    alert('No data available. Please upload a file first.')
+    router.push('/dataupload')
+    return
+  }
+
+  console.log('Data available, proceeding to dashboard')
+  router.push('/dashboard')
+}
+
+// Remove the cleanup on unmount since we need the data in the dashboard
+// onUnmounted(() => {
+//   localStorage.removeItem('uploadedFileData')
+// }) // Removed
 
 // Chat related state
 const userInput = ref('')

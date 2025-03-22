@@ -58,40 +58,6 @@
         </div>
       </UCard>
 
-      <!-- Column Statistics -->
-      <UCard>
-        <template #header>
-          <h2 class="text-lg font-semibold">Column Statistics</h2>
-        </template>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          <UCard
-            v-for="column in headers"
-            :key="column"
-            class="bg-gray-50"
-          >
-            <template #header>
-              <h3 class="font-medium text-sm">{{ column }}</h3>
-            </template>
-            <div class="space-y-2">
-              <div class="flex items-center gap-2">
-                <Icon name="i-lucide-alert-circle" class="text-gray-500" />
-                <span class="text-sm text-gray-600">
-                  Empty Cells: {{ getColumnValidation(column).emptyCells }}
-                </span>
-              </div>
-              <div 
-                v-if="getColumnValidation(column).irregularCells > 0"
-                class="flex items-center gap-2"
-              >
-                <Icon name="i-lucide-alert-triangle" class="text-orange-500" />
-                <span class="text-sm text-orange-600">
-                  Irregularities: {{ getColumnValidation(column).irregularCells }}
-                </span>
-              </div>
-            </div>
-          </UCard>
-        </div>
-      </UCard>
       <!-- Proceed Section -->
       <div v-if="fileData.length > 0" class="mt-6">
         <div
@@ -103,20 +69,55 @@
           "
         >
           <p v-if="hasEmptyCells">
-            Empty cells may cause error during further analysis, please rectify
+            Empty cells and data irregularities may cause error during further analysis, please rectify
             before you decide to proceed
           </p>
           <p v-else>You have no empty cells. Click NEXT to proceed</p>
         </div>
-
-        <UButton
-          label="Proceed"
-          trailing-icon="i-lucide-arrow-right"
-          variant="outline"
-          :color="hasEmptyCells ? 'warning' : 'primary'"
-          @click="handleProceed"
-        />
+        
+          <UButton
+            label="Proceed"
+            trailing-icon="i-lucide-arrow-right"
+            variant="outline"
+            :color="hasEmptyCells ? 'warning' : 'primary'"
+            @click="handleProceed"
+          />
+        
       </div>
+
+      <!-- Column Statistics -->
+      <UCard>
+        <template #header>
+          <h2 class="text-lg font-semibold">Quality Check</h2>
+        </template>
+        <div
+          class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
+        >
+          <UCard v-for="column in headers" :key="column" class="bg-gray-50">
+            <template #header>
+              <h3 class="font-medium text-sm">{{ column }}</h3>
+            </template>
+            <div class="space-y-2">
+              <div class="flex items-center gap-2">
+                <Icon name="i-lucide-alert-circle" class="text-gray-500" />
+                <span class="text-sm text-gray-600">
+                  Empty Cells: {{ getColumnValidation(column).emptyCells }}
+                </span>
+              </div>
+              <div
+                v-if="getColumnValidation(column).irregularCells > 0"
+                class="flex items-center gap-2"
+              >
+                <Icon name="i-lucide-alert-triangle" class="text-orange-500" />
+                <span class="text-sm text-orange-600">
+                  Irregularities:
+                  {{ getColumnValidation(column).irregularCells }}
+                </span>
+              </div>
+            </div>
+          </UCard>
+        </div>
+      </UCard>
     </div>
   </div>
 </template>
@@ -126,7 +127,7 @@ import { ref, computed, onUnmounted } from "vue";
 import { useRouter } from "vue-router";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
-import { parse, isValid } from 'date-fns'
+import { parse, isValid } from "date-fns";
 
 interface FileRow {
   [key: string]: string | number | null;
@@ -281,9 +282,13 @@ const getTotalMissingValues = () => {
 
 const getTotalDashValues = () => {
   return headers.value.reduce((total, header) => {
-    return total + fileData.value.filter(row => 
-      row[header] === '-' || row[header] === '–' || row[header] === '—'
-    ).length;
+    return (
+      total +
+      fileData.value.filter(
+        (row) =>
+          row[header] === "-" || row[header] === "–" || row[header] === "—"
+      ).length
+    );
   }, 0);
 };
 
@@ -296,40 +301,40 @@ const getEmptyCellCount = (column: string): number => {
 
 // Define accepted date formats
 const DATE_FORMATS = [
-  'dd/MM/yyyy',
-  'dd-MM-yyyy',
-  'yyyy/MM/dd',
-  'yyyy-MM-dd',
-  'MM/dd/yyyy',
-  'MM-dd-yyyy'
-]
+  "dd/MM/yyyy",
+  "dd-MM-yyyy",
+  "yyyy/MM/dd",
+  "yyyy-MM-dd",
+  "MM/dd/yyyy",
+  "MM-dd-yyyy",
+];
 
 const isValidDate = (value: any): boolean => {
   if (!value) return false;
-  
+
   // Try each format
   for (const dateFormat of DATE_FORMATS) {
     try {
-      const parsedDate = parse(value.toString(), dateFormat, new Date())
+      const parsedDate = parse(value.toString(), dateFormat, new Date());
       if (isValid(parsedDate)) {
-        return true
+        return true;
       }
     } catch (error) {
-      continue
+      continue;
     }
   }
 
   // Fallback to native Date parsing
-  const date = new Date(value)
-  return isValid(date)
-}
+  const date = new Date(value);
+  return isValid(date);
+};
 
 const isValidCurrency = (value: any): boolean => {
   if (!value) return false;
   // Matches format like "RM 1,234.56" or "1234.56" or "1,234"
   const currencyRegex = /^(RM\s*)?[\d,]+(\.\d{2})?$/;
   return currencyRegex.test(value.toString().trim());
-}
+};
 
 const getColumnValidation = (column: string): ColumnValidation => {
   const emptyCells = getEmptyCellCount(column);
@@ -338,28 +343,30 @@ const getColumnValidation = (column: string): ColumnValidation => {
 
   fileData.value.forEach((row, index) => {
     const value = row[column];
-    if (value !== null && value !== undefined && value !== '') {
+    if (value !== null && value !== undefined && value !== "") {
       const columnLower = column.toLowerCase();
-      
-      if (columnLower.includes('date')) {
+
+      if (columnLower.includes("date")) {
         if (!isValidDate(value)) {
           irregularCells++;
           errors.push({
             row: index + 1,
             column,
             value: value.toString(),
-            error: `Invalid date format. Expected formats: ${DATE_FORMATS.join(', ')}`
+            error: `Invalid date format. Expected formats: ${DATE_FORMATS.join(
+              ", "
+            )}`,
           });
         }
-      }
-      else if (columnLower.includes('rental') || 
-               columnLower.includes('payment') || 
-               columnLower.includes('deposit')) {
+      } else if (
+        columnLower.includes("rental") ||
+        columnLower.includes("payment") ||
+        columnLower.includes("deposit")
+      ) {
         if (!isValidCurrency(value)) irregularCells++;
-      }
-      else if (columnLower.includes('id')) {
+      } else if (columnLower.includes("id")) {
         // Assuming IDs shouldn't be empty and shouldn't contain spaces
-        if (typeof value !== 'string' || value.includes(' ')) irregularCells++;
+        if (typeof value !== "string" || value.includes(" ")) irregularCells++;
       }
     }
   });
@@ -367,7 +374,7 @@ const getColumnValidation = (column: string): ColumnValidation => {
   return {
     emptyCells,
     irregularCells,
-    errors
+    errors,
   };
 };
 
@@ -390,11 +397,13 @@ const clearAll = () => {
 const handleProceed = () => {
   try {
     const dataToStore: StoredData = {
-      fileData: fileData.value,
-      headers: headers.value,
+      fileData: Array.from(fileData.value), // Convert Proxy to plain array
+      headers: Array.from(headers.value), // Convert Proxy to plain array
       fileName: selectedFileName.value,
     };
     localStorage.setItem("uploadedFileData", JSON.stringify(dataToStore));
+    console.log('Data stored successfully:', dataToStore); // Debug log
+    console.log('Stored data verification:', localStorage.getItem("uploadedFileData")); // Verify storage
 
     router.push({
       path: "/datastaging",
@@ -405,12 +414,7 @@ const handleProceed = () => {
   }
 };
 
-onUnmounted(() => {
-  localStorage.removeItem("uploadedFileData");
-});
+// onUnmounted(() => {
+//   localStorage.removeItem("uploadedFileData");
+// });
 </script>
-
-
-
-
-
