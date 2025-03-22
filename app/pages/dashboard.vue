@@ -32,6 +32,16 @@
         </div>
       </UCard>
 
+      <UCard>
+        <div class="flex items-center gap-2">
+          <div class="flex-1">
+            <div class="text-sm text-gray-500">Deposit (RM mil)</div>
+            <div class="text-2xl font-bold">{{ totalDeposit }}</div>
+          </div>
+          <UIcon name="i-lucide-banknote" class="w-8 h-8 text-blue-500" />
+        </div>
+      </UCard>
+
       
     </div>
 
@@ -254,6 +264,7 @@ const totalRental = ref<string>("0");
 const duePayment = ref<string>("0");
 const expiredContracts = ref<number>(0);
 const invalidDates = ref<number>(0); // Add this line
+const totalDeposit = ref<string>("0");
 
 // Chart data refs
 const rentalChartData = ref<ChartData | null>(null);
@@ -526,24 +537,27 @@ onMounted(() => {
     let totalRentalValue = 0;
     let totalDuePayment = 0;
     let expiredCount = 0;
+    let totalDepositValue = 0;
 
     fileData.value.forEach((row) => {
-  totalRentalValue += parseCurrency(row["TOTAL RENTAL (RM)"]);
-  totalDuePayment += parseCurrency(row["TOTAL PAYMENT TO PAY (RM)"]);
+      totalRentalValue += parseCurrency(row["TOTAL RENTAL (RM)"]);
+      totalDuePayment += parseCurrency(row["TOTAL PAYMENT TO PAY (RM)"]);
+      totalDepositValue += parseCurrency(row["DEPOSIT (RM)"]);
 
-  const daysUntil = getDaysUntilExpiration(
-    row["EXP DATE"]?.toString() || ""
-  );
-  if (daysUntil === null) {
-    invalidDates.value++; // Count invalid dates
-  } else if (daysUntil <= 0) {
-    expiredCount++;
-  }
-});
+      const daysUntil = getDaysUntilExpiration(
+        row["EXP DATE"]?.toString() || ""
+      );
+      if (daysUntil === null) {
+        invalidDates.value++; // Count invalid dates
+      } else if (daysUntil <= 0) {
+        expiredCount++;
+      }
+    });
 
     totalRental.value = (totalRentalValue / 1000000).toFixed(2);
     duePayment.value = (totalDuePayment / 1000000).toFixed(2);
     expiredContracts.value = expiredCount;
+    totalDeposit.value = (totalDepositValue / 1000000).toFixed(2);
 
     // Prepare rental distribution data
     const rentalRanges = calculateRentalRanges(fileData.value);
@@ -660,6 +674,9 @@ function handleStaging() {
   router.push("/datastaging");
 }
 </script>
+
+
+
 
 
 
