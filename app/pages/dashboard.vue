@@ -32,28 +32,7 @@
         </div>
       </UCard>
 
-      <UCard>
-        <div class="flex items-center gap-2">
-          <div class="flex-1">
-            <div class="text-sm text-gray-500">Expired Contracts</div>
-            <div class="text-2xl font-bold">{{ expiredContracts }}</div>
-          </div>
-          <UIcon
-            name="i-lucide-alert-triangle"
-            class="w-8 h-8 text-amber-500"
-          />
-        </div>
-      </UCard>
-
-      <UCard>
-        <div class="flex items-center gap-2">
-          <div class="flex-1">
-            <div class="text-sm text-gray-500">Invalid Dates</div>
-            <div class="text-2xl font-bold">{{ invalidDates }}</div>
-          </div>
-          <UIcon name="i-lucide-calendar-x" class="w-8 h-8 text-gray-500" />
-        </div>
-      </UCard>
+      
     </div>
 
     <!-- Charts Grid -->
@@ -191,6 +170,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
 import { useRouter } from "vue-router";
+import { getDaysUntilExpiration, parseDate, formatDate } from '../utils/dateUtils';
 import {
   Chart as ChartJS,
   Title,
@@ -351,15 +331,6 @@ const parseCurrency = (value: any): number => {
   return parseFloat(value.toString().replace(/[RM,\s]/g, "")) || 0;
 };
 
-const getDaysUntilExpiration = (expDate: string): number | null => {
-  const date = new Date(expDate);
-  if (isNaN(date.getTime())) return null;
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  return differenceInDays(date, today);
-};
 
 const calculateRentalRanges = (data: FileRow[]): Record<string, number> => {
   const ranges: Record<string, number> = {
@@ -433,10 +404,10 @@ const calculateExpirationTimeline = (
 
   data.forEach((row) => {
     const expDate = row["EXP DATE"]?.toString() || "";
-    const date = new Date(expDate);
-    if (isNaN(date.getTime())) return;
+    const parsedDate = parseDate(expDate);
+    if (!parsedDate) return;
 
-    const monthKey = format(date, "MMM yyyy");
+    const monthKey = format(parsedDate, "MMM yyyy");
     if (timeline[monthKey] !== undefined) {
       timeline[monthKey]++;
     }
@@ -557,18 +528,18 @@ onMounted(() => {
     let expiredCount = 0;
 
     fileData.value.forEach((row) => {
-      totalRentalValue += parseCurrency(row["TOTAL RENTAL (RM)"]);
-      totalDuePayment += parseCurrency(row["TOTAL PAYMENT TO PAY (RM)"]);
+  totalRentalValue += parseCurrency(row["TOTAL RENTAL (RM)"]);
+  totalDuePayment += parseCurrency(row["TOTAL PAYMENT TO PAY (RM)"]);
 
-      const daysUntil = getDaysUntilExpiration(
-        row["EXP DATE"]?.toString() || ""
-      );
-      if (daysUntil === null) {
-        invalidDates.value++; // Add this line
-      } else if (daysUntil <= 0) {
-        expiredCount++;
-      }
-    });
+  const daysUntil = getDaysUntilExpiration(
+    row["EXP DATE"]?.toString() || ""
+  );
+  if (daysUntil === null) {
+    invalidDates.value++; // Count invalid dates
+  } else if (daysUntil <= 0) {
+    expiredCount++;
+  }
+});
 
     totalRental.value = (totalRentalValue / 1000000).toFixed(2);
     duePayment.value = (totalDuePayment / 1000000).toFixed(2);
