@@ -1,196 +1,113 @@
 <template>
-  <div>
-    <!-- Upload Section -->
-    <UCard class="mb-4">
-      <template #header>
-        <h2 class="text-lg font-semibold">Upload Your File</h2>
-      </template>
-
-      <div class="space-y-4">
-        <UInput
-          type="file"
-          accept=".csv,.xlsx,.xls"
-          @change="handleFileChange"
-        />
-
-        <p v-if="selectedFileName" class="text-sm text-gray-600">
-          Selected file: {{ selectedFileName }}
-        </p>
-
-        <p v-if="errorMessage" class="text-red-500 text-sm">
-          {{ errorMessage }}
-        </p>
-
-        <div v-if="selectedFileName" class="flex gap-2">
-          <UButton
-            label="Process File"
-            icon="i-lucide-file-check"
-            @click="processFile"
-            :loading="isProcessing"
-          />
-          <UButton
-            label="Clear"
-            icon="i-lucide-x"
-            color="error"
-            variant="soft"
-            @click="clearAll"
-          />
-        </div>
-      </div>
-    </UCard>
-
-    <!-- Add this after the file upload card -->
-    <UAlert
-      v-if="uploadStatus === 'uploading'"
-      color="info"
-      class="mb-4"
-    >
-      <div class="flex flex-col gap-2">
-        <p>Uploading data to database...</p>
-        <UProgress
-          v-model="uploadProgress"
-          class="w-full"
-        />
-      </div>
-    </UAlert>
-
-    <UAlert
-      v-if="uploadStatus === 'error'"
-      color="error"
-      class="mb-4"
-    >
-      <p>{{ errorMessage }}</p>
-      <p class="text-sm mt-1">Your data is safely stored locally. You can try uploading again or proceed to the dashboard.</p>
-    </UAlert>
-
-    <!-- Data Analysis Section -->
-    <div
-      v-if="fileData.length > 0"
-      class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4"
-    >
-      <!-- Dataset Summary -->
+  <div class="space-y-8">
+    <!-- File Upload Section -->
+    <div class="space-y-4">
       <UCard>
         <template #header>
-          <h2 class="text-lg font-semibold">Dataset Summary</h2>
+          <h2 class="text-lg font-semibold">Upload Data</h2>
         </template>
-        <div class="space-y-2">
-          <p>Total Rows: {{ fileData.length }}</p>
-          <p>Total Columns: {{ headers.length }}</p>
-          <p>Column Names: {{ headers.join(", ") }}</p>
-          <p>Missing Values: {{ getTotalMissingValues() }}</p>
-          <p>Dash Values: {{ getTotalDashValues() }}</p>
-        </div>
-      </UCard>
-
-      <!-- Add this after the Dataset Summary card -->
-      <UCard v-if="fileData.length > 0">
-        <template #header>
-          <h2 class="text-lg font-semibold">Schema Detection</h2>
-        </template>
+        
         <div class="space-y-4">
-          <div v-for="column in detectedSchema" :key="column.name" class="flex items-center gap-4">
-            <p class="font-medium w-1/3">{{ column.name }}</p>
-            <UBadge :color="column.type === 'unknown' ? 'info' : 'success'">
-              {{ column.type }}
-            </UBadge>
-            <p class="text-sm text-gray-500">Sample: {{ column.sample }}</p>
-          </div>
+          <UFormGroup label="Select File" required>
+            <input
+              type="file"
+              accept=".csv,.xlsx,.xls"
+              @change="handleFileChange"
+              class="block w-full text-sm text-gray-500
+                file:mr-4 file:py-2 file:px-4
+                file:rounded-full file:border-0
+                file:text-sm file:font-semibold
+                file:bg-primary-50 file:text-primary-700
+                hover:file:bg-primary-100"
+            />
+          </UFormGroup>
+          
+          <p v-if="selectedFileName" class="text-sm text-gray-600">
+            Selected file: {{ selectedFileName }}
+          </p>
+          
+          <p v-if="errorMessage" class="text-sm text-red-600">
+            {{ errorMessage }}
+          </p>
         </div>
       </UCard>
 
-      <!-- Add this before the Proceed Section -->
-      <div class="space-y-4">
-        <!-- Upload Status -->
-        <UAlert
-          v-if="uploadStatus === 'uploading'"
-          icon="i-lucide-upload"
-          color="info"
-          title="Uploading Data"
-          :description="`Progress: ${uploadProgress}%`"
-        >
-          <UProgress v-model="uploadProgress" color="info" />
-        </UAlert>
+      <!-- Upload Status -->
+      <UAlert
+        v-if="uploadStatus === 'uploading'"
+        icon="i-lucide-upload"
+        color="info"
+        title="Uploading Data"
+        :description="`Progress: ${uploadProgress}%`"
+      >
+        <UProgress v-model="uploadProgress" color="info" />
+      </UAlert>
 
-        <UAlert
-          v-if="uploadStatus === 'error'"
-          icon="i-lucide-alert-triangle"
-          color="error"
-          title="Upload Error"
-          description="Falling back to local storage"
-        />
+      <UAlert
+        v-if="uploadStatus === 'error'"
+        icon="i-lucide-alert-triangle"
+        color="error"
+        title="Upload Error"
+        :description="errorMessage"
+      />
 
-        <UAlert
-          v-if="uploadStatus === 'success'"
-          icon="i-lucide-check-circle"
-          color="success"
-          title="Upload Complete"
-          description="Data successfully stored in database"
-        />
+      <UAlert
+        v-if="uploadStatus === 'success'"
+        icon="i-lucide-check-circle"
+        color="success"
+        title="Upload Complete"
+        description="Data successfully stored in database"
+      />
 
-        <!-- Required Fields Validation -->
-        <div v-if="fileData.length > 0" class="space-y-2">
-          <h3 class="font-semibold">Required Fields Status:</h3>
-          <div class="grid gap-2">
-            <div v-for="field in requiredFields" :key="field">
-              <div class="flex items-center gap-2">
-                <UIcon
-                  :name="isFieldValid(field) ? 'i-lucide-check-circle' : 'i-lucide-alert-circle'"
-                  :class="isFieldValid(field) ? 'text-green-500' : 'text-red-500'"
-                />
-                <span>{{ field }}</span>
-              </div>
-            </div>
+      <!-- Data Preview -->
+      <UCard v-if="headers.length > 0">
+        <template #header>
+          <div class="flex justify-between items-center">
+            <h2 class="text-lg font-semibold">Data Preview</h2>
+            <UButton
+              v-if="fileData.length > 0"
+              size="sm"
+              @click="showTransformedPreview = !showTransformedPreview"
+            >
+              {{ showTransformedPreview ? 'Show Raw' : 'Show Transformed' }}
+            </UButton>
           </div>
-        </div>
-
-        <!-- Data Quality Summary -->
-        <div v-if="fileData.length > 0" class="p-4 bg-gray-50 rounded-lg">
-          <h3 class="font-semibold mb-2">Data Quality Summary:</h3>
-          <ul class="space-y-1">
-            <li>Total Records: {{ fileData.length }}</li>
-            <li>Empty Cells: {{ getTotalMissingValues() }}</li>
-            <li>Invalid Date Formats: {{ getInvalidDateCount() }}</li>
-            <li>Invalid Currency Formats: {{ getInvalidCurrencyCount() }}</li>
-          </ul>
-        </div>
-      </div>
-
-      <!-- Proceed Section -->
-      <div v-if="fileData.length > 0" class="mt-6">
-        <div
-          class="mb-4 p-4 rounded-lg"
-          :class="
-            hasEmptyCells
-              ? 'bg-yellow-50 text-yellow-700'
-              : 'bg-green-50 text-green-700'
-          "
-        >
-          <p v-if="hasEmptyCells">
-            Empty cells and data irregularities may cause error during further analysis, please rectify
-            before you decide to proceed
-          </p>
-          <p v-else>You have no empty cells. Click NEXT to proceed</p>
-        </div>
+        </template>
         
-          <UButton
-            label="Proceed"
-            trailing-icon="i-lucide-arrow-right"
-            variant="outline"
-            :color="hasEmptyCells ? 'warning' : 'primary'"
-            :disabled="!isDataValid"
-            @click="handleProceed"
-          />
-        
-      </div>
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-gray-200">
+            <thead>
+              <tr>
+                <th
+                  v-for="header in headers"
+                  :key="header"
+                  class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  {{ header }}
+                </th>
+              </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+              <tr v-for="(row, index) in previewData" :key="index">
+                <td
+                  v-for="header in headers"
+                  :key="header"
+                  class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"
+                >
+                  {{ row[header] }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </UCard>
 
       <!-- Column Statistics -->
-      <UCard>
+      <UCard v-if="headers.length > 0">
         <template #header>
           <h2 class="text-lg font-semibold">Quality Check</h2>
         </template>
-        <div
-          class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
-        >
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           <UCard v-for="column in headers" :key="column" class="bg-gray-50">
             <template #header>
               <h3 class="font-medium text-sm">{{ column }}</h3>
@@ -208,14 +125,42 @@
               >
                 <Icon name="i-lucide-alert-triangle" class="text-orange-500" />
                 <span class="text-sm text-orange-600">
-                  Irregularities:
-                  {{ getColumnValidation(column).irregularCells }}
+                  Irregularities: {{ getColumnValidation(column).irregularCells }}
                 </span>
               </div>
             </div>
           </UCard>
         </div>
       </UCard>
+
+      <!-- Warning Messages -->
+      <UAlert
+        v-if="warningMessage"
+        icon="i-lucide-alert-triangle"
+        color="warning"
+        :title="warningMessage"
+      />
+
+      <!-- Action Buttons -->
+      <div class="flex justify-between items-center">
+        <UButton
+          label="Clear"
+          variant="soft"
+          color="gray"
+          @click="clearAll"
+          :disabled="!selectedFile"
+        />
+        
+        <UButton
+          label="Process File"
+          trailing-icon="i-lucide-arrow-right"
+          variant="solid"
+          color="primary"
+          :loading="isProcessing"
+          :disabled="!selectedFile"
+          @click="processFile"
+        />
+      </div>
     </div>
   </div>
 </template>
@@ -225,10 +170,12 @@ import { ref, computed, onUnmounted } from "vue";
 import { useRouter } from "vue-router";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
-import { parse, isValid } from "date-fns";
+import { parse, isValid, format } from "date-fns";
 import type { Database } from '~/types/database.types'
 import { generateTableSQL } from '../utils/schemaUtils'
 import { generateSchemaHash, compareSchemas, isSchemaMigrationNeeded } from '~/utils/schemaVersioning'
+import SchemaMigrationModal from '~/components/SchemaMigrationModal.vue'
+import { useOverlay } from '#ui/composables/useOverlay'
 
 interface FileRow {
   [key: string]: string | number | null;
@@ -247,28 +194,26 @@ interface ColumnValidation {
   errors: ValidationError[];
 }
 
-interface StoredData {
-  fileData: FileRow[];
-  headers: string[];
-  fileName: string;
-}
-
-interface SiteDataRow {
-  site_id: string | null;
-  exp_date: Date | null;
-  total_rental: number;
-  total_payment: number;
-  deposit: number;
-  upload_batch_id: string;
-  file_name: string;
-  raw_data: FileRow;
-  column_headers: string[];
-}
-
 interface ColumnSchema {
   name: string;
-  type: 'text' | 'number' | 'date' | 'currency' | 'unknown';
-  sample: any;
+  type: 'date' | 'currency' | 'number' | 'text' | 'unknown';
+  sample: string;
+}
+
+interface ValidationResult {
+  isValid: boolean;
+  errors: Array<{
+    row: number;
+    field: string;
+    value: any;
+    message: string;
+  }>;
+}
+
+interface UploadResult {
+  success: boolean;
+  error?: string;
+  uploadedCount: number;
 }
 
 const router = useRouter();
@@ -279,6 +224,7 @@ const isProcessing = ref(false);
 const fileData = ref<FileRow[]>([]);
 const headers = ref<string[]>([]);
 const tableName = 'site_data' // Using the default table name from your migrations
+const uploadErrors = ref<Array<{ batchIndex: number; error: string }>>([]);
 
 const hasEmptyCells = computed(() => {
   return getTotalMissingValues() > 0;
@@ -287,31 +233,11 @@ const hasEmptyCells = computed(() => {
 const detectedSchema = computed((): ColumnSchema[] => {
   if (!fileData.value.length || !headers.value.length) return [];
 
-  return headers.value.map(header => {
-    const sample = fileData.value[0]?.[header];
-    let type: ColumnSchema['type'] = 'unknown';
-
-    // Check first non-null value in the column
-    const firstNonNull = fileData.value.find(row => row[header] != null)?.[header];
-
-    if (firstNonNull != null) {
-      if (isValidDate(firstNonNull)) {
-        type = 'date';
-      } else if (isValidCurrency(firstNonNull)) {
-        type = 'currency';
-      } else if (!isNaN(Number(firstNonNull))) {
-        type = 'number';
-      } else {
-        type = 'text';
-      }
-    }
-
-    return {
-      name: header,
-      type,
-      sample: sample ?? 'N/A'
-    };
-  });
+  return headers.value.map(header => ({
+    name: header,
+    type: 'unknown' as const,
+    sample: String(fileData.value[0]?.[header] ?? 'N/A')
+  }));
 });
 
 const handleFileChange = (event: Event) => {
@@ -362,6 +288,15 @@ const processFile = async () => {
     } else {
       await processExcel(selectedFile.value);
     }
+
+    // Add this new section
+    if (fileData.value.length > 0) {
+      const result = await uploadWithFallback(fileData.value);
+      if (!result.success) {
+        errorMessage.value = result.error ?? 'Upload failed';
+      }
+    }
+
   } catch (error) {
     errorMessage.value =
       "Error processing file: " +
@@ -547,6 +482,7 @@ const clearAll = () => {
 const supabase = useSupabaseClient<Database>()
 const uploadStatus = ref<'idle' | 'uploading' | 'success' | 'error'>('idle')
 const uploadProgress = ref(0)
+const batchSize = 100 // Number of records to upload in each batch
 
 const requiredFields = [
   'SITE ID',
@@ -616,18 +552,26 @@ const warningMessage = computed(() => {
   return null
 })
 
-const uploadWithRetry = async (batch: any[], attempts = 3) => {
+const uploadWithRetry = async (batch: any[], batchIndex: number, attempts = 3) => {
   try {
     const { error } = await supabase
       .from('site_data')
       .insert(batch as Database['public']['Tables']['site_data']['Insert'][])
     
-    if (error) throw error
+    if (error) {
+      throw new Error(`Batch ${batchIndex + 1}: ${error.message}`)
+    }
     return { error: null }
   } catch (error) {
-    if (attempts <= 1) return { error }
+    if (attempts <= 1) {
+      uploadErrors.value.push({
+        batchIndex,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      })
+      return { error }
+    }
     await new Promise(r => setTimeout(r, 1000))
-    return uploadWithRetry(batch, attempts - 1)
+    return uploadWithRetry(batch, batchIndex, attempts - 1)
   }
 }
 
@@ -682,96 +626,422 @@ const detectColumnTypes = (data: FileRow[]): ColumnSchema[] => {
     return {
       name: header,
       type,
-      sample: sample ?? 'N/A'
+      sample: sample != null ? String(sample) : 'N/A'
     };
   });
 };
 
-const handleProceed = async () => {
-  try {
-    uploadStatus.value = 'uploading'
+const validateTransformedData = (data: Record<string, any>[], schema: ColumnSchema[]): ValidationResult => {
+  const errors = [];
+  
+  for (let rowIndex = 0; rowIndex < data.length; rowIndex++) {
+    const row = data[rowIndex];
     
-    // Detect schema
-    const schema = detectColumnTypes(fileData.value)
-    const schemaHash = generateSchemaHash(schema)
+    // Validate required fields
+    const requiredFields = ['site_id', 'exp_date', 'total_rental', 'total_payment', 'deposit'];
     
-    // Check existing schema version
-    const { data: existingVersion } = await supabase
-      .from('schema_versions')
-      .select('*')
-      .eq('table_name', tableName)
-      .eq('is_current', true)
-      .single()
-    
-    if (existingVersion) {
-      const changes = compareSchemas(
-        schema,
-        existingVersion.schema_definition
-      )
-      
-      if (isSchemaMigrationNeeded(changes)) {
-        // Show migration confirmation dialog
-        const shouldMigrate = await showMigrationDialog(changes)
-        if (!shouldMigrate) {
-          uploadStatus.value = 'idle'
-          return
-        }
+    for (const field of requiredFields) {
+      const value = row?.[field];
+      if (value === null || value === undefined || value === '') {
+        errors.push({
+          row: rowIndex + 1,
+          field,
+          value,
+          message: `${field} is required`
+        });
       }
-      
-      // Create new version if schema changed
-      if (existingVersion.hash !== schemaHash) {
-        const { error: versionError } = await supabase
-          .from('schema_versions')
-          .insert({
-            table_name: tableName,
-            version: existingVersion.version + 1,
-            schema_definition: schema,
-            hash: schemaHash
-          })
-        
-        if (versionError) throw versionError
-      }
-    } else {
-      // Create initial schema version
-      const { error: versionError } = await supabase
-        .from('schema_versions')
-        .insert({
-          table_name: tableName,
-          version: 1,
-          schema_definition: schema,
-          hash: schemaHash
-        })
-      
-      if (versionError) throw versionError
     }
     
-    // Continue with table creation and data upload...
-    // (previous implementation)
+    // Validate numeric fields are positive
+    const numericFields = ['total_rental', 'total_payment', 'deposit'];
+    for (const field of numericFields) {
+      const value = row?.[field];
+      if (typeof value === 'number' && value < 0) {
+        errors.push({
+          row: rowIndex + 1,
+          field,
+          value,
+          message: `${field} cannot be negative`
+        });
+      }
+    }
+    
+    // Validate date field
+    if (row?.exp_date && !(row?.exp_date instanceof Date)) {
+      errors.push({
+        row: rowIndex + 1,
+        field: 'exp_date',
+        value: row.exp_date,
+        message: 'Invalid date format'
+      });
+    }
+  }
+  
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
+};
+
+// Add validation state
+const validationResult = ref<ValidationResult>({ isValid: true, errors: [] });
+
+const handleProceed = async () => {
+  if (!fileData.value.length) return
+  
+  try {
+    // Reset error states
+    uploadStatus.value = 'uploading'
+    uploadProgress.value = 0
+    uploadErrors.value = []
+    errorMessage.value = ''
+    
+    const schema = detectColumnTypes(fileData.value)
+    const transformedData = fileData.value.map(row => transformForUpload(row, schema))
+    validationResult.value = validateTransformedData(transformedData, schema)
+    
+    if (!validationResult.value.isValid) {
+      throw new Error('Validation failed. Please fix the errors before uploading.')
+    }
+    
+    // Prepare data in batches
+    const batches = []
+    for (let i = 0; i < transformedData.length; i += batchSize) {
+      batches.push(transformedData.slice(i, i + batchSize))
+    }
+    
+    // Upload batches with enhanced error handling
+    for (let i = 0; i < batches.length; i++) {
+      const batch = batches[i]
+      if (!batch) continue
+      
+      const { error } = await uploadWithRetry(batch, i)
+      if (error) {
+        // Continue with remaining batches even if one fails
+        console.error(`Batch ${i + 1} failed:`, error)
+      }
+      
+      uploadProgress.value = Math.round(((i + 1) / batches.length) * 100)
+    }
+    
+    // Store in localStorage as fallback
+    localStorage.setItem('uploadedFileData', JSON.stringify({
+      fileData: fileData.value,
+      headers: headers.value,
+      fileName: selectedFileName.value,
+      uploadErrors: uploadErrors.value
+    }))
+    
+    if (uploadErrors.value.length > 0) {
+      uploadStatus.value = 'error'
+      errorMessage.value = `Upload completed with ${uploadErrors.value.length} batch errors`
+    } else {
+      uploadStatus.value = 'success'
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      router.push('/dashboard')
+    }
     
   } catch (error) {
-    console.error("Error during upload:", error)
+    console.error('Upload error:', error)
     uploadStatus.value = 'error'
     errorMessage.value = error instanceof Error ? error.message : 'An unknown error occurred'
+    
+    // Ensure data is saved to localStorage even if upload fails
+    localStorage.setItem('uploadedFileData', JSON.stringify({
+      fileData: fileData.value,
+      headers: headers.value,
+      fileName: selectedFileName.value,
+      error: errorMessage.value
+    }))
   }
 }
 
 const showMigrationDialog = async (changes: ReturnType<typeof compareSchemas>) => {
-  return await useConfirmDialog({
-    title: 'Schema Changes Detected',
-    content: `
-      The following changes were detected:
-      ${changes.removed.length ? `\nRemoved columns: ${changes.removed.join(', ')}` : ''}
-      ${changes.typeChanged.length ? `\nChanged types: ${changes.typeChanged.map(c => 
-        `${c.column} (${c.from} → ${c.to})`).join(', ')}` : ''}
-      
-      Do you want to create a new schema version?
-    `,
-    confirmLabel: 'Create New Version',
-    cancelLabel: 'Cancel Upload'
+  const modal = overlay.create(SchemaMigrationModal, {
+    props: {
+      changes
+    }
   })
+  
+  return await modal.open()
 }
+
+const overlay = useOverlay()
 
 // onUnmounted(() => {
 //   localStorage.removeItem("uploadedFileData");
 // });
+
+// Add these new refs and computed properties
+const showTransformedPreview = ref(false)
+const previewLimit = ref(5)
+
+const transformedPreview = computed(() => {
+  if (!fileData.value.length) return []
+  
+  const schema = detectColumnTypes(fileData.value)
+  return fileData.value
+    .slice(0, previewLimit.value)
+    .map(row => transformForUpload(row, schema))
+})
+
+const previewColumns = computed(() => {
+  if (!transformedPreview.value.length) return []
+  
+  // Get all unique keys from transformed data
+  const allKeys = new Set<string>()
+  transformedPreview.value.forEach(row => {
+    Object.keys(row).forEach(key => allKeys.add(key))
+  })
+  
+  // Sort keys to ensure consistent order
+  // Put important fields first
+  const priorityFields = ['site_id', 'exp_date', 'total_rental', 'total_payment', 'deposit']
+  return [
+    ...priorityFields.filter(field => allKeys.has(field)),
+    ...Array.from(allKeys)
+      .filter(key => !priorityFields.includes(key))
+      .sort()
+  ]
+})
+
+const formatPreviewValue = (value: any): string => {
+  if (value === null || value === undefined) return '-'
+  if (value instanceof Date) return value.toLocaleDateString()
+  if (typeof value === 'number') return value.toLocaleString()
+  if (typeof value === 'object') return JSON.stringify(value)
+  return String(value)
+}
+
+// Add these new interfaces and refs
+interface CleanupOption {
+  id: string
+  label: string
+  description: string
+  icon: string
+  apply: () => void
+  previewCount?: number
+}
+
+interface CleanupPreview {
+  field: string
+  oldValue: any
+  newValue: any
+  rowIndex: number
+}
+
+const selectedCleanupOptions = ref<Set<string>>(new Set())
+const cleanupPreviews = ref<Record<string, CleanupPreview[]>>({})
+
+// Add cleanup options
+const cleanupOptions = computed((): CleanupOption[] => {
+  if (!fileData.value.length) return []
+
+  return [
+    {
+      id: 'trim-whitespace',
+      label: 'Trim Whitespace',
+      description: 'Remove leading and trailing spaces from text fields',
+      icon: 'i-lucide-scissors',
+      previewCount: countWhitespaceIssues(),
+      apply: () => applyTrimWhitespace()
+    },
+    {
+      id: 'standardize-dates',
+      label: 'Standardize Dates',
+      description: `Convert all dates to ${DATE_FORMATS[0]} format`,
+      icon: 'i-lucide-calendar',
+      previewCount: getInvalidDateCount(),
+      apply: () => applyStandardizeDates()
+    },
+    {
+      id: 'format-currency',
+      label: 'Format Currency',
+      description: 'Remove currency symbols and standardize number format',
+      icon: 'i-lucide-currency',
+      previewCount: getInvalidCurrencyCount(),
+      apply: () => applyFormatCurrency()
+    },
+    {
+      id: 'remove-dashes',
+      label: 'Convert Dashes to Null',
+      description: 'Convert "-", "–", "—" to null values',
+      icon: 'i-lucide-minus',
+      previewCount: getTotalDashValues(),
+      apply: () => applyRemoveDashes()
+    }
+  ]
+})
+
+// Add cleanup functions
+const countWhitespaceIssues = (): number => {
+  return headers.value.reduce((count, header) => {
+    return count + fileData.value.filter(row => {
+      const value = row[header]
+      return typeof value === 'string' && value.trim() !== value
+    }).length
+  }, 0)
+}
+
+const applyTrimWhitespace = () => {
+  const previews: CleanupPreview[] = []
+  
+  fileData.value = fileData.value.map((row, rowIndex) => {
+    const newRow = { ...row }
+    headers.value.forEach(header => {
+      const value = row[header]
+      if (typeof value === 'string' && value.trim() !== value) {
+        previews.push({
+          field: header,
+          oldValue: value,
+          newValue: value.trim(),
+          rowIndex
+        })
+        newRow[header] = value.trim()
+      }
+    })
+    return newRow
+  })
+  
+  cleanupPreviews.value['trim-whitespace'] = previews
+}
+
+const applyStandardizeDates = () => {
+  const previews: CleanupPreview[] = []
+  const targetFormat = DATE_FORMATS[0]
+  
+  fileData.value = fileData.value.map((row, rowIndex) => {
+    const newRow = { ...row }
+    headers.value.forEach(header => {
+      if (header.toLowerCase().includes('date')) {
+        const value = row[header]
+        if (value && !isValidDate(value)) {
+          try {
+            const standardizedDate = parseDate(value.toString())
+            if (standardizedDate) {
+              previews.push({
+                field: header,
+                oldValue: value,
+                newValue: format(standardizedDate, targetFormat || 'dd/MM/yyyy'),
+                rowIndex
+              })
+              newRow[header] = format(standardizedDate, targetFormat || 'dd/MM/yyyy')
+            }
+          } catch (error) {
+            // Skip invalid dates
+          }
+        }
+      }
+    })
+    return newRow
+  })
+  
+  cleanupPreviews.value['standardize-dates'] = previews
+}
+
+const applyFormatCurrency = () => {
+  const previews: CleanupPreview[] = []
+  
+  fileData.value = fileData.value.map((row, rowIndex) => {
+    const newRow = { ...row }
+    headers.value.forEach(header => {
+      if (header.toLowerCase().includes('rental') || 
+          header.toLowerCase().includes('payment') || 
+          header.toLowerCase().includes('deposit')) {
+        const value = row[header]
+        if (value && !isValidCurrency(value)) {
+          const numericValue = parseFloat(value.toString().replace(/[^0-9.-]+/g, ''))
+          if (!isNaN(numericValue)) {
+            previews.push({
+              field: header,
+              oldValue: value,
+              newValue: numericValue.toFixed(2),
+              rowIndex
+            })
+            newRow[header] = numericValue.toFixed(2)
+          }
+        }
+      }
+    })
+    return newRow
+  })
+  
+  cleanupPreviews.value['format-currency'] = previews
+}
+
+const applyRemoveDashes = () => {
+  const previews: CleanupPreview[] = []
+  
+  fileData.value = fileData.value.map((row, rowIndex) => {
+    const newRow = { ...row }
+    headers.value.forEach(header => {
+      const value = row[header]
+      if (value === '-' || value === '–' || value === '—') {
+        previews.push({
+          field: header,
+          oldValue: value,
+          newValue: null,
+          rowIndex
+        })
+        newRow[header] = null
+      }
+    })
+    return newRow
+  })
+  
+  cleanupPreviews.value['remove-dashes'] = previews
+}
+
+const applySelectedCleanups = () => {
+  selectedCleanupOptions.value.forEach(optionId => {
+    const option = cleanupOptions.value.find(opt => opt.id === optionId)
+    option?.apply()
+  })
+  
+  // Revalidate after cleanup
+  const schema = detectColumnTypes(fileData.value)
+  const transformedData = fileData.value.map(row => transformForUpload(row, schema))
+  validationResult.value = validateTransformedData(transformedData, schema)
+}
+
+const uploadWithFallback = async (data: FileRow[]): Promise<UploadResult> => {
+  uploadStatus.value = 'uploading'
+  uploadProgress.value = 0
+  
+  try {
+    // Attempt Supabase upload
+    const { error } = await supabase.from('site_data').insert(
+      data.map(row => ({
+        ...transformForUpload(row, detectColumnTypes(fileData.value)),
+        upload_batch_id: crypto.randomUUID(),
+        file_name: selectedFileName.value
+      }))
+    )
+    
+    if (error) throw error
+    
+    uploadStatus.value = 'success'
+    return { success: true, uploadedCount: data.length }
+  } catch (error) {
+    console.error('Supabase upload failed:', error)
+    
+    // Fallback to localStorage
+    localStorage.setItem('uploadedFileData', JSON.stringify({
+      fileData: data,
+      headers: headers.value,
+      fileName: selectedFileName.value
+    }))
+    
+    uploadStatus.value = 'error'
+    return {
+      success: false,
+      error: 'Database upload failed. Data saved locally.',
+      uploadedCount: 0
+    }
+  }
+}
 </script>
+
+<template>
+  <!-- ... existing template code ... -->
+</template>
