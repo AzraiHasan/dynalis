@@ -146,7 +146,7 @@
         <UButton
           label="Clear"
           variant="soft"
-          color="gray"
+          color="neutral"
           @click="clearAll"
           :disabled="!selectedFile"
         />
@@ -776,6 +776,14 @@ const overlay = useOverlay()
 const showTransformedPreview = ref(false)
 const previewLimit = ref(5)
 
+  const previewData = computed(() => {
+  if (!fileData.value.length) return []
+  
+  return showTransformedPreview.value
+    ? transformedPreview.value
+    : fileData.value.slice(0, previewLimit.value)
+})
+
 const transformedPreview = computed(() => {
   if (!fileData.value.length) return []
   
@@ -793,6 +801,8 @@ const previewColumns = computed(() => {
   transformedPreview.value.forEach(row => {
     Object.keys(row).forEach(key => allKeys.add(key))
   })
+
+
   
   // Sort keys to ensure consistent order
   // Put important fields first
@@ -1042,6 +1052,4 @@ const uploadWithFallback = async (data: FileRow[]): Promise<UploadResult> => {
 }
 </script>
 
-<template>
-  <!-- ... existing template code ... -->
-</template>
+
