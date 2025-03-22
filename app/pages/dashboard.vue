@@ -76,16 +76,56 @@
       <!-- Contract Expiration Status -->
       <UCard>
         <template #header>
-          <div class="flex justify-between items-center">
-            <h3 class="text-base font-semibold">Contract Expiration Status</h3>
+          <div class="flex items-center gap-2">
+            <Icon name="i-lucide-alarm-clock" class="text-gray-600" />
+            <h3 class="text-base font-semibold">Contract Expirations</h3>
           </div>
         </template>
-        <Doughnut
-          v-if="expirationChartData"
-          :data="expirationChartData"
-          :options="chartOptions.doughnut"
-          class="h-[300px]"
-        />
+
+        <div class="grid grid-cols-2 gap-3">
+          <!-- Expired -->
+          <div class="p-4 bg-red-50 rounded-lg transition-all hover:bg-red-100">
+            <div class="flex items-center gap-2 mb-2">
+              <Icon name="i-lucide-alert-circle" class="text-red-600" />
+              <h3 class="text-sm text-red-600">Expired</h3>
+            </div>
+            <p class="text-2xl font-semibold text-red-600">{{ expiredContracts }}</p>
+            <p class="text-xs text-red-500 mt-1">Past expiration date</p>
+            <p v-if="invalidDates" class="text-xs text-gray-500 mt-1">
+              + {{ invalidDates }} invalid/missing dates
+            </p>
+          </div>
+
+          <!-- Within 30 Days -->
+          <div class="p-4 bg-orange-50 rounded-lg transition-all hover:bg-orange-100">
+            <div class="flex items-center gap-2 mb-2">
+              <Icon name="i-lucide-clock-alert" class="text-orange-600" />
+              <h3 class="text-sm text-orange-600">Within 30 Days</h3>
+            </div>
+            <p class="text-2xl font-semibold text-orange-600">{{ expirationStatus['Within 30 Days'] }}</p>
+            <p class="text-xs text-orange-500 mt-1">Urgent attention needed</p>
+          </div>
+
+          <!-- Within 60 Days -->
+          <div class="p-4 bg-yellow-50 rounded-lg transition-all hover:bg-yellow-100">
+            <div class="flex items-center gap-2 mb-2">
+              <Icon name="i-lucide-clock" class="text-yellow-600" />
+              <h3 class="text-sm text-yellow-600">Within 60 Days</h3>
+            </div>
+            <p class="text-2xl font-semibold text-yellow-600">{{ expirationStatus['Within 60 Days'] }}</p>
+            <p class="text-xs text-yellow-500 mt-1">Plan for renewal</p>
+          </div>
+
+          <!-- Within 90 Days -->
+          <div class="p-4 bg-blue-50 rounded-lg transition-all hover:bg-blue-100">
+            <div class="flex items-center gap-2 mb-2">
+              <Icon name="i-lucide-calendar" class="text-blue-600" />
+              <h3 class="text-sm text-blue-600">Within 90 Days</h3>
+            </div>
+            <p class="text-2xl font-semibold text-blue-600">{{ expirationStatus['Within 90 Days'] }}</p>
+            <p class="text-xs text-blue-500 mt-1">Early planning</p>
+          </div>
+        </div>
       </UCard>
 
       <!-- Expiration Timeline -->
@@ -446,6 +486,41 @@ const exportData = (): void => {
   alert("Export functionality would be implemented here");
 };
 
+const expirationStatus = computed(() => {
+  if (!fileData.value) return {
+    'Within 30 Days': 0,
+    'Within 60 Days': 0,
+    'Within 90 Days': 0,
+    'Valid > 90 Days': 0
+  };
+
+  const status = {
+    'Within 30 Days': 0,
+    'Within 60 Days': 0,
+    'Within 90 Days': 0,
+    'Valid > 90 Days': 0
+  };
+
+  fileData.value.forEach(row => {
+    const daysUntil = getDaysUntilExpiration(row['EXP DATE']?.toString() || '');
+    
+    if (daysUntil === null || daysUntil <= 0) {
+      // Skip invalid or expired dates since they're shown in separate cards
+      return;
+    } else if (daysUntil <= 30) {
+      status['Within 30 Days']++;
+    } else if (daysUntil <= 60) {
+      status['Within 60 Days']++;
+    } else if (daysUntil <= 90) {
+      status['Within 90 Days']++;
+    } else {
+      status['Valid > 90 Days']++;
+    }
+  });
+
+  return status;
+});
+
 onMounted(() => {
   try {
     const stored = localStorage.getItem("uploadedFileData");
@@ -614,3 +689,6 @@ function handleStaging() {
   router.push("/datastaging");
 }
 </script>
+
+
+
