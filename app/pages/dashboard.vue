@@ -38,7 +38,20 @@
             <div class="text-sm text-gray-500">Expired Contracts</div>
             <div class="text-2xl font-bold">{{ expiredContracts }}</div>
           </div>
-          <UIcon name="i-lucide-alert-triangle" class="w-8 h-8 text-amber-500" />
+          <UIcon
+            name="i-lucide-alert-triangle"
+            class="w-8 h-8 text-amber-500"
+          />
+        </div>
+      </UCard>
+
+      <UCard>
+        <div class="flex items-center gap-2">
+          <div class="flex-1">
+            <div class="text-sm text-gray-500">Invalid Dates</div>
+            <div class="text-2xl font-bold">{{ invalidDates }}</div>
+          </div>
+          <UIcon name="i-lucide-calendar-x" class="w-8 h-8 text-gray-500" />
         </div>
       </UCard>
     </div>
@@ -125,13 +138,19 @@
           class="h-[300px]"
         />
       </UCard>
+
+      <UButton
+        label="Back to staging"
+        icon="i-lucide-arrow-left"
+        @click="handleStaging"
+      />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, onMounted } from "vue";
+import { useRouter } from "vue-router";
 import {
   Chart as ChartJS,
   Title,
@@ -143,10 +162,10 @@ import {
   ArcElement,
   PointElement,
   LineElement,
-  Filler  // Add this import
-} from 'chart.js'
-import { Bar, Doughnut, Line, Scatter } from 'vue-chartjs'
-import { addMonths, format, differenceInDays } from 'date-fns'
+  Filler, // Add this import
+} from "chart.js";
+import { Bar, Doughnut, Line, Scatter } from "vue-chartjs";
+import { addMonths, format, differenceInDays } from "date-fns";
 
 // Register ChartJS components
 ChartJS.register(
@@ -159,16 +178,16 @@ ChartJS.register(
   ArcElement,
   PointElement,
   LineElement,
-  Filler  // Register the Filler plugin
-)
+  Filler // Register the Filler plugin
+);
 
 interface FileRow {
-  [key: string]: string | number | null | undefined;  // Updated index signature to include undefined
-  'SITE ID'?: string | number | null;
-  'EXP DATE'?: string | null;  // Made consistent with index signature
-  'TOTAL RENTAL (RM)'?: string | number | null;  // Made consistent with index signature
-  'TOTAL PAYMENT TO PAY (RM)'?: string | number | null;  // Made consistent with index signature
-  'DEPOSIT (RM)'?: string | number | null;  // Made consistent with index signature
+  [key: string]: string | number | null | undefined; // Updated index signature to include undefined
+  "SITE ID"?: string | number | null;
+  "EXP DATE"?: string | null; // Made consistent with index signature
+  "TOTAL RENTAL (RM)"?: string | number | null; // Made consistent with index signature
+  "TOTAL PAYMENT TO PAY (RM)"?: string | number | null; // Made consistent with index signature
+  "DEPOSIT (RM)"?: string | number | null; // Made consistent with index signature
 }
 
 interface ChartDataset {
@@ -206,21 +225,22 @@ interface DoughnutChartData {
   }[];
 }
 
-const router = useRouter()
+const router = useRouter();
 
 // Data refs
-const fileData = ref<FileRow[]>([])
-const totalSites = ref<number>(0)
-const totalRental = ref<string>('0')
-const duePayment = ref<string>('0')
-const expiredContracts = ref<number>(0)
+const fileData = ref<FileRow[]>([]);
+const totalSites = ref<number>(0);
+const totalRental = ref<string>("0");
+const duePayment = ref<string>("0");
+const expiredContracts = ref<number>(0);
+const invalidDates = ref<number>(0); // Add this line
 
 // Chart data refs
-const rentalChartData = ref<ChartData | null>(null)
-const expirationChartData = ref<DoughnutChartData | null>(null)
-const expirationTimelineData = ref<ChartData | null>(null)
-const renewalRiskData = ref<ChartData | null>(null)
-const paymentFlowData = ref<ChartData | null>(null)
+const rentalChartData = ref<ChartData | null>(null);
+const expirationChartData = ref<DoughnutChartData | null>(null);
+const expirationTimelineData = ref<ChartData | null>(null);
+const renewalRiskData = ref<ChartData | null>(null);
+const paymentFlowData = ref<ChartData | null>(null);
 
 // Chart options
 const chartOptions = {
@@ -229,27 +249,27 @@ const chartOptions = {
     maintainAspectRatio: false,
     plugins: {
       legend: {
-        position: 'top' as const
-      }
-    }
+        position: "top" as const,
+      },
+    },
   },
   doughnut: {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
       legend: {
-        position: 'right' as const
-      }
-    }
+        position: "right" as const,
+      },
+    },
   },
   line: {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
       legend: {
-        position: 'top' as const
-      }
-    }
+        position: "top" as const,
+      },
+    },
   },
   scatter: {
     responsive: true,
@@ -258,322 +278,339 @@ const chartOptions = {
       x: {
         title: {
           display: true,
-          text: 'Days Until Expiration'
-        }
+          text: "Days Until Expiration",
+        },
       },
       y: {
         title: {
           display: true,
-          text: 'Rental Amount (RM)'
-        }
-      }
-    }
+          text: "Rental Amount (RM)",
+        },
+      },
+    },
   },
   paymentFlow: {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
       legend: {
-        position: 'top' as const
-      }
+        position: "top" as const,
+      },
     },
     scales: {
       y: {
-        beginAtZero: true
-      }
-    }
-  }
-}
+        beginAtZero: true,
+      },
+    },
+  },
+};
 
 // Helper functions
 const parseCurrency = (value: any): number => {
-  if (!value) return 0
-  return parseFloat(value.toString().replace(/[RM,\s]/g, '')) || 0
-}
+  if (!value) return 0;
+  return parseFloat(value.toString().replace(/[RM,\s]/g, "")) || 0;
+};
 
 const getDaysUntilExpiration = (expDate: string): number | null => {
-  const date = new Date(expDate)
-  if (isNaN(date.getTime())) return null
-  
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  
-  return differenceInDays(date, today)
-}
+  const date = new Date(expDate);
+  if (isNaN(date.getTime())) return null;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  return differenceInDays(date, today);
+};
 
 const calculateRentalRanges = (data: FileRow[]): Record<string, number> => {
   const ranges: Record<string, number> = {
-    '< RM1,000': 0,
-    'RM1,000 - RM2,000': 0,
-    'RM2,000 - RM3,000': 0,
-    'RM3,000 - RM4,000': 0,
-    '> RM4,000': 0
-  }
+    "< RM1,000": 0,
+    "RM1,000 - RM2,000": 0,
+    "RM2,000 - RM3,000": 0,
+    "RM3,000 - RM4,000": 0,
+    "> RM4,000": 0,
+  };
 
-  data.forEach(row => {
-    const rental = parseCurrency(row['TOTAL RENTAL (RM)'])
+  data.forEach((row) => {
+    const rental = parseCurrency(row["TOTAL RENTAL (RM)"]);
     if (rental < 1000) {
-      ranges['< RM1,000'] = (ranges['< RM1,000'] || 0) + 1
+      ranges["< RM1,000"] = (ranges["< RM1,000"] || 0) + 1;
     } else if (rental < 2000) {
-      ranges['RM1,000 - RM2,000'] = (ranges['RM1,000 - RM2,000'] || 0) + 1
+      ranges["RM1,000 - RM2,000"] = (ranges["RM1,000 - RM2,000"] || 0) + 1;
     } else if (rental < 3000) {
-      ranges['RM2,000 - RM3,000'] = (ranges['RM2,000 - RM3,000'] || 0) + 1
+      ranges["RM2,000 - RM3,000"] = (ranges["RM2,000 - RM3,000"] || 0) + 1;
     } else if (rental < 4000) {
-      ranges['RM3,000 - RM4,000'] = (ranges['RM3,000 - RM4,000'] || 0) + 1
+      ranges["RM3,000 - RM4,000"] = (ranges["RM3,000 - RM4,000"] || 0) + 1;
     } else {
-      ranges['> RM4,000'] = (ranges['> RM4,000'] || 0) + 1
+      ranges["> RM4,000"] = (ranges["> RM4,000"] || 0) + 1;
     }
-  })
+  });
 
-  return ranges
-}
+  return ranges;
+};
 
 const calculateExpirationStatus = (data: FileRow[]): Record<string, number> => {
   const status: Record<string, number> = {
-    'Expired': 0,
-    'Within 30 Days': 0,
-    'Within 60 Days': 0,
-    'Within 90 Days': 0,
-    'Valid > 90 Days': 0,
-    'Invalid Date': 0
-  }
+    "Within 30 Days": 0,
+    "Within 60 Days": 0,
+    "Within 90 Days": 0,
+    "Valid > 90 Days": 0,
+  };
 
-  data.forEach(row => {
-    const daysUntil = getDaysUntilExpiration(row['EXP DATE']?.toString() || '')
-    
+  data.forEach((row) => {
+    const daysUntil = getDaysUntilExpiration(row["EXP DATE"]?.toString() || "");
+
     if (daysUntil === null) {
-      status['Invalid Date'] = (status['Invalid Date'] || 0) + 1
+      // Skip invalid dates
+      return;
     } else if (daysUntil <= 0) {
-      status['Expired'] = (status['Expired'] || 0) + 1
+      // Skip expired contracts as they're shown in the separate card
+      return;
     } else if (daysUntil <= 30) {
-      status['Within 30 Days'] = (status['Within 30 Days'] || 0) + 1
+      status["Within 30 Days"] = (status["Within 30 Days"] || 0) + 1;
     } else if (daysUntil <= 60) {
-      status['Within 60 Days'] = (status['Within 60 Days'] || 0) + 1
+      status["Within 60 Days"] = (status["Within 60 Days"] || 0) + 1;
     } else if (daysUntil <= 90) {
-      status['Within 90 Days'] = (status['Within 90 Days'] || 0) + 1
+      status["Within 90 Days"] = (status["Within 90 Days"] || 0) + 1;
     } else {
-      status['Valid > 90 Days'] = (status['Valid > 90 Days'] || 0) + 1
+      status["Valid > 90 Days"] = (status["Valid > 90 Days"] || 0) + 1;
     }
-  })
+  });
 
-  return status
-}
+  return status;
+};
 
-const calculateExpirationTimeline = (data: FileRow[]): { months: string[]; counts: number[] } => {
-  const timeline: Record<string, number> = {}
-  const today = new Date()
+const calculateExpirationTimeline = (
+  data: FileRow[]
+): { months: string[]; counts: number[] } => {
+  const timeline: Record<string, number> = {};
+  const today = new Date();
 
   // Initialize next 12 months
   for (let i = 0; i < 12; i++) {
-    const month = addMonths(today, i)
-    timeline[format(month, 'MMM yyyy')] = 0
+    const month = addMonths(today, i);
+    timeline[format(month, "MMM yyyy")] = 0;
   }
 
-  data.forEach(row => {
-    const expDate = row['EXP DATE']?.toString() || ''
-    const date = new Date(expDate)
-    if (isNaN(date.getTime())) return
+  data.forEach((row) => {
+    const expDate = row["EXP DATE"]?.toString() || "";
+    const date = new Date(expDate);
+    if (isNaN(date.getTime())) return;
 
-    const monthKey = format(date, 'MMM yyyy')
+    const monthKey = format(date, "MMM yyyy");
     if (timeline[monthKey] !== undefined) {
-      timeline[monthKey]++
+      timeline[monthKey]++;
     }
-  })
+  });
 
   return {
     months: Object.keys(timeline),
-    counts: Object.values(timeline)
-  }
-}
+    counts: Object.values(timeline),
+  };
+};
 
-const calculateRenewalRisk = (data: FileRow[]): Array<{ x: number; y: number }> => {
-  return data.map(row => {
-    const daysUntil = getDaysUntilExpiration(row['EXP DATE']?.toString() || '') || 0
-    const rental = parseCurrency(row['TOTAL RENTAL (RM)'])
-    return { x: daysUntil, y: rental }
-  }).filter(point => !isNaN(point.x) && !isNaN(point.y))
-}
+const calculateRenewalRisk = (
+  data: FileRow[]
+): Array<{ x: number; y: number }> => {
+  return data
+    .map((row) => {
+      const daysUntil =
+        getDaysUntilExpiration(row["EXP DATE"]?.toString() || "") || 0;
+      const rental = parseCurrency(row["TOTAL RENTAL (RM)"]);
+      return { x: daysUntil, y: rental };
+    })
+    .filter((point) => !isNaN(point.x) && !isNaN(point.y));
+};
 
 const calculatePaymentFlow = (data: FileRow[]): PaymentFlowData => {
-  let totalRental = 0
-  let totalPaymentToPay = 0
-  let totalDeposit = 0
-  
-  data.forEach(row => {
-    totalRental += parseCurrency(row['TOTAL RENTAL (RM)'])
-    totalPaymentToPay += parseCurrency(row['TOTAL PAYMENT TO PAY (RM)'])
-    totalDeposit += parseCurrency(row['DEPOSIT (RM)'])
-  })
-  
+  let totalRental = 0;
+  let totalPaymentToPay = 0;
+  let totalDeposit = 0;
+
+  data.forEach((row) => {
+    totalRental += parseCurrency(row["TOTAL RENTAL (RM)"]);
+    totalPaymentToPay += parseCurrency(row["TOTAL PAYMENT TO PAY (RM)"]);
+    totalDeposit += parseCurrency(row["DEPOSIT (RM)"]);
+  });
+
   return {
-    labels: ['Total Rental', 'Due Payment', 'Deposit'],
+    labels: ["Total Rental", "Due Payment", "Deposit"],
     values: [
       totalRental / 1000000,
       totalPaymentToPay / 1000000,
-      totalDeposit / 1000000
-    ]
-  }
-}
+      totalDeposit / 1000000,
+    ],
+  };
+};
 
 const exportData = (): void => {
-  alert('Export functionality would be implemented here')
-}
+  alert("Export functionality would be implemented here");
+};
 
 onMounted(() => {
   try {
-    const stored = localStorage.getItem('uploadedFileData')
+    const stored = localStorage.getItem("uploadedFileData");
     if (!stored) {
-      console.log('No data found in localStorage')
-      router.push('/dataupload')
-      return
+      console.log("No data found in localStorage");
+      router.push("/dataupload");
+      return;
     }
 
-    const data = JSON.parse(stored) as { fileData: FileRow[] }
-    console.log('Retrieved data:', data)
+    const data = JSON.parse(stored) as { fileData: FileRow[] };
+    console.log("Retrieved data:", data);
 
-    if (!data.fileData || !Array.isArray(data.fileData) || data.fileData.length === 0) {
-      console.log('Invalid or empty data structure:', data)
-      router.push('/dataupload')
-      return
+    if (
+      !data.fileData ||
+      !Array.isArray(data.fileData) ||
+      data.fileData.length === 0
+    ) {
+      console.log("Invalid or empty data structure:", data);
+      router.push("/dataupload");
+      return;
     }
-    
-    fileData.value = data.fileData
-    
+
+    fileData.value = data.fileData;
+
     // Set summary statistics
-    const sitesData = fileData.value.filter(row => row['SITE ID'] && row['SITE ID'].toString().toUpperCase() !== 'NO ID')
-    totalSites.value = sitesData.length
-    
-    let totalRentalValue = 0
-    let totalDuePayment = 0
-    let expiredCount = 0
-    
-    fileData.value.forEach(row => {
-      totalRentalValue += parseCurrency(row['TOTAL RENTAL (RM)'])
-      totalDuePayment += parseCurrency(row['TOTAL PAYMENT TO PAY (RM)'])
-      
-      const daysUntil = getDaysUntilExpiration(row['EXP DATE']?.toString() || '')
-      if (daysUntil !== null && daysUntil <= 0) {
-        expiredCount++
+    const sitesData = fileData.value.filter(
+      (row) =>
+        row["SITE ID"] && row["SITE ID"].toString().toUpperCase() !== "NO ID"
+    );
+    totalSites.value = sitesData.length;
+
+    let totalRentalValue = 0;
+    let totalDuePayment = 0;
+    let expiredCount = 0;
+
+    fileData.value.forEach((row) => {
+      totalRentalValue += parseCurrency(row["TOTAL RENTAL (RM)"]);
+      totalDuePayment += parseCurrency(row["TOTAL PAYMENT TO PAY (RM)"]);
+
+      const daysUntil = getDaysUntilExpiration(
+        row["EXP DATE"]?.toString() || ""
+      );
+      if (daysUntil === null) {
+        invalidDates.value++; // Add this line
+      } else if (daysUntil <= 0) {
+        expiredCount++;
       }
-    })
-    
-    totalRental.value = (totalRentalValue / 1000000).toFixed(2)
-    duePayment.value = (totalDuePayment / 1000000).toFixed(2)
-    expiredContracts.value = expiredCount
-    
+    });
+
+    totalRental.value = (totalRentalValue / 1000000).toFixed(2);
+    duePayment.value = (totalDuePayment / 1000000).toFixed(2);
+    expiredContracts.value = expiredCount;
+
     // Prepare rental distribution data
-    const rentalRanges = calculateRentalRanges(fileData.value)
+    const rentalRanges = calculateRentalRanges(fileData.value);
     rentalChartData.value = {
       labels: Object.keys(rentalRanges),
-      datasets: [{
-        label: 'Number of Sites',
-        data: Object.values(rentalRanges),
-        backgroundColor: [
-          'rgba(16, 185, 129, 0.7)',
-          'rgba(52, 211, 153, 0.7)',
-          'rgba(20, 184, 166, 0.7)',
-          'rgba(6, 182, 212, 0.7)',
-          'rgba(14, 165, 233, 0.7)'
-        ],
-        borderColor: [
-          'rgb(5, 150, 105)',
-          'rgb(5, 150, 105)',
-          'rgb(5, 150, 105)',
-          'rgb(5, 150, 105)',
-          'rgb(5, 150, 105)'
-        ],
-        borderWidth: 1
-      }]
-    }
+      datasets: [
+        {
+          label: "Number of Sites",
+          data: Object.values(rentalRanges),
+          backgroundColor: [
+            "rgba(16, 185, 129, 0.7)",
+            "rgba(52, 211, 153, 0.7)",
+            "rgba(20, 184, 166, 0.7)",
+            "rgba(6, 182, 212, 0.7)",
+            "rgba(14, 165, 233, 0.7)",
+          ],
+          borderColor: [
+            "rgb(5, 150, 105)",
+            "rgb(5, 150, 105)",
+            "rgb(5, 150, 105)",
+            "rgb(5, 150, 105)",
+            "rgb(5, 150, 105)",
+          ],
+          borderWidth: 1,
+        },
+      ],
+    };
 
     // Prepare expiration data
-    const expirationStatus = calculateExpirationStatus(fileData.value)
+    const expirationStatus = calculateExpirationStatus(fileData.value);
     expirationChartData.value = {
       labels: Object.keys(expirationStatus),
-      datasets: [{
-        data: Object.values(expirationStatus),
-        backgroundColor: [
-          'rgb(239, 68, 68)',
-          'rgb(245, 158, 11)',
-          'rgb(252, 211, 77)',
-          'rgb(59, 130, 246)',
-          'rgb(16, 185, 129)',
-          'rgb(107, 114, 128)'
-        ],
-        hoverOffset: 4,
-        borderWidth: 0
-      }]
-    }
-    
+      datasets: [
+        {
+          data: Object.values(expirationStatus),
+          backgroundColor: [
+            "rgb(245, 158, 11)", // Orange for Within 30 Days
+            "rgb(252, 211, 77)", // Yellow for Within 60 Days
+            "rgb(59, 130, 246)", // Blue for Within 90 Days
+            "rgb(16, 185, 129)", // Green for Valid > 90 Days
+          ],
+          hoverOffset: 4,
+          borderWidth: 0,
+        },
+      ],
+    };
+
     // Prepare expiration timeline data
-    const { months, counts } = calculateExpirationTimeline(fileData.value)
+    const { months, counts } = calculateExpirationTimeline(fileData.value);
     expirationTimelineData.value = {
       labels: months,
-      datasets: [{
-        label: 'Contracts Expiring',
-        data: counts,
-        borderColor: 'rgb(59, 130, 246)',
-        backgroundColor: 'rgba(59, 130, 246, 0.2)',
-        tension: 0.1,
-        fill: true
-      }]
-    }
-    
-    // Prepare renewal risk data
-    const riskPoints = calculateRenewalRisk(fileData.value)
-    renewalRiskData.value = {
-      datasets: [{
-        label: 'Sites',
-        data: riskPoints,
-        backgroundColor: (context: { raw: { x: number } }) => {
-          const value = context.raw.x
-          if (value <= 0) return 'rgba(239, 68, 68, 0.7)'
-          if (value <= 30) return 'rgba(245, 158, 11, 0.7)'
-          if (value <= 60) return 'rgba(252, 211, 77, 0.7)'
-          if (value <= 90) return 'rgba(59, 130, 246, 0.7)'
-          return 'rgba(107, 114, 128, 0.7)'
+      datasets: [
+        {
+          label: "Contracts Expiring",
+          data: counts,
+          borderColor: "rgb(59, 130, 246)",
+          backgroundColor: "rgba(59, 130, 246, 0.2)",
+          tension: 0.1,
+          fill: true,
         },
-        pointRadius: 5,
-        pointHoverRadius: 7
-      }]
-    }
-    
+      ],
+    };
+
+    // Prepare renewal risk data
+    const riskPoints = calculateRenewalRisk(fileData.value);
+    renewalRiskData.value = {
+      datasets: [
+        {
+          label: "Sites",
+          data: riskPoints,
+          backgroundColor: (context: { raw: { x: number } }) => {
+            const value = context.raw.x;
+            if (value <= 0) return "rgba(239, 68, 68, 0.7)";
+            if (value <= 30) return "rgba(245, 158, 11, 0.7)";
+            if (value <= 60) return "rgba(252, 211, 77, 0.7)";
+            if (value <= 90) return "rgba(59, 130, 246, 0.7)";
+            return "rgba(107, 114, 128, 0.7)";
+          },
+          pointRadius: 5,
+          pointHoverRadius: 7,
+        },
+      ],
+    };
+
     // Prepare payment flow data
-    const paymentFlow = calculatePaymentFlow(fileData.value)
+    const paymentFlow = calculatePaymentFlow(fileData.value);
     paymentFlowData.value = {
       labels: paymentFlow.labels,
-      datasets: [{
-        label: 'Amount (RM Millions)',
-        data: paymentFlow.values,
-        backgroundColor: [
-          'rgba(16, 185, 129, 0.7)',  // Emerald
-          'rgba(239, 68, 68, 0.7)',   // Red
-          'rgba(59, 130, 246, 0.7)'   // Blue
-        ],
-        borderColor: [
-          'rgb(5, 150, 105)',
-          'rgb(220, 38, 38)',
-          'rgb(37, 99, 235)'
-        ],
-        borderWidth: 1
-      }]
-    }
-    
+      datasets: [
+        {
+          label: "Amount (RM Millions)",
+          data: paymentFlow.values,
+          backgroundColor: [
+            "rgba(16, 185, 129, 0.7)", // Emerald
+            "rgba(239, 68, 68, 0.7)", // Red
+            "rgba(59, 130, 246, 0.7)", // Blue
+          ],
+          borderColor: [
+            "rgb(5, 150, 105)",
+            "rgb(220, 38, 38)",
+            "rgb(37, 99, 235)",
+          ],
+          borderWidth: 1,
+        },
+      ],
+    };
   } catch (error) {
-    console.error('Error preparing chart data:', error)
-    router.push('/dataupload')
+    console.error("Error preparing chart data:", error);
+    router.push("/dataupload");
   }
-})
+});
+
+function handleStaging() {
+  router.push("/datastaging");
+}
 </script>
-
-
-
-
-
-
-
-
-
-
-
-
