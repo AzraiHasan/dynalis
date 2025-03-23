@@ -1,29 +1,36 @@
 <!-- pages/index.vue -->
 
 <script setup lang="ts">
-import type { FormError, FormSubmitEvent } from '@nuxt/ui'
+import * as z from 'zod'
+import type { FormSubmitEvent } from '@nuxt/ui'
 
-const state = reactive({
+const router = useRouter()
+const schema = z.object({
+  email: z.string().email('Invalid email'),
+  password: z.string().min(8, 'Must be at least 8 characters')
+})
+
+type Schema = z.output<typeof schema>
+
+const state = reactive<Partial<Schema>>({
   email: undefined,
   password: undefined
 })
 
-const validate = (state: any): FormError[] => {
-  const errors = []
-  if (!state.email) errors.push({ name: 'email', message: 'Required' })
-  if (!state.password) errors.push({ name: 'password', message: 'Required' })
-  return errors
-}
-
 const toast = useToast()
-async function onSubmit(event: FormSubmitEvent<any>) {
+async function onSubmit(event: FormSubmitEvent<Schema>) {
   toast.add({ title: 'Success', description: 'The form has been submitted.', color: 'success' })
   console.log(event.data)
+  
+  // Add a small delay to show the toast before redirecting
+  setTimeout(() => {
+    router.push('/dataupload')
+  }, 1000)
 }
 </script>
 
 <template>
-  <UForm :validate="validate" :state="state" class="space-y-4" @submit="onSubmit">
+  <UForm :schema="schema" :state="state" class="space-y-4" @submit="onSubmit">
     <UFormField label="Email" name="email">
       <UInput v-model="state.email" />
     </UFormField>
