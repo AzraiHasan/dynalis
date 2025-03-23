@@ -1,6 +1,10 @@
 <!-- pages/index.vue -->
 
 <script setup lang="ts">
+definePageMeta({
+  ssr: false
+})
+
 import * as z from 'zod'
 import type { FormSubmitEvent } from '@nuxt/ui'
 
@@ -13,8 +17,8 @@ const schema = z.object({
 type Schema = z.output<typeof schema>
 
 const state = reactive<Partial<Schema>>({
-  email: undefined,
-  password: undefined
+  email: '',
+  password: ''
 })
 
 const toast = useToast()
@@ -30,6 +34,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
 </script>
 
 <template>
+<ClientOnly>
   <UForm :schema="schema" :state="state" class="space-y-4" @submit="onSubmit">
     <UFormField label="Email" name="email">
       <UInput v-model="state.email" />
@@ -43,5 +48,6 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
       Submit
     </UButton>
   </UForm>
+</ClientOnly>
 </template>
 

@@ -246,69 +246,96 @@
 </template>
 
 <script setup lang="ts">
-import { parse, isValid, differenceInDays, format } from 'date-fns'
+import { ref, computed, onMounted, watch, nextTick } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
+import { parse, isValid, differenceInDays, format } from 'date-fns';
 
-const router = useRouter()
-const route = useRoute()
+// Router setup
+const router = useRouter();
+const route = useRoute();
 
-// Initialize data from localStorage
+// Properly typed interfaces
+interface FileRow {
+  [key: string]: string | number | null | undefined;
+  "SITE ID"?: string | number | null;
+  "EXP DATE"?: string | null;
+  "TOTAL RENTAL (RM)"?: string | number | null;
+  "TOTAL PAYMENT TO PAY (RM)"?: string | number | null;
+  "DEPOSIT (RM)"?: string | number | null;
+}
+
+// Initialize data refs
 const storedData = ref<{
-  fileData: any[];
+  fileData: FileRow[];
   headers: string[];
   fileName: string;
-} | null>(null)
+} | null>(null);
 
-onMounted(() => {
-  try {
-    const stored = localStorage.getItem('uploadedFileData')
-    console.log('Initial localStorage check:', stored); // Debug log
-    if (stored) {
-      storedData.value = JSON.parse(stored)
-      console.log('Parsed stored data:', storedData.value); // Debug log
+const userInput = ref('');
+const isLoading = ref(false);
+const loadingStep = ref(0);
+const messages = ref<{ role: 'user' | 'assistant'; content: string }[]>([]);
+const chatContainer = ref<HTMLElement | null>(null);
+const fileName = computed(() => storedData.value?.fileName || route.query.fileName || 'No file selected');
+
+// Chat logic
+const suggestedPrompts = [
+  'Analyze the distribution of values in my dataset',
+  'Find any outliers in the data',
+  'Summarize the key statistics',
+  'Suggest visualizations for this data',
+];
+
+// Function definitions
+const scrollToBottom = () => {
+  nextTick(() => {
+    if (chatContainer.value) {
+      chatContainer.value.scrollTop = chatContainer.value.scrollHeight;
     }
+  });
+};
+
+const handleSend = async () => {
+  const message = userInput.value.trim();
+  if (!message || isLoading.value) return;
+
+  messages.value.push({
+    role: 'user',
+    content: message
+  });
+  
+  userInput.value = '';
+  scrollToBottom();
+
+  isLoading.value = true;
+  loadingStep.value = 0;
+
+  try {
+    // Simulate loading
+    loadingStep.value = 1;
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    loadingStep.value = 2;
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    loadingStep.value = 3;
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    // Simulate AI response
+    messages.value.push({
+      role: 'assistant',
+      content: `This is a placeholder response. The user asked: "${message}"`
+    });
   } catch (error) {
-    console.error('Error reading file data:', error)
+    console.error('Error sending message:', error);
+  } finally {
+    isLoading.value = false;
+    loadingStep.value = 0;
+    scrollToBottom();
   }
-})
+};
 
-const metrics = computed(() => {
-  if (!storedData.value?.fileData) return {
-    totalSites: 0,
-    missingSites: 0,
-    totalRental: 0,
-    totalPaymentToPay: 0,
-    totalDeposit: 0
-  }
-
-  const data = storedData.value.fileData
-
-  // Total Sites (excluding "NO ID")
-  const sitesData = data.filter(row => row['SITE ID'] && row['SITE ID'].toString().toUpperCase() !== 'NO ID')
-  const missingSites = data.filter(row => !row['SITE ID'] || row['SITE ID'].toString().toUpperCase() === 'NO ID').length
-
-  // Helper function to parse currency values
-  const parseCurrency = (value: any): number => {
-    if (!value) return 0
-    // Remove 'RM' and any commas, then convert to number
-    const numStr = value.toString().replace(/[RM,\s]/g, '')
-    return parseFloat(numStr) || 0
-  }
-
-  // Calculate totals
-  const totalRental = data.reduce((sum, row) => sum + parseCurrency(row['TOTAL RENTAL (RM)']), 0)
-  const totalPaymentToPay = data.reduce((sum, row) => sum + parseCurrency(row['TOTAL PAYMENT TO PAY (RM)']), 0)
-  const totalDeposit = data.reduce((sum, row) => sum + parseCurrency(row['DEPOSIT (RM)']), 0)
-
-  return {
-    totalSites: sitesData.length,
-    missingSites,
-    totalRental,
-    totalPaymentToPay,
-    totalDeposit
-  }
-})
-
-// Define accepted date formats
+// Date processing
 const DATE_FORMATS = [
   'dd/MM/yyyy',
   'dd-MM-yyyy',
@@ -316,47 +343,77 @@ const DATE_FORMATS = [
   'yyyy-MM-dd',
   'MM/dd/yyyy',
   'MM-dd-yyyy'
-]
+];
 
 const parseDate = (dateStr: string): Date | null => {
   if (!dateStr || dateStr === '-' || dateStr.trim() === '') {
-    return null
+    return null;
   }
 
-  // Try each format until one works
   for (const dateFormat of DATE_FORMATS) {
     try {
-      const parsedDate = parse(dateStr, dateFormat, new Date())
+      const parsedDate = parse(dateStr, dateFormat, new Date());
       if (isValid(parsedDate)) {
-        return parsedDate
+        return parsedDate;
       }
     } catch (error) {
-      continue // Try next format
+      continue;
     }
   }
 
-  // If no format worked, try native Date parsing as fallback
-  const fallbackDate = new Date(dateStr)
-  return isValid(fallbackDate) ? fallbackDate : null
-}
+  const fallbackDate = new Date(dateStr);
+  return isValid(fallbackDate) ? fallbackDate : null;
+};
 
 const getDaysUntilExpiration = (expDate: string): number | null => {
-  const parsedDate = parseDate(expDate)
+  const parsedDate = parseDate(expDate);
   
   if (!parsedDate) {
-    return null
+    return null;
   }
 
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
 
-  return differenceInDays(parsedDate, today)
-}
+  return differenceInDays(parsedDate, today);
+};
 
-// Add a helper to format dates consistently
 const formatDate = (date: Date): string => {
-  return format(date, 'dd/MM/yyyy')
-}
+  return format(date, 'dd/MM/yyyy');
+};
+
+// Data processing
+const metrics = computed(() => {
+  if (!storedData.value?.fileData) return {
+    totalSites: 0,
+    missingSites: 0,
+    totalRental: 0,
+    totalPaymentToPay: 0,
+    totalDeposit: 0
+  };
+
+  const data = storedData.value.fileData;
+  const sitesData = data.filter(row => row['SITE ID'] && row['SITE ID'].toString().toUpperCase() !== 'NO ID');
+  const missingSites = data.filter(row => !row['SITE ID'] || row['SITE ID'].toString().toUpperCase() === 'NO ID').length;
+
+  const parseCurrency = (value: any): number => {
+    if (!value) return 0;
+    const numStr = value.toString().replace(/[RM,\s]/g, '');
+    return parseFloat(numStr) || 0;
+  };
+
+  const totalRental = data.reduce((sum, row) => sum + parseCurrency(row['TOTAL RENTAL (RM)']), 0);
+  const totalPaymentToPay = data.reduce((sum, row) => sum + parseCurrency(row['TOTAL PAYMENT TO PAY (RM)']), 0);
+  const totalDeposit = data.reduce((sum, row) => sum + parseCurrency(row['DEPOSIT (RM)']), 0);
+
+  return {
+    totalSites: sitesData.length,
+    missingSites,
+    totalRental,
+    totalPaymentToPay,
+    totalDeposit
+  };
+});
 
 const expirationMetrics = computed(() => {
   if (!storedData.value?.fileData) return {
@@ -366,47 +423,36 @@ const expirationMetrics = computed(() => {
     within90Days: 0,
     invalidDates: 0,
     totalProcessed: 0,
-    invalidDatesList: [] as string[] // New field to track invalid dates
-  }
+    invalidDatesList: [] as string[]
+  };
 
-  const data = storedData.value.fileData
-  let expired = 0
-  let within30Days = 0
-  let within60Days = 0
-  let within90Days = 0
-  let invalidDates = 0
-  let totalProcessed = 0
-  let invalidDatesList: string[] = []
+  const data = storedData.value.fileData;
+  let expired = 0;
+  let within30Days = 0;
+  let within60Days = 0;
+  let within90Days = 0;
+  let invalidDates = 0;
+  let totalProcessed = 0;
+  let invalidDatesList: string[] = [];
 
   data.forEach(row => {
-    totalProcessed++
-    const expDate = row['EXP DATE']
-    const daysUntil = getDaysUntilExpiration(expDate)
+    totalProcessed++;
+    const expDate = row['EXP DATE'];
+    const daysUntil = getDaysUntilExpiration(expDate?.toString() || '');
 
     if (daysUntil === null) {
-      invalidDates++
-      invalidDatesList.push(`Row ${totalProcessed}: "${expDate}"`)
+      invalidDates++;
+      invalidDatesList.push(`Row ${totalProcessed}: "${expDate}"`);
     } else if (daysUntil <= 0) {
-      expired++
+      expired++;
     } else if (daysUntil <= 30) {
-      within30Days++
+      within30Days++;
     } else if (daysUntil <= 60) {
-      within60Days++
+      within60Days++;
     } else if (daysUntil <= 90) {
-      within90Days++
+      within90Days++;
     }
-  })
-
-  // Debug logging with more detail
-  console.log('Expiration Metrics:', {
-    totalProcessed,
-    invalidDates,
-    expired,
-    within30Days,
-    within60Days,
-    within90Days,
-    invalidDatesList
-  })
+  });
 
   return {
     expired,
@@ -416,8 +462,8 @@ const expirationMetrics = computed(() => {
     invalidDates,
     totalProcessed,
     invalidDatesList
-  }
-})
+  };
+});
 
 // Format currency helper
 const formatCurrency = (value: number): string => {
@@ -426,121 +472,53 @@ const formatCurrency = (value: number): string => {
     currency: 'MYR',
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
-  }).format(value)
-}
+  }).format(value);
+};
 
-const fileName = computed(() => {
-  return storedData.value?.fileName || route.query.fileName || 'No file selected'
-})
-
-// Format the data for display
-const formattedData = computed(() => {
-  if (!storedData.value) return ''
-  return JSON.stringify(storedData.value, null, 2)
-})
-
-// Copy to clipboard function
-const copyToClipboard = async () => {
-  try {
-    await navigator.clipboard.writeText(formattedData.value)
-    // You could add a toast notification here if you want
-  } catch (err) {
-    console.error('Failed to copy:', err)
-  }
-}
-
+// Navigation
 const handleBack = () => {
-  // Clean up stored data before navigating back
-  localStorage.removeItem('uploadedFileData')
-  router.push('/dataupload')
-}
+  localStorage.removeItem('uploadedFileData');
+  router.push('/dataupload');
+};
+
 const handleDashboard = () => {
-  const stored = localStorage.getItem('uploadedFileData')
-  console.log('Pre-navigation localStorage check:', stored); // Debug log
-
-  if (!stored) {
-    console.log('No data found in localStorage')
-    alert('No data available. Please upload a file first.')
-    router.push('/dataupload')
-    return
-  }
-
-  console.log('Data available, proceeding to dashboard')
-  router.push('/dashboard')
-}
-
-// Remove the cleanup on unmount since we need the data in the dashboard
-// onUnmounted(() => {
-//   localStorage.removeItem('uploadedFileData')
-// }) // Removed
-
-// Chat related state
-const userInput = ref('')
-const isLoading = ref(false)
-const loadingStep = ref(0)
-const messages = ref<{ role: 'user' | 'assistant'; content: string }[]>([])
-const chatContainer = ref<HTMLElement | null>(null)
-
-// Suggested prompts based on data analysis context
-const suggestedPrompts = [
-  'Analyze the distribution of values in my dataset',
-  'Find any outliers in the data',
-  'Summarize the key statistics',
-  'Suggest visualizations for this data',
-]
-
-// Scroll to bottom of chat
-const scrollToBottom = () => {
-  nextTick(() => {
-    if (chatContainer.value) {
-      chatContainer.value.scrollTop = chatContainer.value.scrollHeight
-    }
-  })
-}
-
-// Handle sending messages
-const handleSend = async () => {
-  const message = userInput.value.trim()
-  if (!message || isLoading.value) return
-
-  messages.value.push({
-    role: 'user',
-    content: message
-  })
-  
-  userInput.value = ''
-  scrollToBottom()
-
-  isLoading.value = true
-  loadingStep.value = 0
-
   try {
-    // Simulate different loading stages
-    loadingStep.value = 1
-    await new Promise(resolve => setTimeout(resolve, 500))
+    const stored = localStorage.getItem('uploadedFileData');
+    if (!stored) {
+      console.log('No data found in localStorage');
+      alert('No data available. Please upload a file first.');
+      router.push('/dataupload');
+      return;
+    }
     
-    loadingStep.value = 2
-    await new Promise(resolve => setTimeout(resolve, 500))
+    // Parse and validate data before navigation
+    const data = JSON.parse(stored);
+    if (!data.fileData || !Array.isArray(data.fileData)) {
+      throw new Error('Invalid data structure');
+    }
     
-    loadingStep.value = 3
-    await new Promise(resolve => setTimeout(resolve, 500))
-    
-    // Simulate AI response
-    messages.value.push({
-      role: 'assistant',
-      content: `This is a placeholder response. You should implement actual API calls to your LLM endpoint here. The user asked: "${message}"`
-    })
+    router.push('/dashboard');
   } catch (error) {
-    console.error('Error sending message:', error)
-  } finally {
-    isLoading.value = false
-    loadingStep.value = 0
-    scrollToBottom()
+    console.error('Error navigating to dashboard:', error);
+    alert('Error with data. Please try uploading your file again.');
+    router.push('/dataupload');
   }
-}
+};
+
+// Initialize data on mount
+onMounted(() => {
+  try {
+    const stored = localStorage.getItem('uploadedFileData');
+    if (stored) {
+      storedData.value = JSON.parse(stored);
+    }
+  } catch (error) {
+    console.error('Error reading file data:', error);
+  }
+});
 
 // Watch for new messages and scroll to bottom
-watch(messages, scrollToBottom, { deep: true })
+watch(messages, scrollToBottom, { deep: true });
 </script>
 
 <style scoped>
