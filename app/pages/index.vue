@@ -1,24 +1,40 @@
+<!-- pages/index.vue -->
+
+<script setup lang="ts">
+import type { FormError, FormSubmitEvent } from '@nuxt/ui'
+
+const state = reactive({
+  email: undefined,
+  password: undefined
+})
+
+const validate = (state: any): FormError[] => {
+  const errors = []
+  if (!state.email) errors.push({ name: 'email', message: 'Required' })
+  if (!state.password) errors.push({ name: 'password', message: 'Required' })
+  return errors
+}
+
+const toast = useToast()
+async function onSubmit(event: FormSubmitEvent<any>) {
+  toast.add({ title: 'Success', description: 'The form has been submitted.', color: 'success' })
+  console.log(event.data)
+}
+</script>
+
 <template>
-  <div class="flex flex-col items-center justify-center gap-4 h-screen">
-    <h1 class="font-bold text-2xl text-(--ui-primary)">
-      Dynalis Excel Sheet Interpreter
-    </h1>
+  <UForm :validate="validate" :state="state" class="space-y-4" @submit="onSubmit">
+    <UFormField label="Email" name="email">
+      <UInput v-model="state.email" />
+    </UFormField>
 
-    <div class="flex items-center gap-2">
-      <UButton
-        label="Enter"
-        icon="i-lucide-square-play"
-        to="/dataupload"
-      />
+    <UFormField label="Password" name="password">
+      <UInput v-model="state.password" type="password" />
+    </UFormField>
 
-      <UButton
-        label="GitHub"
-        color="neutral"
-        variant="outline"
-        icon="i-simple-icons-github"
-        to="https://github.com/AzraiHasan/dynalis/tree/master"
-        target="_blank"
-      />
-    </div>
-  </div>
+    <UButton type="submit">
+      Submit
+    </UButton>
+  </UForm>
 </template>
+
