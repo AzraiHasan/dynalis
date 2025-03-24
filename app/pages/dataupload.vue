@@ -42,7 +42,7 @@
     <!-- Data Analysis Section -->
     <div
       v-if="fileData.length > 0"
-      class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4"
+      class="grid gap-4 mb-4"
     >
       <!-- Dataset Summary -->
       <UCard>
@@ -55,10 +55,7 @@
           <p>Column Names: {{ headers.join(", ") }}</p>
           <p>Missing Values: {{ getTotalMissingValues() }}</p>
           <p>Dash Values: {{ getTotalDashValues() }}</p>
-        </div>
-      </UCard>
-
-      <!-- Proceed Section -->
+          <!-- Proceed Section -->
       <div v-if="fileData.length > 0" class="mt-6">
         <div
           class="mb-4 p-4 rounded-lg"
@@ -69,23 +66,27 @@
           "
         >
           <p v-if="hasEmptyCells">
-            Empty cells and data irregularities may cause error during further analysis, please rectify
-            before you decide to proceed
+            Empty cells and data irregularities may cause error during further
+            analysis, please rectify before you decide to proceed
           </p>
           <p v-else>You have no empty cells. Click NEXT to proceed</p>
         </div>
-        
-          <UButton
-            label="Proceed"
-            trailing-icon="i-lucide-arrow-right"
-            variant="outline"
-            :color="hasEmptyCells ? 'warning' : 'primary'"
-            @click="handleProceed"
-          />
-        
-      </div>
 
-      <!-- Column Statistics -->
+        <UButton
+          label="Proceed"
+          trailing-icon="i-lucide-arrow-right"
+          variant="outline"
+          :color="hasEmptyCells ? 'warning' : 'primary'"
+          @click="handleProceed"
+        />
+      </div>
+        </div>
+      </UCard>
+      
+    </div>
+
+    <!-- Column Statistics -->
+    <div class="my-6">
       <UCard>
         <template #header>
           <h2 class="text-lg font-semibold">Quality Check</h2>
@@ -402,8 +403,11 @@ const handleProceed = () => {
       fileName: selectedFileName.value,
     };
     localStorage.setItem("uploadedFileData", JSON.stringify(dataToStore));
-    console.log('Data stored successfully:', dataToStore); // Debug log
-    console.log('Stored data verification:', localStorage.getItem("uploadedFileData")); // Verify storage
+    console.log("Data stored successfully:", dataToStore); // Debug log
+    console.log(
+      "Stored data verification:",
+      localStorage.getItem("uploadedFileData")
+    ); // Verify storage
 
     router.push({
       path: "/datastaging",
