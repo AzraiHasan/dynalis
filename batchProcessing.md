@@ -52,14 +52,14 @@ export const useBatchUploadService = () => {
     }))
     
     // Process in batches for better performance
-    const batchSize = 100
+    const batchSize = 250
     const batches = Math.ceil(transformedData.length / batchSize)
     
     // Process each batch with progress tracking
     for (let i = 0; i < batches; i++) {
       const batchData = transformedData.slice(i * batchSize, Math.min((i + 1) * batchSize, transformedData.length))
       
-      await supabase.from('sites').upsert(batchData, { onConflict: 'site_id' })
+      await supabase.rpc('bulk_upload_sites', { data: JSON.stringify(batchData) })
       // Update progress...
     }
     
@@ -70,21 +70,69 @@ export const useBatchUploadService = () => {
 }
 ```
 
-#### C. Dashboard Integration
+#### C. Database Job Tracking
 
-The `datastaging.vue` page has been updated to use the new batch upload service:
+We've fully integrated the `upload_jobs` table to track upload progress:
 
 ```typescript
-const handleDashboard = async () => {
-  // ...
+const createUploadJob = async (filename: string, totalChunks: number): Promise<string> => {
+  const { data, error } = await supabase
+    .from('upload_jobs')
+    .insert({
+      filename,
+      total_chunks: totalChunks,
+      status: 'created'
+    })
+    .select('id')
+    .single()
   
-  // Use our new batch upload service
-  const batchUploadService = useBatchUploadService();
+  if (error) throw error
+  return data.id
+}
+```
+
+#### D. Resume Capability
+
+Implemented ability to resume interrupted uploads:
+
+```typescript
+const resumeUpload = async (jobId: string, data: any[]): Promise<any> => {
+  // Get the job details
+  const job = await getUploadJobDetails(jobId)
   
-  // Execute the batch upload with progress tracking
-  const result = await batchUploadService.processBulkUpload(data.fileData);
+  // Process remaining batches
+  for (let i = job.chunks_received; i < batches; i++) {
+    // Process each remaining batch...
+  }
   
-  // ...
+  return { success: true, processedRecords, resumed: true, jobId }
+}
+```
+
+#### E. Background Processing
+
+Added background processing for very large datasets:
+
+```typescript
+const startAsyncProcessing = async (data: any[], fileName: string = 'upload.csv'): Promise<{jobId: string}> => {
+  // Create job
+  const { data: job } = await supabase
+    .from('upload_jobs')
+    .insert({
+      filename: fileName,
+      total_chunks: batches,
+      status: 'queued'
+    })
+    .select('id')
+    .single()
+  
+  // Start processing in background
+  setTimeout(() => {
+    processBackgroundJob(job.id)
+      .catch(e => console.error('Background processing error:', e))
+  }, 100)
+  
+  return { jobId: job.id }
 }
 ```
 
@@ -96,22 +144,32 @@ const handleDashboard = async () => {
 - ✅ Added progress tracking and error handling
 - ✅ Integrated with existing UI components
 
-#### 🔄 Phase 2: Backend Optimization (In Progress)
+#### ✅ Phase 2: Backend Optimization (Completed)
 - ✅ Using direct upsert operations for efficient database updates
-- ❌ Create upload tracking table (migration exists but not fully utilized)
-- ❌ Implement background processing for very large datasets
+- ✅ Integrated upload tracking table for job monitoring
+- ✅ Implemented background processing for very large datasets
+- ✅ Full implementation of the PostgreSQL batch function
 
-#### ⏳ Phase 3: Advanced Features (Planned)
-- Resume interrupted uploads
-- Compression for network transfer optimization
-- Full implementation of the PostgreSQL batch function
+#### ✅ Phase 3: Advanced Features (Partially Completed)
+- ✅ Resume interrupted uploads
+- ❌ Compression for network transfer optimization
+- ✅ Database-side batch processing function
 
-## Expected Outcomes
+## Current Capabilities
 
-Our implementation provides immediate benefits:
-1. **Handles larger datasets** by processing in manageable chunks of 100 records
+Our implementation now provides:
+1. **Handles larger datasets** by processing in manageable chunks of 250 records
 2. **Reduces memory consumption** by not loading the entire dataset at once
 3. **Provides detailed progress feedback** to users during the upload process
 4. **Improves reliability** with better error handling and recovery options
+5. **Enables resuming uploads** after interruptions
+6. **Background processing** for very large datasets
+7. **Database-optimized operations** using PostgreSQL functions
 
-Further optimizations in Phase 2 and 3 will enhance performance by implementing server-side batch processing and advanced storage solutions.
+## Future Enhancements
+
+For future versions, we could consider:
+1. Implementing compression for network transfer optimization
+2. Adding support for file encryption
+3. Implementing more advanced data validation
+4. Adding support for more file formats
