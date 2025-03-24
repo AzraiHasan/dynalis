@@ -129,6 +129,7 @@ import { useRouter } from "vue-router";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
 import { parse, isValid } from "date-fns";
+import { useFileUpload } from '~/composables/useFileUpload'
 
 interface FileRow {
   [key: string]: string | number | null;
@@ -160,6 +161,7 @@ const selectedFile = ref<File | null>(null);
 const isProcessing = ref(false);
 const fileData = ref<FileRow[]>([]);
 const headers = ref<string[]>([]);
+const fileUpload = useFileUpload()
 
 const hasEmptyCells = computed(() => {
   return getTotalMissingValues() > 0;
@@ -204,15 +206,9 @@ const processFile = async () => {
   errorMessage.value = "";
 
   try {
-    const fileExtension = selectedFile.value.name
-      .toLowerCase()
-      .substring(selectedFile.value.name.lastIndexOf("."));
-
-    if (fileExtension === ".csv") {
-      await processCSV(selectedFile.value);
-    } else {
-      await processExcel(selectedFile.value);
-    }
+    // Use the file upload composable
+    fileData.value = await fileUpload.processAndUpload(selectedFile.value);
+    headers.value = fileData.value.length > 0 ? Object.keys(fileData.value[0]) : [];
   } catch (error) {
     errorMessage.value =
       "Error processing file: " +
