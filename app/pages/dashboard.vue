@@ -1,48 +1,59 @@
 <template>
   <div class="space-y-4">
-    <!-- Summary Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-      <UCard>
-        <div class="flex items-center gap-2">
-          <div class="flex-1">
-            <div class="text-sm text-gray-500">Total Sites</div>
-            <div class="text-2xl font-bold">{{ totalSites }}</div>
-          </div>
-          <UIcon name="i-lucide-building-2" class="w-8 h-8 text-emerald-500" />
-        </div>
-      </UCard>
+    <div v-if="isLoading" class="flex justify-center items-center py-8">
+  <ULoading size="lg" />
+</div>
 
-      <UCard>
-        <div class="flex items-center gap-2">
-          <div class="flex-1">
-            <div class="text-sm text-gray-500">Total Rental (RM mil)</div>
-            <div class="text-2xl font-bold">{{ totalRental }}</div>
-          </div>
-          <UIcon name="i-lucide-wallet" class="w-8 h-8 text-emerald-500" />
-        </div>
-      </UCard>
+<div v-else-if="error" class="p-4 bg-red-50 text-red-600 rounded-lg">
+  Error loading dashboard data: {{ error.message }}
+</div>
 
-      <UCard>
-        <div class="flex items-center gap-2">
-          <div class="flex-1">
-            <div class="text-sm text-gray-500">Due Payment (RM mil)</div>
-            <div class="text-2xl font-bold">{{ duePayment }}</div>
+    <div v-else class="space-y-4">
+      <!-- Summary Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <UCard>
+          <div class="flex items-center gap-2">
+            <div class="flex-1">
+              <div class="text-sm text-gray-500">Total Sites</div>
+              <div class="text-2xl font-bold">{{ totalSites }}</div>
+            </div>
+            <UIcon
+              name="i-lucide-building-2"
+              class="w-8 h-8 text-emerald-500"
+            />
           </div>
-          <UIcon name="i-lucide-receipt" class="w-8 h-8 text-red-500" />
-        </div>
-      </UCard>
+        </UCard>
 
-      <UCard>
-        <div class="flex items-center gap-2">
-          <div class="flex-1">
-            <div class="text-sm text-gray-500">Deposit (RM mil)</div>
-            <div class="text-2xl font-bold">{{ totalDeposit }}</div>
+        <UCard>
+          <div class="flex items-center gap-2">
+            <div class="flex-1">
+              <div class="text-sm text-gray-500">Total Rental (RM mil)</div>
+              <div class="text-2xl font-bold">{{ totalRental }}</div>
+            </div>
+            <UIcon name="i-lucide-wallet" class="w-8 h-8 text-emerald-500" />
           </div>
-          <UIcon name="i-lucide-banknote" class="w-8 h-8 text-blue-500" />
-        </div>
-      </UCard>
+        </UCard>
 
-      
+        <UCard>
+          <div class="flex items-center gap-2">
+            <div class="flex-1">
+              <div class="text-sm text-gray-500">Due Payment (RM mil)</div>
+              <div class="text-2xl font-bold">{{ duePayment }}</div>
+            </div>
+            <UIcon name="i-lucide-receipt" class="w-8 h-8 text-red-500" />
+          </div>
+        </UCard>
+
+        <UCard>
+          <div class="flex items-center gap-2">
+            <div class="flex-1">
+              <div class="text-sm text-gray-500">Deposit (RM mil)</div>
+              <div class="text-2xl font-bold">{{ totalDeposit }}</div>
+            </div>
+            <UIcon name="i-lucide-banknote" class="w-8 h-8 text-blue-500" />
+          </div>
+        </UCard>
+      </div>
     </div>
 
     <!-- Charts Grid -->
@@ -78,7 +89,9 @@
               <Icon name="i-lucide-alert-circle" class="text-red-600" />
               <h3 class="text-sm text-red-600">Expired</h3>
             </div>
-            <p class="text-2xl font-semibold text-red-600">{{ expiredContracts }}</p>
+            <p class="text-2xl font-semibold text-red-600">
+              {{ expiredContracts }}
+            </p>
             <p class="text-xs text-red-500 mt-1">Past expiration date</p>
             <p v-if="invalidDates" class="text-xs text-gray-500 mt-1">
               + {{ invalidDates }} invalid/missing dates
@@ -86,32 +99,44 @@
           </div>
 
           <!-- Within 30 Days -->
-          <div class="p-4 bg-orange-50 rounded-lg transition-all hover:bg-orange-100">
+          <div
+            class="p-4 bg-orange-50 rounded-lg transition-all hover:bg-orange-100"
+          >
             <div class="flex items-center gap-2 mb-2">
               <Icon name="i-lucide-clock-alert" class="text-orange-600" />
               <h3 class="text-sm text-orange-600">Within 30 Days</h3>
             </div>
-            <p class="text-2xl font-semibold text-orange-600">{{ expirationStatus['Within 30 Days'] }}</p>
+            <p class="text-2xl font-semibold text-orange-600">
+              {{ expirationStatus["Within 30 Days"] }}
+            </p>
             <p class="text-xs text-orange-500 mt-1">Urgent attention needed</p>
           </div>
 
           <!-- Within 60 Days -->
-          <div class="p-4 bg-yellow-50 rounded-lg transition-all hover:bg-yellow-100">
+          <div
+            class="p-4 bg-yellow-50 rounded-lg transition-all hover:bg-yellow-100"
+          >
             <div class="flex items-center gap-2 mb-2">
               <Icon name="i-lucide-clock" class="text-yellow-600" />
               <h3 class="text-sm text-yellow-600">Within 60 Days</h3>
             </div>
-            <p class="text-2xl font-semibold text-yellow-600">{{ expirationStatus['Within 60 Days'] }}</p>
+            <p class="text-2xl font-semibold text-yellow-600">
+              {{ expirationStatus["Within 60 Days"] }}
+            </p>
             <p class="text-xs text-yellow-500 mt-1">Plan for renewal</p>
           </div>
 
           <!-- Within 90 Days -->
-          <div class="p-4 bg-blue-50 rounded-lg transition-all hover:bg-blue-100">
+          <div
+            class="p-4 bg-blue-50 rounded-lg transition-all hover:bg-blue-100"
+          >
             <div class="flex items-center gap-2 mb-2">
               <Icon name="i-lucide-calendar" class="text-blue-600" />
               <h3 class="text-sm text-blue-600">Within 90 Days</h3>
             </div>
-            <p class="text-2xl font-semibold text-blue-600">{{ expirationStatus['Within 90 Days'] }}</p>
+            <p class="text-2xl font-semibold text-blue-600">
+              {{ expirationStatus["Within 90 Days"] }}
+            </p>
             <p class="text-xs text-blue-500 mt-1">Early planning</p>
           </div>
         </div>
@@ -179,8 +204,14 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
+import { useSiteService } from "~/utils/supabaseService";
+import { useSiteData } from '~/composables/useSiteData'
 import { useRouter } from "vue-router";
-import { getDaysUntilExpiration, parseDate, formatDate } from '../utils/dateUtils';
+import {
+  getDaysUntilExpiration,
+  parseDate,
+  formatDate,
+} from "../utils/dateUtils";
 import {
   Chart as ChartJS,
   Title,
@@ -254,6 +285,68 @@ interface DoughnutChartData {
     hoverOffset?: number;
   }[];
 }
+
+const isLoading = ref(true);
+const error = ref<Error | null>(null);
+const siteService = useSiteService();
+
+onMounted(async () => {
+  try {
+    isLoading.value = true
+    
+    // Fetch data from Supabase
+    const data = await siteData.fetchData()
+    
+    // Transform data to match expected format
+    fileData.value = data.map(item => ({
+      'SITE ID': item.site_id,
+      'EXP DATE': item.exp_date,
+      'TOTAL RENTAL (RM)': item.total_rental,
+      'TOTAL PAYMENT TO PAY (RM)': item.total_payment_to_pay,
+      'DEPOSIT (RM)': item.deposit
+    }))
+    
+    // Set summary statistics
+    const sitesData = fileData.value.filter(
+      (row) => row["SITE ID"] && row["SITE ID"].toString().toUpperCase() !== "NO ID"
+    )
+    totalSites.value = sitesData.length
+    
+    let totalRentalValue = 0;
+    let totalDuePayment = 0;
+    let expiredCount = 0;
+    let totalDepositValue = 0;
+
+    fileData.value.forEach((row) => {
+      totalRentalValue += parseCurrency(row["TOTAL RENTAL (RM)"]);
+      totalDuePayment += parseCurrency(row["TOTAL PAYMENT TO PAY (RM)"]);
+      totalDepositValue += parseCurrency(row["DEPOSIT (RM)"]);
+
+      const daysUntil = getDaysUntilExpiration(
+        row["EXP DATE"]?.toString() || ""
+      );
+      if (daysUntil === null) {
+        invalidDates.value++; 
+      } else if (daysUntil <= 0) {
+        expiredCount++;
+      }
+    });
+
+    totalRental.value = (totalRentalValue / 1000000).toFixed(2);
+    duePayment.value = (totalDuePayment / 1000000).toFixed(2);
+    expiredContracts.value = expiredCount;
+    totalDeposit.value = (totalDepositValue / 1000000).toFixed(2);
+
+    // Generate chart data
+    // [Keep your existing chart generation code...]
+    
+  } catch (err) {
+    console.error('Error fetching data:', err)
+    error.value = err instanceof Error ? err : new Error(String(err))
+  } finally {
+    isLoading.value = false
+  }
+})
 
 const router = useRouter();
 
@@ -341,7 +434,6 @@ const parseCurrency = (value: any): number => {
   if (!value) return 0;
   return parseFloat(value.toString().replace(/[RM,\s]/g, "")) || 0;
 };
-
 
 const calculateRentalRanges = (data: FileRow[]): Record<string, number> => {
   const ranges: Record<string, number> = {
@@ -469,34 +561,35 @@ const exportData = (): void => {
 };
 
 const expirationStatus = computed(() => {
-  if (!fileData.value) return {
-    'Within 30 Days': 0,
-    'Within 60 Days': 0,
-    'Within 90 Days': 0,
-    'Valid > 90 Days': 0
-  };
+  if (!fileData.value)
+    return {
+      "Within 30 Days": 0,
+      "Within 60 Days": 0,
+      "Within 90 Days": 0,
+      "Valid > 90 Days": 0,
+    };
 
   const status = {
-    'Within 30 Days': 0,
-    'Within 60 Days': 0,
-    'Within 90 Days': 0,
-    'Valid > 90 Days': 0
+    "Within 30 Days": 0,
+    "Within 60 Days": 0,
+    "Within 90 Days": 0,
+    "Valid > 90 Days": 0,
   };
 
-  fileData.value.forEach(row => {
-    const daysUntil = getDaysUntilExpiration(row['EXP DATE']?.toString() || '');
-    
+  fileData.value.forEach((row) => {
+    const daysUntil = getDaysUntilExpiration(row["EXP DATE"]?.toString() || "");
+
     if (daysUntil === null || daysUntil <= 0) {
       // Skip invalid or expired dates since they're shown in separate cards
       return;
     } else if (daysUntil <= 30) {
-      status['Within 30 Days']++;
+      status["Within 30 Days"]++;
     } else if (daysUntil <= 60) {
-      status['Within 60 Days']++;
+      status["Within 60 Days"]++;
     } else if (daysUntil <= 90) {
-      status['Within 90 Days']++;
+      status["Within 90 Days"]++;
     } else {
-      status['Valid > 90 Days']++;
+      status["Valid > 90 Days"]++;
     }
   });
 
@@ -674,9 +767,3 @@ function handleStaging() {
   router.push("/datastaging");
 }
 </script>
-
-
-
-
-
-

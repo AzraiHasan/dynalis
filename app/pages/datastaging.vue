@@ -12,7 +12,7 @@
       </template>
 
       <!-- Messages Display -->
-      <div class=" overflow-y-auto mb-4 space-y-4" ref="chatContainer">
+      <div class="overflow-y-auto mb-4 space-y-4" ref="chatContainer">
         <template v-for="(message, index) in messages" :key="index">
           <!-- User Message -->
           <div v-if="message.role === 'user'" class="flex justify-end">
@@ -36,7 +36,7 @@
                 'Reading data...',
                 'Analyzing context...',
                 'Generating response...',
-                'Done!'
+                'Done!',
               ]"
             />
           </div>
@@ -74,7 +74,7 @@
         </UButton>
       </div>
     </UCard>
-    
+
     <!-- File Info -->
     <UCard class="mb-4">
       <div class="flex items-center gap-2">
@@ -114,8 +114,12 @@
               <Icon name="i-lucide-wallet" class="text-gray-600" />
               <h3 class="text-sm text-gray-600">Total Rental</h3>
             </div>
-            <p class="text-2xl font-semibold">{{ (metrics.totalRental / 1000000).toFixed(2) }}M</p>
-            <p class="text-xs text-gray-400 mt-1">{{ formatCurrency(metrics.totalRental) }}</p>
+            <p class="text-2xl font-semibold">
+              {{ (metrics.totalRental / 1000000).toFixed(2) }}M
+            </p>
+            <p class="text-xs text-gray-400 mt-1">
+              {{ formatCurrency(metrics.totalRental) }}
+            </p>
           </div>
 
           <!-- Due Payment -->
@@ -124,8 +128,12 @@
               <Icon name="i-lucide-credit-card" class="text-gray-600" />
               <h3 class="text-sm text-gray-600">Due Payment</h3>
             </div>
-            <p class="text-2xl font-semibold">{{ (metrics.totalPaymentToPay / 1000000).toFixed(2) }}M</p>
-            <p class="text-xs text-gray-400 mt-1">{{ formatCurrency(metrics.totalPaymentToPay) }}</p>
+            <p class="text-2xl font-semibold">
+              {{ (metrics.totalPaymentToPay / 1000000).toFixed(2) }}M
+            </p>
+            <p class="text-xs text-gray-400 mt-1">
+              {{ formatCurrency(metrics.totalPaymentToPay) }}
+            </p>
           </div>
 
           <!-- Deposit -->
@@ -134,8 +142,12 @@
               <Icon name="i-lucide-banknote" class="text-gray-600" />
               <h3 class="text-sm text-gray-600">Deposit</h3>
             </div>
-            <p class="text-2xl font-semibold">{{ (metrics.totalDeposit / 1000000).toFixed(2) }}M</p>
-            <p class="text-xs text-gray-400 mt-1">{{ formatCurrency(metrics.totalDeposit) }}</p>
+            <p class="text-2xl font-semibold">
+              {{ (metrics.totalDeposit / 1000000).toFixed(2) }}M
+            </p>
+            <p class="text-xs text-gray-400 mt-1">
+              {{ formatCurrency(metrics.totalDeposit) }}
+            </p>
           </div>
         </div>
       </UCard>
@@ -156,45 +168,73 @@
               <Icon name="i-lucide-alert-circle" class="text-red-600" />
               <h3 class="text-sm text-red-600">Expired</h3>
             </div>
-            <p class="text-2xl font-semibold text-red-600">{{ expirationMetrics.expired }}</p>
+            <p class="text-2xl font-semibold text-red-600">
+              {{ expirationMetrics.expired }}
+            </p>
             <p class="text-xs text-red-500 mt-1">Past expiration date</p>
-            <p v-if="expirationMetrics.invalidDates" class="text-xs text-gray-500 mt-1">
+            <p
+              v-if="expirationMetrics.invalidDates"
+              class="text-xs text-gray-500 mt-1"
+            >
               + {{ expirationMetrics.invalidDates }} invalid/missing dates
             </p>
           </div>
 
           <!-- Within 30 Days -->
-          <div class="p-4 bg-orange-50 rounded-lg transition-all hover:bg-orange-100">
+          <div
+            class="p-4 bg-orange-50 rounded-lg transition-all hover:bg-orange-100"
+          >
             <div class="flex items-center gap-2 mb-2">
               <Icon name="i-lucide-clock-alert" class="text-orange-600" />
               <h3 class="text-sm text-orange-600">Within 30 Days</h3>
             </div>
-            <p class="text-2xl font-semibold text-orange-600">{{ expirationMetrics.within30Days }}</p>
+            <p class="text-2xl font-semibold text-orange-600">
+              {{ expirationMetrics.within30Days }}
+            </p>
             <p class="text-xs text-orange-500 mt-1">Urgent attention needed</p>
           </div>
 
           <!-- Within 60 Days -->
-          <div class="p-4 bg-yellow-50 rounded-lg transition-all hover:bg-yellow-100">
+          <div
+            class="p-4 bg-yellow-50 rounded-lg transition-all hover:bg-yellow-100"
+          >
             <div class="flex items-center gap-2 mb-2">
               <Icon name="i-lucide-clock" class="text-yellow-600" />
               <h3 class="text-sm text-yellow-600">Within 60 Days</h3>
             </div>
-            <p class="text-2xl font-semibold text-yellow-600">{{ expirationMetrics.within60Days }}</p>
+            <p class="text-2xl font-semibold text-yellow-600">
+              {{ expirationMetrics.within60Days }}
+            </p>
             <p class="text-xs text-yellow-500 mt-1">Plan for renewal</p>
           </div>
 
           <!-- Within 90 Days -->
-          <div class="p-4 bg-blue-50 rounded-lg transition-all hover:bg-blue-100">
+          <div
+            class="p-4 bg-blue-50 rounded-lg transition-all hover:bg-blue-100"
+          >
             <div class="flex items-center gap-2 mb-2">
               <Icon name="i-lucide-calendar" class="text-blue-600" />
               <h3 class="text-sm text-blue-600">Within 90 Days</h3>
             </div>
-            <p class="text-2xl font-semibold text-blue-600">{{ expirationMetrics.within90Days }}</p>
+            <p class="text-2xl font-semibold text-blue-600">
+              {{ expirationMetrics.within90Days }}
+            </p>
             <p class="text-xs text-blue-500 mt-1">Early planning</p>
           </div>
         </div>
       </UCard>
     </div>
+
+    <UploadProgressModal
+      :is-open="uploadState.isUploading"
+      :progress="uploadState.progress"
+      :status="uploadState.status"
+      :status-message="uploadState.statusMessage"
+      :error="uploadState.error"
+      @close="uploadState.isUploading = false"
+      @cancel="cancelUpload"
+      @continue="router.push('/dashboard')"
+    />
 
     <!-- Debug Data Display -->
     <!-- <UCard class="mb-4">
@@ -213,14 +253,14 @@
       </template>
       
       <div v-if="storedData" class="space-y-4"> -->
-        <!-- Summary -->
-        <!-- <div class="text-sm text-gray-600">
+    <!-- Summary -->
+    <!-- <div class="text-sm text-gray-600">
           <p>Total Rows: {{ storedData.fileData.length }}</p>
           <p>Headers: {{ storedData.headers.join(', ') }}</p>
         </div> -->
-        
-        <!-- Data Preview -->
-        <!-- <div class="overflow-auto max-h-96">
+
+    <!-- Data Preview -->
+    <!-- <div class="overflow-auto max-h-96">
           <pre class="text-xs bg-gray-50 p-4 rounded">{{ formattedData }}</pre>
         </div>
       </div>
@@ -246,13 +286,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch, nextTick } from 'vue';
-import { useRouter, useRoute } from 'vue-router';
-import { parse, isValid, differenceInDays, format } from 'date-fns';
+import { ref, computed, onMounted, watch, nextTick } from "vue";
+import { useRouter, useRoute } from "vue-router";
+import { parse, isValid, differenceInDays, format } from "date-fns";
+import { useUploadState } from "~/composables/useUploadState";
+import { useSiteService } from "~/utils/supabaseService";
 
 // Router setup
 const router = useRouter();
 const route = useRoute();
+
+const uploadState = useUploadState();
+const siteService = useSiteService();
 
 // Properly typed interfaces
 interface FileRow {
@@ -271,19 +316,21 @@ const storedData = ref<{
   fileName: string;
 } | null>(null);
 
-const userInput = ref('');
+const userInput = ref("");
 const isLoading = ref(false);
 const loadingStep = ref(0);
-const messages = ref<{ role: 'user' | 'assistant'; content: string }[]>([]);
+const messages = ref<{ role: "user" | "assistant"; content: string }[]>([]);
 const chatContainer = ref<HTMLElement | null>(null);
-const fileName = computed(() => storedData.value?.fileName || route.query.fileName || 'No file selected');
+const fileName = computed(
+  () => storedData.value?.fileName || route.query.fileName || "No file selected"
+);
 
 // Chat logic
 const suggestedPrompts = [
-  'Analyze the distribution of values in my dataset',
-  'Find any outliers in the data',
-  'Summarize the key statistics',
-  'Suggest visualizations for this data',
+  "Analyze the distribution of values in my dataset",
+  "Find any outliers in the data",
+  "Summarize the key statistics",
+  "Suggest visualizations for this data",
 ];
 
 // Function definitions
@@ -300,11 +347,11 @@ const handleSend = async () => {
   if (!message || isLoading.value) return;
 
   messages.value.push({
-    role: 'user',
-    content: message
+    role: "user",
+    content: message,
   });
-  
-  userInput.value = '';
+
+  userInput.value = "";
   scrollToBottom();
 
   isLoading.value = true;
@@ -313,21 +360,21 @@ const handleSend = async () => {
   try {
     // Simulate loading
     loadingStep.value = 1;
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
     loadingStep.value = 2;
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
     loadingStep.value = 3;
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
     // Simulate AI response
     messages.value.push({
-      role: 'assistant',
-      content: `This is a placeholder response. The user asked: "${message}"`
+      role: "assistant",
+      content: `This is a placeholder response. The user asked: "${message}"`,
     });
   } catch (error) {
-    console.error('Error sending message:', error);
+    console.error("Error sending message:", error);
   } finally {
     isLoading.value = false;
     loadingStep.value = 0;
@@ -337,16 +384,16 @@ const handleSend = async () => {
 
 // Date processing
 const DATE_FORMATS = [
-  'dd/MM/yyyy',
-  'dd-MM-yyyy',
-  'yyyy/MM/dd',
-  'yyyy-MM-dd',
-  'MM/dd/yyyy',
-  'MM-dd-yyyy'
+  "dd/MM/yyyy",
+  "dd-MM-yyyy",
+  "yyyy/MM/dd",
+  "yyyy-MM-dd",
+  "MM/dd/yyyy",
+  "MM-dd-yyyy",
 ];
 
 const parseDate = (dateStr: string): Date | null => {
-  if (!dateStr || dateStr === '-' || dateStr.trim() === '') {
+  if (!dateStr || dateStr === "-" || dateStr.trim() === "") {
     return null;
   }
 
@@ -367,7 +414,7 @@ const parseDate = (dateStr: string): Date | null => {
 
 const getDaysUntilExpiration = (expDate: string): number | null => {
   const parsedDate = parseDate(expDate);
-  
+
   if (!parsedDate) {
     return null;
   }
@@ -379,52 +426,76 @@ const getDaysUntilExpiration = (expDate: string): number | null => {
 };
 
 const formatDate = (date: Date): string => {
-  return format(date, 'dd/MM/yyyy');
+  return format(date, "dd/MM/yyyy");
 };
+
+const cancelUpload = () => {
+  // Only allow cancellation in certain states
+  if (uploadState.status === 'preparing' || uploadState.status === 'processing') {
+    uploadState.isUploading = false
+  }
+}
 
 // Data processing
 const metrics = computed(() => {
-  if (!storedData.value?.fileData) return {
-    totalSites: 0,
-    missingSites: 0,
-    totalRental: 0,
-    totalPaymentToPay: 0,
-    totalDeposit: 0
-  };
+  if (!storedData.value?.fileData)
+    return {
+      totalSites: 0,
+      missingSites: 0,
+      totalRental: 0,
+      totalPaymentToPay: 0,
+      totalDeposit: 0,
+    };
 
   const data = storedData.value.fileData;
-  const sitesData = data.filter(row => row['SITE ID'] && row['SITE ID'].toString().toUpperCase() !== 'NO ID');
-  const missingSites = data.filter(row => !row['SITE ID'] || row['SITE ID'].toString().toUpperCase() === 'NO ID').length;
+  const sitesData = data.filter(
+    (row) =>
+      row["SITE ID"] && row["SITE ID"].toString().toUpperCase() !== "NO ID"
+  );
+  const missingSites = data.filter(
+    (row) =>
+      !row["SITE ID"] || row["SITE ID"].toString().toUpperCase() === "NO ID"
+  ).length;
 
   const parseCurrency = (value: any): number => {
     if (!value) return 0;
-    const numStr = value.toString().replace(/[RM,\s]/g, '');
+    const numStr = value.toString().replace(/[RM,\s]/g, "");
     return parseFloat(numStr) || 0;
   };
 
-  const totalRental = data.reduce((sum, row) => sum + parseCurrency(row['TOTAL RENTAL (RM)']), 0);
-  const totalPaymentToPay = data.reduce((sum, row) => sum + parseCurrency(row['TOTAL PAYMENT TO PAY (RM)']), 0);
-  const totalDeposit = data.reduce((sum, row) => sum + parseCurrency(row['DEPOSIT (RM)']), 0);
+  const totalRental = data.reduce(
+    (sum, row) => sum + parseCurrency(row["TOTAL RENTAL (RM)"]),
+    0
+  );
+  const totalPaymentToPay = data.reduce(
+    (sum, row) => sum + parseCurrency(row["TOTAL PAYMENT TO PAY (RM)"]),
+    0
+  );
+  const totalDeposit = data.reduce(
+    (sum, row) => sum + parseCurrency(row["DEPOSIT (RM)"]),
+    0
+  );
 
   return {
     totalSites: sitesData.length,
     missingSites,
     totalRental,
     totalPaymentToPay,
-    totalDeposit
+    totalDeposit,
   };
 });
 
 const expirationMetrics = computed(() => {
-  if (!storedData.value?.fileData) return {
-    expired: 0,
-    within30Days: 0,
-    within60Days: 0,
-    within90Days: 0,
-    invalidDates: 0,
-    totalProcessed: 0,
-    invalidDatesList: [] as string[]
-  };
+  if (!storedData.value?.fileData)
+    return {
+      expired: 0,
+      within30Days: 0,
+      within60Days: 0,
+      within90Days: 0,
+      invalidDates: 0,
+      totalProcessed: 0,
+      invalidDatesList: [] as string[],
+    };
 
   const data = storedData.value.fileData;
   let expired = 0;
@@ -435,10 +506,10 @@ const expirationMetrics = computed(() => {
   let totalProcessed = 0;
   let invalidDatesList: string[] = [];
 
-  data.forEach(row => {
+  data.forEach((row) => {
     totalProcessed++;
-    const expDate = row['EXP DATE'];
-    const daysUntil = getDaysUntilExpiration(expDate?.toString() || '');
+    const expDate = row["EXP DATE"];
+    const daysUntil = getDaysUntilExpiration(expDate?.toString() || "");
 
     if (daysUntil === null) {
       invalidDates++;
@@ -461,59 +532,84 @@ const expirationMetrics = computed(() => {
     within90Days,
     invalidDates,
     totalProcessed,
-    invalidDatesList
+    invalidDatesList,
   };
 });
 
 // Format currency helper
 const formatCurrency = (value: number): string => {
-  return new Intl.NumberFormat('en-MY', {
-    style: 'currency',
-    currency: 'MYR',
+  return new Intl.NumberFormat("en-MY", {
+    style: "currency",
+    currency: "MYR",
     minimumFractionDigits: 2,
-    maximumFractionDigits: 2
+    maximumFractionDigits: 2,
   }).format(value);
 };
 
 // Navigation
 const handleBack = () => {
-  localStorage.removeItem('uploadedFileData');
-  router.push('/dataupload');
+  localStorage.removeItem("uploadedFileData");
+  router.push("/dataupload");
 };
 
-const handleDashboard = () => {
+const handleDashboard = async () => {
   try {
-    const stored = localStorage.getItem('uploadedFileData');
+    const stored = localStorage.getItem("uploadedFileData");
     if (!stored) {
-      console.log('No data found in localStorage');
-      alert('No data available. Please upload a file first.');
-      router.push('/dataupload');
+      alert("No data available. Please upload a file first.");
+      router.push("/dataupload");
       return;
     }
-    
-    // Parse and validate data before navigation
+
+    // Parse and validate data before upload
     const data = JSON.parse(stored);
     if (!data.fileData || !Array.isArray(data.fileData)) {
-      throw new Error('Invalid data structure');
+      throw new Error("Invalid data structure");
     }
-    
-    router.push('/dashboard');
+
+    // Start upload process
+    uploadState.startUpload();
+
+    // Upload data in batches for better performance
+    const batchSize = 50;
+    const batches = Math.ceil(data.fileData.length / batchSize);
+
+    for (let i = 0; i < batches; i++) {
+      const startIdx = i * batchSize;
+      const endIdx = Math.min(startIdx + batchSize, data.fileData.length);
+      const batchData = data.fileData.slice(startIdx, endIdx);
+
+      uploadState.updateProgress(
+        (i / batches) * 100,
+        `Uploading and processing batch ${i + 1}/${batches}...`
+      );
+
+      await siteService.uploadSiteDataBatch(batchData);
+    }
+
+    uploadState.updateProgress(100, "Processing data...");
+    uploadState.finishUpload();
+
+    // Clear localStorage after successful upload
+    localStorage.removeItem("uploadedFileData");
+
+    // Navigate to dashboard
+    router.push("/dashboard");
   } catch (error) {
-    console.error('Error navigating to dashboard:', error);
-    alert('Error with data. Please try uploading your file again.');
-    router.push('/dataupload');
+    console.error("Error uploading data:", error);
+    uploadState.setError(error);
   }
 };
 
 // Initialize data on mount
 onMounted(() => {
   try {
-    const stored = localStorage.getItem('uploadedFileData');
+    const stored = localStorage.getItem("uploadedFileData");
     if (stored) {
       storedData.value = JSON.parse(stored);
     }
   } catch (error) {
-    console.error('Error reading file data:', error);
+    console.error("Error reading file data:", error);
   }
 });
 
@@ -525,7 +621,7 @@ watch(messages, scrollToBottom, { deep: true });
 /* Optional: Add custom scrollbar styling */
 .overflow-y-auto {
   scrollbar-width: thin;
-  scrollbar-color: #CBD5E1 transparent;
+  scrollbar-color: #cbd5e1 transparent;
 }
 
 .overflow-y-auto::-webkit-scrollbar {
@@ -537,24 +633,7 @@ watch(messages, scrollToBottom, { deep: true });
 }
 
 .overflow-y-auto::-webkit-scrollbar-thumb {
-  background-color: #CBD5E1;
+  background-color: #cbd5e1;
   border-radius: 3px;
 }
 </style>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
