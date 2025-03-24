@@ -5,11 +5,27 @@ import Papa from 'papaparse'
 import * as XLSX from 'xlsx'
 import { parseDate } from '~/utils/dateUtils'
 
+// Define interfaces
+interface UploadState {
+  uploadId: string;
+  status: 'idle' | 'preparing' | 'uploading' | 'processing' | 'complete' | 'error';
+  progress: number;
+  error: Error | null;
+  filename: string;
+  totalChunks: number;
+  chunksUploaded: number;
+  processedRecords: number;
+}
+
+interface FileDataRow {
+  [key: string]: string | number | null;
+}
+
 export const useFileUpload = () => {
   const supabase = useSupabaseClient()
-  const uploadState = ref({
+  const uploadState = ref<UploadState>({
     uploadId: '',
-    status: 'idle', // idle, preparing, uploading, processing, complete, error
+    status: 'idle',
     progress: 0,
     error: null,
     filename: '',
@@ -22,7 +38,7 @@ export const useFileUpload = () => {
     ['preparing', 'uploading', 'processing'].includes(uploadState.value.status)
   )
   
-  const processAndUpload = async (file) => {
+  const processAndUpload = async (file: File): Promise<FileDataRow[]> => {
     try {
       // Reset state
       uploadState.value = {
@@ -64,19 +80,19 @@ export const useFileUpload = () => {
       return data
     } catch (error) {
       uploadState.value.status = 'error'
-      uploadState.value.error = error
+      uploadState.value.error = error instanceof Error ? error : new Error(String(error))
       throw error
     }
   }
   
-  const parseFile = async (file) => {
+  const parseFile = async (file: File): Promise<FileDataRow[]> => {
     return new Promise((resolve, reject) => {
       const fileExt = file.name.toLowerCase().split('.').pop()
       
       if (fileExt === 'csv') {
         Papa.parse(file, {
           header: true,
-          complete: (results) => resolve(results.data),
+          complete: (results) => resolve(results.data as FileDataRow[]),
           error: (error) => reject(error)
         })
       } else {
@@ -84,12 +100,29 @@ export const useFileUpload = () => {
         const reader = new FileReader()
         reader.onload = (e) => {
           try {
+            if (!e.target) {
+              reject(new Error('Failed to read file'))
+              return
+            }
+            
             const data = e.target.result
-            const workbook = XLSX.read(data, { type: 'array' })
+            // Fix XLSX.read typing by explicitly casting data to ArrayBuffer
+            const workbook = XLSX.read(data as ArrayBuffer, { type: 'array' })
             const firstSheet = workbook.SheetNames[0]
+            if (!firstSheet) {
+              reject(new Error('No worksheet found in Excel file'))
+              return
+            }
+            
             const worksheet = workbook.Sheets[firstSheet]
-            const jsonData = XLSX.utils.sheet_to_json(worksheet, { raw: false })
-            resolve(jsonData)
+            if (!worksheet) {
+              reject(new Error('Worksheet is empty or invalid'))
+              return
+            }
+            
+            // Now we're sure worksheet is not undefined
+            const jsonData = XLSX.utils.sheet_to_json<Record<string, any>>(worksheet, { raw: false })
+            resolve(jsonData as FileDataRow[])
           } catch (error) {
             reject(error)
           }
@@ -100,13 +133,17 @@ export const useFileUpload = () => {
     })
   }
   
-  const processBatch = async (batch) => {
+  const processBatch = async (batch: FileDataRow[]): Promise<FileDataRow[]> => {
     // Save in localStorage instead of using Supabase directly for now
     const storedData = localStorage.getItem('uploadedFileData')
     const existingData = storedData ? JSON.parse(storedData) : { fileData: [], headers: [] }
     
     if (batch.length > 0 && existingData.headers.length === 0) {
-      existingData.headers = Object.keys(batch[0])
+      // Fix: Add a check or fallback for batch[0]
+      const firstRow = batch[0];
+      if (firstRow) {
+        existingData.headers = Object.keys(firstRow);
+      }
     }
     
     existingData.fileData = [...existingData.fileData, ...batch]

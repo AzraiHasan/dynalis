@@ -294,6 +294,7 @@ import { useRouter, useRoute } from "vue-router";
 import { parse, isValid, differenceInDays, format } from "date-fns";
 import { useUploadState } from "~/composables/useUploadState";
 import { useSiteService } from "~/utils/supabaseService";
+import { useBatchUploadService } from "~/composables/useBatchUploadService";
 
 // Router setup
 const router = useRouter();
@@ -558,6 +559,7 @@ const handleBack = () => {
   router.push("/dataupload");
 };
 
+// Enhanced version of handleDashboard for datastaging.vue
 const handleDashboard = async () => {
   try {
     const stored = localStorage.getItem("uploadedFileData");
@@ -567,33 +569,36 @@ const handleDashboard = async () => {
       return;
     }
 
-    // Parse and validate data before upload
+    // Parse and validate data
     const data = JSON.parse(stored);
     if (!data.fileData || !Array.isArray(data.fileData)) {
       throw new Error("Invalid data structure");
     }
 
-    // Start upload process
+    // Start upload process with existing UI
     uploadState.startUpload();
 
-    // Upload data in batches for better performance
-    const batchSize = 50;
-    const batches = Math.ceil(data.fileData.length / batchSize);
-
-    for (let i = 0; i < batches; i++) {
-      const startIdx = i * batchSize;
-      const endIdx = Math.min(startIdx + batchSize, data.fileData.length);
-      const batchData = data.fileData.slice(startIdx, endIdx);
-
-      uploadState.updateProgress(
-        (i / batches) * 100,
-        `Uploading and processing batch ${i + 1}/${batches}...`
-      );
-
-      await siteService.uploadSiteDataBatch(batchData);
-    }
-
-    uploadState.updateProgress(100, "Processing data...");
+    // Use our new batch upload service
+    const batchUploadService = useBatchUploadService();
+    
+    // Start processing
+    uploadState.updateProgress(5, "Preparing data for batch processing...");
+    
+    // Watch progress from the batch service
+    watch(
+      () => batchUploadService.state.value.progress,
+      (newProgress) => {
+        uploadState.updateProgress(
+          newProgress,
+          `Processing batch ${batchUploadService.state.value.processedBatches}/${batchUploadService.state.value.totalBatches}...`
+        );
+      }
+    );
+    
+    // Execute the batch upload
+    const result = await batchUploadService.processBulkUpload(data.fileData);
+    
+    uploadState.updateProgress(100, `Successfully processed ${result.processedRecords} records`);
     uploadState.finishUpload();
 
     // Clear localStorage after successful upload
@@ -607,7 +612,7 @@ const handleDashboard = async () => {
       error instanceof Error ? error : new Error(String(error))
     );
   }
-};
+}
 
 // Initialize data on mount
 onMounted(() => {
