@@ -289,6 +289,7 @@ interface DoughnutChartData {
 const isLoading = ref(true);
 const error = ref<Error | null>(null);
 const siteService = useSiteService();
+const siteData = useSiteData()
 
 onMounted(async () => {
   try {
@@ -298,13 +299,19 @@ onMounted(async () => {
     const data = await siteData.fetchData()
     
     // Transform data to match expected format
-    fileData.value = data.map(item => ({
-      'SITE ID': item.site_id,
-      'EXP DATE': item.exp_date,
-      'TOTAL RENTAL (RM)': item.total_rental,
-      'TOTAL PAYMENT TO PAY (RM)': item.total_payment_to_pay,
-      'DEPOSIT (RM)': item.deposit
-    }))
+    fileData.value = data.map((item: {
+  site_id: string;
+  exp_date: string | null;
+  total_rental: number;
+  total_payment_to_pay: number;
+  deposit: number;
+}) => ({
+  'SITE ID': item.site_id,
+  'EXP DATE': item.exp_date,
+  'TOTAL RENTAL (RM)': item.total_rental,
+  'TOTAL PAYMENT TO PAY (RM)': item.total_payment_to_pay,
+  'DEPOSIT (RM)': item.deposit
+}))
     
     // Set summary statistics
     const sitesData = fileData.value.filter(

@@ -231,7 +231,7 @@
       :status="uploadState.status"
       :status-message="uploadState.statusMessage"
       :error="uploadState.error"
-      @close="uploadState.isUploading = false"
+      @close="uploadState.isUploading.value = false"
       @cancel="cancelUpload"
       @continue="router.push('/dashboard')"
     />
@@ -431,9 +431,9 @@ const formatDate = (date: Date): string => {
 
 const cancelUpload = () => {
   // Only allow cancellation in certain states
-  if (uploadState.status === 'preparing' || uploadState.status === 'processing') {
-    uploadState.isUploading = false
-  }
+  if (uploadState.status.value === 'preparing' || uploadState.status.value === 'processing') {
+  uploadState.isUploading.value = false
+}
 }
 
 // Data processing
@@ -597,7 +597,7 @@ const handleDashboard = async () => {
     router.push("/dashboard");
   } catch (error) {
     console.error("Error uploading data:", error);
-    uploadState.setError(error);
+    uploadState.setError(error instanceof Error ? error : new Error(String(error)))
   }
 };
 
