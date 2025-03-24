@@ -10,8 +10,9 @@
     "postinstall": "nuxt prepare",
     "lint": "eslint .",
     "lint:fix": "eslint --fix .",
-    "supabase:migration": "supabase migration new",
-    "supabase:push": "supabase db push"
+    "db:migration:new": "./node_modules/.bin/supabase migration new",
+    "db:push": "./node_modules/.bin/supabase db push",
+    "db:reset": "./node_modules/.bin/supabase db reset"
   },
   "dependencies": {
     "@iconify-json/lucide": "^1.2.31",

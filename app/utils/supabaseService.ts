@@ -1,46 +1,7 @@
 // utils/supabaseService.ts
 import { useSupabaseClient } from '#imports'
 import { parseDate } from '~/utils/dateUtils'
-
-// Define database types for Supabase
-interface Database {
-  public: {
-    Tables: {
-      sites: {
-        Row: {
-          id: string
-          site_id: string
-          exp_date: string | null
-          total_rental: number
-          total_payment_to_pay: number
-          deposit: number
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          site_id: string
-          exp_date?: string | null
-          total_rental: number
-          total_payment_to_pay: number
-          deposit: number
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          site_id?: string
-          exp_date?: string | null
-          total_rental?: number
-          total_payment_to_pay?: number
-          deposit?: number
-          created_at?: string
-          updated_at?: string
-        }
-      }
-    }
-  }
-}
+import type { Database } from '~/types/supabase'
 
 // Input data interface
 interface FileRow {
@@ -63,15 +24,20 @@ export const useSiteService = () => {
   
   // Initialize database - this would typically be done through migrations
   const initializeDatabase = async () => {
-    try {
-      // We'll use a simple query to check if the table exists
-      await supabase.from('sites').select('id').limit(1)
-      console.log('Sites table exists')
-    } catch (error) {
-  console.error('Detailed upload error:', error)
-  throw error
-}
+  try {
+    // Just check if the table exists
+    const { count, error } = await supabase
+      .from('sites')
+      .select('*', { count: 'exact', head: true })
+    
+    if (error) throw error
+    console.log(`Sites table exists with ${count} records`)
+    return true
+  } catch (error) {
+    console.error('Database initialization failed:', error)
+    return false
   }
+}
   
   // Upload site data in batches
   const uploadSiteDataBatch = async (data: FileRow[]) => {
