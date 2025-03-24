@@ -1,3 +1,5 @@
+<!-- pages/datastaging.vue -->
+
 <template>
   <div class="container mx-auto p-4">
     <h1 class="text-2xl font-bold mb-4">Data Staging</h1>
@@ -226,11 +228,12 @@
     </div>
 
     <UploadProgressModal
-      :is-open="uploadState.isUploading"
-      :progress="uploadState.progress"
-      :status="uploadState.status"
-      :status-message="uploadState.statusMessage"
-      :error="uploadState.error"
+      :is-open="uploadState.isUploading.value"
+      @update:is-open="uploadState.isUploading.value = $event"
+      :progress="uploadState.progress.value"
+      :status="uploadState.status.value"
+      :status-message="uploadState.statusMessage.value"
+      :error="uploadState.error.value || undefined"
       @close="uploadState.isUploading.value = false"
       @cancel="cancelUpload"
       @continue="router.push('/dashboard')"
@@ -431,10 +434,13 @@ const formatDate = (date: Date): string => {
 
 const cancelUpload = () => {
   // Only allow cancellation in certain states
-  if (uploadState.status.value === 'preparing' || uploadState.status.value === 'processing') {
-  uploadState.isUploading.value = false
-}
-}
+  if (
+    uploadState.status.value === "preparing" ||
+    uploadState.status.value === "processing"
+  ) {
+    uploadState.isUploading.value = false;
+  }
+};
 
 // Data processing
 const metrics = computed(() => {
@@ -597,7 +603,9 @@ const handleDashboard = async () => {
     router.push("/dashboard");
   } catch (error) {
     console.error("Error uploading data:", error);
-    uploadState.setError(error instanceof Error ? error : new Error(String(error)))
+    uploadState.setError(
+      error instanceof Error ? error : new Error(String(error))
+    );
   }
 };
 

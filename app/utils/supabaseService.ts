@@ -67,9 +67,10 @@ export const useSiteService = () => {
       // We'll use a simple query to check if the table exists
       await supabase.from('sites').select('id').limit(1)
       console.log('Sites table exists')
-    } catch (err) {
-      console.error('Table check failed:', err)
-    }
+    } catch (error) {
+  console.error('Detailed upload error:', error)
+  throw error
+}
   }
   
   // Upload site data in batches

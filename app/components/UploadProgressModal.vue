@@ -1,6 +1,6 @@
 <!-- components/UploadProgressModal.vue -->
 <template>
-  <UModal v-model="isOpen">
+  <UModal :model-value="isOpen" @update:model-value="$emit('update:isOpen', $event)">
     <UCard>
       <template #header>
         <div class="flex items-center gap-2">
@@ -8,24 +8,24 @@
           <h3 class="text-lg font-semibold">Uploading Data</h3>
         </div>
       </template>
-      
+
       <div class="space-y-4 py-4">
         <div class="flex justify-between items-center">
           <span class="text-sm font-medium">{{ statusMessage }}</span>
           <span class="text-sm text-gray-500">{{ Math.round(progress) }}%</span>
         </div>
-        
+
         <UProgress
-          v-model="progress"
+          :model-value="progress"
           color="primary"
           :indeterminate="status === 'preparing' || status === 'processing'"
         />
-        
+
         <div v-if="error" class="bg-red-50 text-red-600 p-4 rounded-lg text-sm">
           {{ error.message }}
         </div>
       </div>
-      
+
       <template #footer>
         <div class="flex justify-end gap-2">
           <UButton
@@ -60,25 +60,25 @@
 defineProps({
   isOpen: {
     type: Boolean,
-    required: true
+    required: true,
   },
   progress: {
     type: Number,
-    default: 0
+    default: 0,
   },
   status: {
     type: String,
-    default: 'idle'
+    default: "idle",
   },
   statusMessage: {
     type: String,
-    default: ''
+    default: "",
   },
   error: {
     type: Object,
-    default: null
-  }
-})
+    default: null,
+  },
+});
 
-defineEmits(['close', 'cancel', 'continue'])
+defineEmits(["close", "cancel", "continue", "update:isOpen"]);
 </script>
