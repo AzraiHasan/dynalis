@@ -298,6 +298,7 @@ import { parse, isValid, differenceInDays, format } from "date-fns";
 import { useUploadState } from "~/composables/useUploadState";
 import { useSiteService } from "~/utils/supabaseService";
 import { useBatchUploadService } from "~/composables/useBatchUploadService";
+import { useSiteData } from '~/composables/useSiteData'
 
 // Router setup
 const router = useRouter();
@@ -305,6 +306,10 @@ const route = useRoute();
 
 const uploadState = useUploadState();
 const siteService = useSiteService();
+const siteData = useSiteData();
+const fileData = ref<FileRow[]>([]);
+const totalSites = ref<number>(0);
+const error = ref<Error | null>(null);
 
 // Properly typed interfaces
 interface FileRow {
@@ -666,11 +671,24 @@ const handleBack = () => {
 onMounted(() => {
   try {
     const stored = localStorage.getItem("uploadedFileData");
+    console.log("Raw data from localStorage:", stored);
+    
     if (stored) {
       storedData.value = JSON.parse(stored);
+      console.log("Parsed data:", storedData.value);
+      
+      if (Array.isArray(storedData.value?.fileData) && storedData.value.fileData.length > 0) {
+        console.log("Sample row:", storedData.value.fileData[0]);
+        // Check if keys exist
+        const firstRow = storedData.value.fileData[0];
+        if (firstRow) {
+          console.log("Has SITE ID?", "SITE ID" in firstRow);
+          console.log("Has TOTAL RENTAL?", "TOTAL RENTAL (RM)" in firstRow);
+        }
+      }
     }
   } catch (error) {
-    console.error("Error reading file data:", error);
+    console.error("Error:", error);
   }
 });
 

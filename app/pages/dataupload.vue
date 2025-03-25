@@ -40,10 +40,7 @@
     </UCard>
 
     <!-- Data Analysis Section -->
-    <div
-      v-if="fileData.length > 0"
-      class="grid gap-4 mb-4"
-    >
+    <div v-if="fileData.length > 0" class="grid gap-4 mb-4">
       <!-- Dataset Summary -->
       <UCard>
         <template #header>
@@ -56,33 +53,32 @@
           <p>Missing Values: {{ getTotalMissingValues() }}</p>
           <p>Dash Values: {{ getTotalDashValues() }}</p>
           <!-- Proceed Section -->
-      <div v-if="fileData.length > 0" class="mt-6">
-        <div
-          class="mb-4 p-4 rounded-lg"
-          :class="
-            hasEmptyCells
-              ? 'bg-yellow-50 text-yellow-700'
-              : 'bg-green-50 text-green-700'
-          "
-        >
-          <p v-if="hasEmptyCells">
-            Empty cells and data irregularities may cause error during further
-            analysis, please rectify before you decide to proceed
-          </p>
-          <p v-else>You have no empty cells. Click NEXT to proceed</p>
-        </div>
+          <div v-if="fileData.length > 0" class="mt-6">
+            <div
+              class="mb-4 p-4 rounded-lg"
+              :class="
+                hasEmptyCells
+                  ? 'bg-yellow-50 text-yellow-700'
+                  : 'bg-green-50 text-green-700'
+              "
+            >
+              <p v-if="hasEmptyCells">
+                Empty cells and data irregularities may cause error during
+                further analysis, please rectify before you decide to proceed
+              </p>
+              <p v-else>You have no empty cells. Click NEXT to proceed</p>
+            </div>
 
-        <UButton
-          label="Proceed"
-          trailing-icon="i-lucide-arrow-right"
-          variant="outline"
-          :color="hasEmptyCells ? 'warning' : 'primary'"
-          @click="handleProceed"
-        />
-      </div>
+            <UButton
+              label="Proceed"
+              trailing-icon="i-lucide-arrow-right"
+              variant="outline"
+              :color="hasEmptyCells ? 'warning' : 'primary'"
+              @click="handleProceed"
+            />
+          </div>
         </div>
       </UCard>
-      
     </div>
 
     <!-- Column Statistics -->
@@ -129,7 +125,7 @@ import { useRouter } from "vue-router";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
 import { parse, isValid } from "date-fns";
-import { useFileUpload } from '~/composables/useFileUpload'
+import { useFileUpload } from "~/composables/useFileUpload";
 
 interface FileRow {
   [key: string]: string | number | null;
@@ -161,7 +157,8 @@ const selectedFile = ref<File | null>(null);
 const isProcessing = ref(false);
 const fileData = ref<FileRow[]>([]);
 const headers = ref<string[]>([]);
-const fileUpload = useFileUpload()
+const fileUpload = useFileUpload();
+const toast = useToast()
 
 const hasEmptyCells = computed(() => {
   return getTotalMissingValues() > 0;
@@ -208,7 +205,10 @@ const processFile = async () => {
   try {
     // Use the file upload composable
     fileData.value = await fileUpload.processAndUpload(selectedFile.value);
-    headers.value = fileData.value.length > 0 ? Object.keys(fileData.value[0]) : [];
+    headers.value =
+      fileData.value.length > 0 && fileData.value[0]
+        ? Object.keys(fileData.value[0])
+        : [];
   } catch (error) {
     errorMessage.value =
       "Error processing file: " +
@@ -393,24 +393,25 @@ const clearAll = () => {
 
 const handleProceed = () => {
   try {
-    const dataToStore: StoredData = {
-      fileData: Array.from(fileData.value), // Convert Proxy to plain array
-      headers: Array.from(headers.value), // Convert Proxy to plain array
-      fileName: selectedFileName.value,
-    };
-    localStorage.setItem("uploadedFileData", JSON.stringify(dataToStore));
-    console.log("Data stored successfully:", dataToStore); // Debug log
-    console.log(
-      "Stored data verification:",
-      localStorage.getItem("uploadedFileData")
-    ); // Verify storage
-
+    const stored = localStorage.getItem("uploadedFileData");
+    console.log("Before navigation - localStorage data:", stored);
+    
+    if (!stored) {
+      toast.add({
+        title: "No Data",
+        description: "Please upload a file first.",
+        color: "error"
+      });
+      return;
+    }
+    
+    // Navigate without modifying localStorage
     router.push({
       path: "/datastaging",
       query: { fileName: selectedFileName.value },
     });
   } catch (error) {
-    console.error("Error storing file data:", error);
+    console.error("Error navigating:", error);
   }
 };
 
