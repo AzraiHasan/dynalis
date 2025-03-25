@@ -562,6 +562,12 @@ export const useBatchUploadService = () => {
 
       let processedRecords = 0;
 
+      const siteIdMap = new Map();
+      transformedData.forEach((item: SiteInsert) => {
+        siteIdMap.set(item.site_id, item);
+      });
+      const deduplicatedData = Array.from(siteIdMap.values());
+
       // Process each batch
       for (let i = 0; i < batches; i++) {
         const startIdx = i * batchSize;
@@ -569,7 +575,9 @@ export const useBatchUploadService = () => {
         const batchData = transformedData.slice(startIdx, endIdx);
 
         try {
-          const { data, error } = await supabase.rpc('process_sites_batch', { data: batchData });
+          const { data, error } = await supabase.rpc("process_sites_batch", {
+            data: deduplicatedData,
+          });
 
           if (error) {
             console.error("RPC error:", error);
