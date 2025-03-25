@@ -12,6 +12,7 @@
     "lint:fix": "eslint --fix .",
     "db:migration:new": "./node_modules/.bin/supabase migration new",
     "db:push": "./node_modules/.bin/supabase db push",
+    "db:pull": "./node_modules/.bin/supabase db pull",
     "db:reset": "./node_modules/.bin/supabase db reset"
   },
   "dependencies": {

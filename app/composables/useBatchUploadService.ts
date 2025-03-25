@@ -569,9 +569,7 @@ export const useBatchUploadService = () => {
         const batchData = transformedData.slice(startIdx, endIdx);
 
         try {
-          const { data, error } = await supabase.rpc("bulk_upload_sites", {
-            data: JSON.stringify(batchData),
-          });
+          const { data, error } = await supabase.rpc('process_sites_batch', { data: batchData });
 
           if (error) {
             console.error("RPC error:", error);
