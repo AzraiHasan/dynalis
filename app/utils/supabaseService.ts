@@ -4,7 +4,7 @@ import { parseDate } from '~/utils/dateUtils'
 import type { Database } from '~/types/supabase'
 
 // Input data interface
-interface FileRow {
+export interface FileRow {
   [key: string]: string | number | null | undefined;
   "SITE ID"?: string | number | null;
   "EXP DATE"?: string | null;

@@ -4,6 +4,7 @@ import { useSupabaseClient } from "#imports";
 import { parseDate } from "~/utils/dateUtils";
 import type { Database } from "~/types/supabase";
 import { useUploadState } from '~/composables/useUploadState';
+import type { FileRow } from '~/utils/supabaseService';
 
 interface BatchUploadState {
   status:
@@ -466,9 +467,12 @@ export const useBatchUploadService = () => {
     }
   };
 
-  const startAsyncProcessing = async (data: any[], fileName: string = 'upload.csv'): Promise<{jobId: string}> => {
+  const startAsyncProcessing = async (
+  data: FileRow[], 
+  fileName: string = 'upload.csv'
+): Promise<{jobId: string}> => {
   try {
-    // Transform data the same way as before
+    // Transform data
     const transformedData: SiteInsert[] = data.map(row => ({
       site_id: row['SITE ID']?.toString() || 'NO ID',
       exp_date: row['EXP DATE'] ? parseDate(row['EXP DATE']?.toString() || '')?.toISOString() || null : null,
@@ -481,7 +485,7 @@ export const useBatchUploadService = () => {
     const batchSize = 250
     const batches = Math.ceil(transformedData.length / batchSize)
     
-    // Create job in 'queued' status
+    // Create job
     const { data: job, error } = await supabase
       .from('upload_jobs')
       .insert({
@@ -495,8 +499,9 @@ export const useBatchUploadService = () => {
       .single()
     
     if (error) throw error
+    if (!job?.id) throw new Error('Failed to create job')
     
-    // Store data in localStorage with job reference
+    // Store data in localStorage BEFORE starting the job
     localStorage.setItem(`bg_upload_${job.id}`, JSON.stringify({
       transformedData,
       batchSize,
@@ -505,11 +510,10 @@ export const useBatchUploadService = () => {
       fileName
     }))
     
-    // Start processing in background
-    setTimeout(() => {
-      processBackgroundJob(job.id)
-        .catch(e => console.error('Background processing error:', e))
-    }, 100)
+    // Start processing after data is stored
+    processBackgroundJob(job.id)
+      .then(result => console.log('Background job completed successfully'))
+      .catch(e => console.error('Background processing error:', e))
     
     return { jobId: job.id }
   } catch (error) {

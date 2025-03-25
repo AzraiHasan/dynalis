@@ -236,7 +236,7 @@
       :error="uploadState.error.value || undefined"
       @close="uploadState.isUploading.value = false"
       @cancel="cancelUpload"
-      @continue="router.push('/dashboard')"
+      @continue="navigateToDashboard"
     />
 
     <!-- Debug Data Display -->
@@ -281,16 +281,10 @@
       />
       <div class="space-x-2">
         <UButton
-          v-if="showBackgroundOption"
-          label="Process in Background"
+          label="Process Data"
           icon="i-lucide-cpu"
-          color="secondary"
-          @click="handleBackgroundUpload"
-        />
-        <UButton
-          label="View Dashboard"
-          icon="i-lucide-arrow-right"
-          @click="handleDashboard"
+          color="primary"
+          @click="handleProcessData"
         />
       </div>
     </div>
@@ -362,54 +356,97 @@ const showBackgroundOption = computed(() => {
   return storedData.value.fileData.length > 500;
 });
 
-const handleBackgroundUpload = async () => {
+const handleProcessData = async () => {
   try {
     const stored = localStorage.getItem("uploadedFileData");
     if (!stored) {
-      alert("No data available. Please upload a file first.");
+      toast.add({
+        title: "No Data",
+        description: "Please upload a file first.",
+        color: "error",
+        duration: 5000
+      });
       return;
     }
 
-    const data = JSON.parse(stored);
-    if (!data.fileData || !Array.isArray(data.fileData)) {
+    const data = JSON.parse(stored) as {
+      fileData: FileRow[];
+      headers: string[];
+      fileName: string;
+    };
+    
+    if (!data.fileData || !Array.isArray(data.fileData) || data.fileData.length === 0) {
       throw new Error("Invalid data structure");
     }
 
+    // Start the upload process and show the modal
     uploadState.startUpload();
-    uploadState.updateProgress(5, "Starting background processing...");
-
+    uploadState.isUploading.value = true;
+    
+    // Use the batch upload service
     const batchUploadService = useBatchUploadService();
-    const result = await batchUploadService.startAsyncProcessing(
-      data.fileData,
+    
+    // Check for interrupted uploads
+    uploadState.updateProgress(10, "Checking for previous uploads...");
+    const incompleteUploads = await batchUploadService.checkIncompleteUploads(
       data.fileName
     );
+    
+    let result;
+    if (incompleteUploads.length > 0) {
+      // Ask user if they want to resume
+      const resumeConfirmed = window.confirm(
+        `Found an interrupted upload from ${new Date(
+          incompleteUploads[0].created_at
+        ).toLocaleString()}. Would you like to resume?`
+      );
 
+      if (resumeConfirmed) {
+        uploadState.updateProgress(
+          20,
+          `Resuming previous upload...`
+        );
+        result = await batchUploadService.resumeUpload(
+          incompleteUploads[0].id,
+          data.fileData
+        );
+      } else {
+        // Start fresh background upload
+        uploadState.updateProgress(20, "Starting new background process...");
+        result = await batchUploadService.startAsyncProcessing(
+          data.fileData,
+          data.fileName || 'upload.csv'
+        );
+      }
+    } else {
+      // No previous upload, start fresh background process
+      uploadState.updateProgress(20, "Starting background processing...");
+      result = await batchUploadService.startAsyncProcessing(
+        data.fileData,
+        data.fileName || 'upload.csv'
+      );
+    }
+    
+    // Update progress and status
     uploadState.updateProgress(
       100,
-      `Upload job ${result.jobId} started in background`
+      `Processing started. Your data is being prepared.`
     );
-
-    // Create a toast notification
-    toast.add({
-      title: "Background Upload Started",
-      description: `Your data is being processed in the background. You can check the status in the dashboard.`,
-      duration: 5000,
-    });
-
-    // Store the job ID for the dashboard to display
+    uploadState.status.value = 'complete';
+    
+    // Store the job ID for reference in the dashboard
     localStorage.setItem("background_job_id", result.jobId);
-
-    // Clear the original file data
+    
+    // Clear the uploaded file data as it's now being processed
     localStorage.removeItem("uploadedFileData");
-
-    // Navigate to dashboard
-    router.push("/dashboard");
   } catch (error) {
-    console.error("Error starting background upload:", error);
-    uploadState.setError(
-      error instanceof Error ? error : new Error(String(error))
-    );
+    console.error("Error processing data:", error);
+    uploadState.setError(error instanceof Error ? error : new Error(String(error)));
   }
+};
+
+const navigateToDashboard = () => {
+  router.push("/dashboard");
 };
 
 const handleSend = async () => {
@@ -623,106 +660,6 @@ const formatCurrency = (value: number): string => {
 const handleBack = () => {
   localStorage.removeItem("uploadedFileData");
   router.push("/dataupload");
-};
-
-const handleDashboard = async () => {
-  try {
-    const stored = localStorage.getItem("uploadedFileData");
-    if (!stored) {
-      alert("No data available. Please upload a file first.");
-      router.push("/dataupload");
-      return;
-    }
-
-    // Parse and validate data
-    const data = JSON.parse(stored);
-    if (!data.fileData || !Array.isArray(data.fileData)) {
-      throw new Error("Invalid data structure");
-    }
-
-    // Start upload process with existing UI
-    uploadState.startUpload();
-
-    // Use our batch upload service
-    const batchUploadService = useBatchUploadService();
-
-    // Check for any interrupted uploads for this file
-    const incompleteUploads = await batchUploadService.checkIncompleteUploads(
-      data.fileName
-    );
-
-    // Start processing
-    let result;
-
-    if (incompleteUploads.length > 0) {
-      // Ask user if they want to resume
-      const resumeConfirmed = window.confirm(
-        `Found an interrupted upload from ${new Date(
-          incompleteUploads[0].created_at
-        ).toLocaleString()}. Would you like to resume?`
-      );
-
-      if (resumeConfirmed) {
-        uploadState.updateProgress(
-          Math.round(
-            (incompleteUploads[0].chunks_received /
-              incompleteUploads[0].total_chunks) *
-              100
-          ),
-          `Resuming upload from previous session...`
-        );
-
-        result = await batchUploadService.resumeUpload(
-          incompleteUploads[0].id,
-          data.fileData
-        );
-      } else {
-        // Start fresh upload
-        uploadState.updateProgress(5, "Preparing data for batch processing...");
-        result = await batchUploadService.processBulkUpload(
-          data.fileData,
-          data.fileName
-        );
-      }
-    } else {
-      // No previous upload, start fresh
-      uploadState.updateProgress(5, "Preparing data for batch processing...");
-      result = await batchUploadService.processBulkUpload(
-        data.fileData,
-        data.fileName
-      );
-    }
-
-    // Watch progress from the batch service (keep existing code)
-    watch(
-      () => batchUploadService.state.value.progress,
-      (newProgress) => {
-        uploadState.updateProgress(
-          newProgress,
-          `Processing batch ${batchUploadService.state.value.processedBatches}/${batchUploadService.state.value.totalBatches}...`
-        );
-      }
-    );
-
-    uploadState.updateProgress(
-      100,
-      result.resumed
-        ? `Successfully resumed and processed ${result.processedRecords} records`
-        : `Successfully processed ${result.processedRecords} records`
-    );
-    uploadState.finishUpload();
-
-    // Clear localStorage after successful upload
-    localStorage.removeItem("uploadedFileData");
-
-    // Navigate to dashboard
-    router.push("/dashboard");
-  } catch (error) {
-    console.error("Error uploading data:", error);
-    uploadState.setError(
-      error instanceof Error ? error : new Error(String(error))
-    );
-  }
 };
 
 // Initialize data on mount
