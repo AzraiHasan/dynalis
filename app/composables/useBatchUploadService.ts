@@ -3,8 +3,8 @@ import { ref, computed } from "vue";
 import { useSupabaseClient } from "#imports";
 import { parseDate } from "~/utils/dateUtils";
 import type { Database } from "~/types/supabase";
-import { useUploadState } from '~/composables/useUploadState';
-import type { FileRow } from '~/utils/supabaseService';
+import { useUploadState } from "~/composables/useUploadState";
+import type { FileRow } from "~/utils/supabaseService";
 
 interface BatchUploadState {
   status:
@@ -19,7 +19,7 @@ interface BatchUploadState {
   totalBatches: number;
   processedBatches: number;
   processedRecords: number;
-  uploadJobId?: string; 
+  uploadJobId?: string;
   abortController?: AbortController;
 }
 
@@ -31,83 +31,91 @@ const cancelUpload = async (): Promise<void> => {
   const toast = useToast();
   const batchUploadService = useBatchUploadService();
   const uploadState = useUploadState();
-  
+
   // Only allow cancellation in appropriate states
   if (
-    !['preparing', 'uploading', 'processing'].includes(uploadState.status.value) ||
+    !["preparing", "uploading", "processing"].includes(
+      uploadState.status.value
+    ) ||
     !batchUploadService.state.value.uploadJobId
   ) {
-    console.warn('Cannot cancel: Invalid state or missing job ID');
+    console.warn("Cannot cancel: Invalid state or missing job ID");
     return;
   }
 
   try {
     // Update UI to show cancellation in progress
-    uploadState.status.value = 'processing';
-    uploadState.statusMessage.value = 'Cancelling upload...';
-    
+    uploadState.status.value = "processing";
+    uploadState.statusMessage.value = "Cancelling upload...";
+
     // Create an AbortController instance to cancel ongoing operations
     const abortController = new AbortController();
     abortController.abort();
-    
+
     // Set state to cancelled
-    batchUploadService.state.value.status = 'processing';
-    batchUploadService.state.value.error = new Error('Upload cancelled by user');
-    
+    batchUploadService.state.value.status = "processing";
+    batchUploadService.state.value.error = new Error(
+      "Upload cancelled by user"
+    );
+
     // 2. Update the upload_jobs table
     const { error: updateError } = await supabase
-      .from('upload_jobs')
+      .from("upload_jobs")
       .update({
-        status: 'cancelled',
-        error_message: 'Upload cancelled by user',
-        updated_at: new Date().toISOString()
+        status: "cancelled",
+        error_message: "Upload cancelled by user",
+        updated_at: new Date().toISOString(),
       })
-      .eq('id', batchUploadService.state.value.uploadJobId);
-    
+      .eq("id", batchUploadService.state.value.uploadJobId);
+
     if (updateError) {
       throw new Error(`Failed to update job status: ${updateError.message}`);
     }
-    
+
     // 3. Clean up partially uploaded data by adding a "cancelled" tag
     // This allows identifying which records were part of a cancelled upload
-    const { error: cleanupError } = await supabase.rpc('mark_cancelled_upload_records', {
-      job_id: batchUploadService.state.value.uploadJobId
-    });
-    
+    const { error: cleanupError } = await supabase.rpc(
+      "mark_cancelled_upload_records",
+      {
+        job_id: batchUploadService.state.value.uploadJobId,
+      }
+    );
+
     if (cleanupError) {
-      console.error('Warning: Failed to mark cancelled records:', cleanupError);
+      console.error("Warning: Failed to mark cancelled records:", cleanupError);
     }
-    
+
     // 4. Reset upload state
-    uploadState.status.value = 'idle';
+    uploadState.status.value = "idle";
     uploadState.progress.value = 0;
     uploadState.isUploading.value = false;
-    uploadState.statusMessage.value = 'Upload cancelled';
-    
+    uploadState.statusMessage.value = "Upload cancelled";
+
     // 5. Notify user
     toast.add({
-      title: 'Upload Cancelled',
-      description: 'The upload process has been cancelled successfully.',
-      color: 'info',
-      duration: 5000
+      title: "Upload Cancelled",
+      description: "The upload process has been cancelled successfully.",
+      color: "info",
+      duration: 5000,
     });
-    
-    console.log(`Upload job ${batchUploadService.state.value.uploadJobId} cancelled successfully`);
+
+    console.log(
+      `Upload job ${batchUploadService.state.value.uploadJobId} cancelled successfully`
+    );
   } catch (error) {
     // Handle cancellation errors
-    console.error('Error cancelling upload:', error);
-    
-    uploadState.status.value = 'error';
-    uploadState.error.value = error instanceof Error 
-      ? error 
-      : new Error(String(error));
+    console.error("Error cancelling upload:", error);
+
+    uploadState.status.value = "error";
+    uploadState.error.value =
+      error instanceof Error ? error : new Error(String(error));
     uploadState.statusMessage.value = `Cancellation failed: ${uploadState.error.value.message}`;
-    
+
     toast.add({
-      title: 'Cancellation Error',
+      title: "Cancellation Error",
       description: uploadState.error.value.message,
-      color: 'error',
-      duration: 5000
+      color: "error",
+      duration: 5000,
     });
   }
 };
@@ -468,153 +476,177 @@ export const useBatchUploadService = () => {
   };
 
   const startAsyncProcessing = async (
-  data: FileRow[], 
-  fileName: string = 'upload.csv'
-): Promise<{jobId: string}> => {
-  try {
-    // Transform data
-    const transformedData: SiteInsert[] = data.map(row => ({
-      site_id: row['SITE ID']?.toString() || 'NO ID',
-      exp_date: row['EXP DATE'] ? parseDate(row['EXP DATE']?.toString() || '')?.toISOString() || null : null,
-      total_rental: parseFloat((row['TOTAL RENTAL (RM)']?.toString() || '0').replace(/[RM,\s]/g, '')),
-      total_payment_to_pay: parseFloat((row['TOTAL PAYMENT TO PAY (RM)']?.toString() || '0').replace(/[RM,\s]/g, '')),
-      deposit: parseFloat((row['DEPOSIT (RM)']?.toString() || '0').replace(/[RM,\s]/g, '')),
-      updated_at: new Date().toISOString()
-    }))
-    
-    const batchSize = 250
-    const batches = Math.ceil(transformedData.length / batchSize)
-    
-    // Create job
-    const { data: job, error } = await supabase
-      .from('upload_jobs')
-      .insert({
-        filename: fileName,
-        total_chunks: batches,
-        status: 'queued',
-        chunks_received: 0,
-        processed_records: 0
-      })
-      .select('id')
-      .single()
-    
-    if (error) throw error
-    if (!job?.id) throw new Error('Failed to create job')
-    
-    // Store data in localStorage BEFORE starting the job
-    localStorage.setItem(`bg_upload_${job.id}`, JSON.stringify({
-      transformedData,
-      batchSize,
-      batches,
-      jobId: job.id,
-      fileName
-    }))
-    
-    // Start processing after data is stored
-    processBackgroundJob(job.id)
-      .then(result => console.log('Background job completed successfully'))
-      .catch(e => console.error('Background processing error:', e))
-    
-    return { jobId: job.id }
-  } catch (error) {
-    console.error('Error starting async processing:', error)
-    throw error
-  }
-}
+    data: FileRow[],
+    fileName: string = "upload.csv"
+  ): Promise<{ jobId: string }> => {
+    try {
+      // Transform data
+      const transformedData: SiteInsert[] = data.map((row) => ({
+        site_id: row["SITE ID"]?.toString() || "NO ID",
+        exp_date: row["EXP DATE"]
+          ? parseDate(row["EXP DATE"]?.toString() || "")?.toISOString() || null
+          : null,
+        total_rental: parseFloat(
+          (row["TOTAL RENTAL (RM)"]?.toString() || "0").replace(/[RM,\s]/g, "")
+        ),
+        total_payment_to_pay: parseFloat(
+          (row["TOTAL PAYMENT TO PAY (RM)"]?.toString() || "0").replace(
+            /[RM,\s]/g,
+            ""
+          )
+        ),
+        deposit: parseFloat(
+          (row["DEPOSIT (RM)"]?.toString() || "0").replace(/[RM,\s]/g, "")
+        ),
+        updated_at: new Date().toISOString(),
+      }));
 
-// Process a job in the background
-const processBackgroundJob = async (jobId: string) => {
-  try {
-    // Get the stored job data
-    const storedData = localStorage.getItem(`bg_upload_${jobId}`)
-    if (!storedData) throw new Error('No data found for background job')
-    
-    const { transformedData, batchSize, batches, fileName } = JSON.parse(storedData)
-    
-    // Update job status
-    await supabase
-      .from('upload_jobs')
-      .update({ status: 'processing' })
-      .eq('id', jobId)
-    
-    let processedRecords = 0
-    
-    // Process each batch
-    for (let i = 0; i < batches; i++) {
-      const startIdx = i * batchSize
-      const endIdx = Math.min(startIdx + batchSize, transformedData.length)
-      const batchData = transformedData.slice(startIdx, endIdx)
-      
-      try {
-        await supabase
-          .rpc('bulk_upload_sites', { data: JSON.stringify(batchData) })
-        
-        processedRecords += batchData.length
-        
-        // Update job progress
-        await supabase
-          .from('upload_jobs')
-          .update({
-            chunks_received: i + 1,
-            processed_records: processedRecords,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', jobId)
-      } catch (error) {
-        await recordUploadError(jobId, error instanceof Error ? error.message : String(error))
-        throw error
-      }
+      const batchSize = 250;
+      const batches = Math.ceil(transformedData.length / batchSize);
+
+      // Create job
+      const { data: job, error } = await supabase
+        .from("upload_jobs")
+        .insert({
+          filename: fileName,
+          total_chunks: batches,
+          status: "queued",
+          chunks_received: 0,
+          processed_records: 0,
+        })
+        .select("id")
+        .single();
+
+      if (error) throw error;
+      if (!job?.id) throw new Error("Failed to create job");
+
+      // Store data in localStorage BEFORE starting the job
+      localStorage.setItem(
+        `bg_upload_${job.id}`,
+        JSON.stringify({
+          transformedData,
+          batchSize,
+          batches,
+          jobId: job.id,
+          fileName,
+        })
+      );
+
+      // Start processing after data is stored
+      processBackgroundJob(job.id)
+        .then((result) => console.log("Background job completed successfully"))
+        .catch((e) => console.error("Background processing error:", e));
+
+      return { jobId: job.id };
+    } catch (error) {
+      console.error("Error starting async processing:", error);
+      throw error;
     }
-    
-    // Complete the job
-    await supabase
-      .from('upload_jobs')
-      .update({
-        status: 'complete',
-        chunks_received: batches,
-        processed_records: processedRecords,
-        completed_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', jobId)
-    
-    // Clean up local storage
-    localStorage.removeItem(`bg_upload_${jobId}`)
-    
-    return { success: true, processedRecords }
-  } catch (error) {
-    console.error('Error in background processing:', error)
-    
-    // Update job status to error
-    await supabase
-      .from('upload_jobs')
-      .update({
-        status: 'error',
-        error_message: error instanceof Error ? error.message : String(error),
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', jobId)
-    
-    throw error
-  }
-}
+  };
 
-// Get job status
-const getJobStatus = async (jobId: string) => {
-  try {
-    const { data, error } = await supabase
-      .from('upload_jobs')
-      .select('*')
-      .eq('id', jobId)
-      .single()
-    
-    if (error) throw error
-    return data
-  } catch (error) {
-    console.error('Error getting job status:', error)
-    throw error
-  }
-}
+  // Process a job in the background
+  const processBackgroundJob = async (jobId: string) => {
+    try {
+      // Get the stored job data
+      const storedData = localStorage.getItem(`bg_upload_${jobId}`);
+      if (!storedData) throw new Error("No data found for background job");
+
+      const { transformedData, batchSize, batches, fileName } =
+        JSON.parse(storedData);
+
+      // Update job status
+      await supabase
+        .from("upload_jobs")
+        .update({ status: "processing" })
+        .eq("id", jobId);
+
+      let processedRecords = 0;
+
+      // Process each batch
+      for (let i = 0; i < batches; i++) {
+        const startIdx = i * batchSize;
+        const endIdx = Math.min(startIdx + batchSize, transformedData.length);
+        const batchData = transformedData.slice(startIdx, endIdx);
+
+        try {
+          const { data, error } = await supabase.rpc("bulk_upload_sites", {
+            data: JSON.stringify(batchData),
+          });
+
+          if (error) {
+            console.error("RPC error:", error);
+            throw error;
+          }
+
+          processedRecords += batchData.length;
+
+          // Update job progress
+          await supabase
+            .from("upload_jobs")
+            .update({
+              chunks_received: i + 1,
+              processed_records: processedRecords,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", jobId);
+        } catch (error) {
+          await recordUploadError(
+            jobId,
+            error instanceof Error ? error.message : String(error)
+          );
+          throw error;
+        }
+      }
+
+      // Complete the job
+      await supabase
+        .from("upload_jobs")
+        .update({
+          status: "complete",
+          chunks_received: batches,
+          processed_records: processedRecords,
+          completed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", jobId);
+
+      // Clean up local storage
+      localStorage.removeItem(`bg_upload_${jobId}`);
+
+      return { success: true, processedRecords };
+    } catch (error) {
+      console.error("Error in background processing:", error);
+
+      // Update job status to error
+      await supabase
+        .from("upload_jobs")
+        .update({
+          status: "error",
+          error_message: error instanceof Error ? error.message : String(error),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", jobId);
+
+      throw error;
+    }
+  };
+
+  // Get job status
+  const getJobStatus = async (jobId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("upload_jobs")
+        .select("*")
+        .eq("id", jobId)
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error("Error getting job status:", error);
+      throw error;
+    }
+  };
 
   return {
     processBulkUpload,
@@ -625,6 +657,6 @@ const getJobStatus = async (jobId: string) => {
     progress: computed(() => state.value.progress),
     startAsyncProcessing,
     getJobStatus,
-    cancelUpload
+    cancelUpload,
   };
 };

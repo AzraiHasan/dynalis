@@ -42,4 +42,7 @@ BEGIN
   
   RETURN QUERY SELECT * FROM sites;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Add this comment to expose the function via RPC
+COMMENT ON FUNCTION public.bulk_upload_sites(JSONB) IS 'Bulk upload sites data';
