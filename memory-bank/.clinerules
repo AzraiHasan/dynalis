@@ -1,0 +1,28 @@
+# Cline Rules: Dynalis Project Patterns
+
+## Project Conventions
+1. **File Organization**
+   - Business logic in composables/
+   - Pages follow feature-based naming
+   - Database migrations in supabase/migrations/
+
+2. **State Management**
+   - Use reactive state in composables
+   - Share state via composable return values
+   - Avoid global state when possible
+
+3. **Supabase Integration**
+   - Database access through utils/supabaseService.ts
+   - Type definitions in types/supabase.ts
+   - Schema changes via migrations only
+
+4. **Batch Processing**
+   - Core logic in useBatchUploadService.ts
+   - State tracking in useUploadState.ts
+   - File handling in useFileUpload.ts
+
+## Development Patterns
+- Prefer composition API over options API
+- TypeScript interfaces for complex data
+- Async/await for Supabase operations
+- Modular service architecture
