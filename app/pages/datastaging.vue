@@ -228,16 +228,50 @@
     </div>
 
     <UploadProgressModal
+      v-if="showProcessModal"
       :is-open="uploadState.isUploading.value"
       @update:is-open="uploadState.isUploading.value = $event"
       :progress="uploadState.progress.value"
       :status="uploadState.status.value"
       :status-message="uploadState.statusMessage.value"
       :error="uploadState.error.value || undefined"
-      @close="uploadState.isUploading.value = false"
-      @cancel="cancelUpload"
-      @continue="navigateToDashboard"
-    />
+      @close="() => { uploadState.isUploading.value = false; showProcessModal = false }"
+      @cancel="async () => await cancelUpload()"
+      @continue="async () => await navigateToDashboard()"
+    >
+      <template #footer>
+        <div class="flex justify-end gap-2">
+          <UButton
+            v-if="uploadState.status.value === 'error'"
+            color="neutral"
+            loading-auto
+            @click="uploadState.isUploading.value = false"
+          >
+            Close
+          </UButton>
+          <UButton
+            v-if="
+              uploadState.status.value !== 'complete' &&
+              uploadState.status.value !== 'error'
+            "
+            color="neutral"
+            loading-auto
+            :disabled="uploadState.status.value === 'uploading'"
+            @click="cancelUpload"
+          >
+            Cancel
+          </UButton>
+          <UButton
+            v-if="uploadState.status.value === 'complete'"
+            color="primary"
+            loading-auto
+            @click="navigateToDashboard"
+          >
+            Continue to Dashboard
+          </UButton>
+        </div>
+      </template>
+    </UploadProgressModal>
 
     <!-- Debug Data Display -->
     <!-- <UCard class="mb-4">
@@ -298,7 +332,7 @@ import { parse, isValid, differenceInDays, format } from "date-fns";
 import { useUploadState } from "~/composables/useUploadState";
 import { useSiteService } from "~/utils/supabaseService";
 import { useBatchUploadService } from "~/composables/useBatchUploadService";
-import { useSiteData } from '~/composables/useSiteData'
+import { useSiteData } from "~/composables/useSiteData";
 
 // Router setup
 const router = useRouter();
@@ -336,6 +370,7 @@ const chatContainer = ref<HTMLElement | null>(null);
 const fileName = computed(
   () => storedData.value?.fileName || route.query.fileName || "No file selected"
 );
+const showProcessModal = ref(false)
 const toast = useToast();
 
 // Chat logic
@@ -363,13 +398,14 @@ const showBackgroundOption = computed(() => {
 
 const handleProcessData = async () => {
   try {
+    showProcessModal.value = true;
     const stored = localStorage.getItem("uploadedFileData");
     if (!stored) {
       toast.add({
         title: "No Data",
         description: "Please upload a file first.",
         color: "error",
-        duration: 5000
+        duration: 5000,
       });
       return;
     }
@@ -379,24 +415,28 @@ const handleProcessData = async () => {
       headers: string[];
       fileName: string;
     };
-    
-    if (!data.fileData || !Array.isArray(data.fileData) || data.fileData.length === 0) {
+
+    if (
+      !data.fileData ||
+      !Array.isArray(data.fileData) ||
+      data.fileData.length === 0
+    ) {
       throw new Error("Invalid data structure");
     }
 
     // Start the upload process and show the modal
     uploadState.startUpload();
     uploadState.isUploading.value = true;
-    
+
     // Use the batch upload service
     const batchUploadService = useBatchUploadService();
-    
+
     // Check for interrupted uploads
     uploadState.updateProgress(10, "Checking for previous uploads...");
     const incompleteUploads = await batchUploadService.checkIncompleteUploads(
       data.fileName
     );
-    
+
     let result;
     if (incompleteUploads.length > 0) {
       // Ask user if they want to resume
@@ -407,10 +447,7 @@ const handleProcessData = async () => {
       );
 
       if (resumeConfirmed) {
-        uploadState.updateProgress(
-          20,
-          `Resuming previous upload...`
-        );
+        uploadState.updateProgress(20, `Resuming previous upload...`);
         result = await batchUploadService.resumeUpload(
           incompleteUploads[0].id,
           data.fileData
@@ -420,7 +457,7 @@ const handleProcessData = async () => {
         uploadState.updateProgress(20, "Starting new background process...");
         result = await batchUploadService.startAsyncProcessing(
           data.fileData,
-          data.fileName || 'upload.csv'
+          data.fileName || "upload.csv"
         );
       }
     } else {
@@ -428,30 +465,63 @@ const handleProcessData = async () => {
       uploadState.updateProgress(20, "Starting background processing...");
       result = await batchUploadService.startAsyncProcessing(
         data.fileData,
-        data.fileName || 'upload.csv'
+        data.fileName || "upload.csv"
       );
     }
-    
+
     // Update progress and status
     uploadState.updateProgress(
       100,
       `Processing started. Your data is being prepared.`
     );
-    uploadState.status.value = 'complete';
-    
+    uploadState.status.value = "complete";
+
     // Store the job ID for reference in the dashboard
     localStorage.setItem("background_job_id", result.jobId);
-    
+
     // Clear the uploaded file data as it's now being processed
     localStorage.removeItem("uploadedFileData");
   } catch (error) {
     console.error("Error processing data:", error);
-    uploadState.setError(error instanceof Error ? error : new Error(String(error)));
+    uploadState.setError(
+      error instanceof Error ? error : new Error(String(error))
+    );
   }
 };
 
-const navigateToDashboard = () => {
-  router.push("/dashboard");
+const navigateToDashboard = async (): Promise<void> => {
+  try {
+    // Clear upload-related data before navigation
+    uploadState.isUploading.value = false;
+    uploadState.status.value = "idle";
+
+    // Optional: Save any necessary data to localStorage or state management
+    const jobId = localStorage.getItem("background_job_id");
+
+    // Navigate to dashboard with job ID if available
+    await router.push({
+      path: "/dashboard",
+      query: jobId ? { job_id: jobId } : undefined,
+    });
+
+    // Clear temporary data after successful navigation
+    localStorage.removeItem("uploadedFileData");
+
+    toast.add({
+      title: "Success",
+      description: "Upload completed. Redirecting to dashboard.",
+      color: "success",
+      duration: 5000,
+    });
+  } catch (error) {
+    console.error("Error navigating to dashboard:", error);
+    toast.add({
+      title: "Error",
+      description: "Failed to navigate to dashboard. Please try again.",
+      color: "error",
+      duration: 5000,
+    });
+  }
 };
 
 const handleSend = async () => {
@@ -541,13 +611,27 @@ const formatDate = (date: Date): string => {
   return format(date, "dd/MM/yyyy");
 };
 
-const cancelUpload = () => {
-  // Only allow cancellation in certain states
-  if (
-    uploadState.status.value === "preparing" ||
-    uploadState.status.value === "processing"
-  ) {
+const cancelUpload = async (): Promise<void> => {
+  try {
+    const batchUploadService = useBatchUploadService();
+    await batchUploadService.cancelUpload();
+
+    // Clear any stored data
+    localStorage.removeItem("uploadedFileData");
+    localStorage.removeItem("background_job_id");
+
+    // Reset the upload state
     uploadState.isUploading.value = false;
+    uploadState.status.value = "idle";
+    uploadState.progress.value = 0;
+  } catch (error) {
+    console.error("Error cancelling upload:", error);
+    toast.add({
+      title: "Error",
+      description: "Failed to cancel upload. Please try again.",
+      color: "error",
+      duration: 5000,
+    });
   }
 };
 
@@ -670,14 +754,22 @@ const handleBack = () => {
 // Initialize data on mount
 onMounted(() => {
   try {
+    uploadState.isUploading.value = false;
+    uploadState.progress.value = 0;
+    uploadState.status.value = "idle";
+    uploadState.statusMessage.value = "";
+    uploadState.error.value = null;
     const stored = localStorage.getItem("uploadedFileData");
     console.log("Raw data from localStorage:", stored);
-    
+
     if (stored) {
       storedData.value = JSON.parse(stored);
       console.log("Parsed data:", storedData.value);
-      
-      if (Array.isArray(storedData.value?.fileData) && storedData.value.fileData.length > 0) {
+
+      if (
+        Array.isArray(storedData.value?.fileData) &&
+        storedData.value.fileData.length > 0
+      ) {
         console.log("Sample row:", storedData.value.fileData[0]);
         // Check if keys exist
         const firstRow = storedData.value.fileData[0];
