@@ -493,15 +493,21 @@ const navigateToDashboard = async (): Promise<void> => {
   try {
     // Clear upload-related data before navigation
     uploadState.isUploading.value = false;
-    uploadState.status.value = "idle";
+    uploadState.status.value = 'idle';
 
-    // Optional: Save any necessary data to localStorage or state management
+    // Get job ID
     const jobId = localStorage.getItem("background_job_id");
-
+    
+    // Set a flag to indicate we're coming from processing
+    localStorage.setItem("dashboard_building", "true");
+    
     // Navigate to dashboard with job ID if available
     await router.push({
       path: "/dashboard",
-      query: jobId ? { job_id: jobId } : undefined,
+      query: { 
+        job_id: jobId || undefined,
+        building: "true" 
+      },
     });
 
     // Clear temporary data after successful navigation
