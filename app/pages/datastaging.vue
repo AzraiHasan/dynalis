@@ -411,9 +411,6 @@ const handleProcessData = async () => {
     // Store the job ID for reference in the dashboard
     localStorage.setItem("background_job_id", result.jobId);
     console.log("Job ID stored in localStorage:", result.jobId);
-
-    // Clear the uploaded file data as it's now being processed
-    localStorage.removeItem("uploadedFileData");
     
     // Auto navigate to dashboard
     console.log("Processing complete, navigating to dashboard");
