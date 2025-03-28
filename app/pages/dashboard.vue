@@ -7,7 +7,6 @@
         color="primary"
         variant="soft"
         @click="refreshDashboard"
-        :loading="showDashboardModal"
       >
         Refresh Data
       </UButton>
@@ -203,28 +202,33 @@
         @click="handleStaging"
       />
     </div>
-    <UploadProgressModal
-  v-if="showDashboardModal"
-  :is-open="uploadState.isUploading.value"
-  @update:is-open="uploadState.isUploading.value = $event"
-  :progress="uploadState.progress.value"
-  :status="uploadState.status.value"
-  :status-message="uploadState.statusMessage.value"
-  :error="uploadState.error.value || undefined"
-  @close="() => { uploadState.isUploading.value = false; showDashboardModal = false }"
-  @continue="() => showDashboardModal = false"
->
-  <template #header>
-    <div class="flex items-center gap-2">
-      <Icon name="i-lucide-bar-chart-2" class="text-gray-600" />
-      <h3 class="text-lg font-semibold">Building Dashboard</h3>
-    </div>
-  </template>
-  
-  <template #description>
-    <p>Please wait while we build your dashboard visualizations.</p>
-  </template>
-</UploadProgressModal>
+    <!-- <UploadProgressModal
+      v-if="showDashboardModal"
+      :is-open="uploadState.isUploading.value"
+      @update:is-open="uploadState.isUploading.value = $event"
+      :progress="uploadState.progress.value"
+      :status="uploadState.status.value"
+      :status-message="uploadState.statusMessage.value"
+      :error="uploadState.error.value || undefined"
+      @close="
+        () => {
+          uploadState.isUploading.value = false;
+          showDashboardModal = false;
+        }
+      "
+      @continue="() => (showDashboardModal = false)"
+    >
+      <template #header>
+        <div class="flex items-center gap-2">
+          <Icon name="i-lucide-bar-chart-2" class="text-gray-600" />
+          <h3 class="text-lg font-semibold">Building Dashboard</h3>
+        </div>
+      </template>
+
+      <template #description>
+        <p>Please wait while we build your dashboard visualizations.</p>
+      </template>
+    </UploadProgressModal> -->
   </div>
 </template>
 
@@ -314,8 +318,8 @@ interface DoughnutChartData {
 }
 
 const route = useRoute();
-const showDashboardModal = ref(false);
-const uploadState = useUploadState();
+/* const showDashboardModal = ref(false);
+const uploadState = useUploadState(); */
 
 const isLoading = ref(true);
 const error = ref<Error | null>(null);
@@ -328,54 +332,167 @@ const shouldAutoBuild = computed(() => {
 
 onMounted(async () => {
   try {
-    // Initialize loading state
+    console.log("Initializing dashboard...");
     isLoading.value = true;
-    showDashboardModal.value = true;
-    uploadState.startUpload();
-    uploadState.updateProgress(0, "Building dashboard...");
+    
+    // Check if we're coming from a job
+    const jobId = route.query.job_id;
+    if (jobId) {
+      console.log(`Initializing from job: ${jobId}`);
+    }
+    
+    // Fetch data from Supabase
+    console.log("Fetching initial data from database...");
+    const supabaseData = await siteData.fetchData();
+    console.log(`Data fetched successfully. ${supabaseData.length} rows retrieved.`);
 
-    // Step 1: Fetch data from Supabase
-    uploadState.updateProgress(10, "Fetching data from database...");
-    const data = await siteData.fetchData();
+    console.log("Transforming data...");
+    // Transform Supabase data to match expected format
+    fileData.value = supabaseData.map((item) => ({
+      "SITE ID": item.site_id,
+      "EXP DATE": item.exp_date,
+      "TOTAL RENTAL (RM)": item.total_rental,
+      "TOTAL PAYMENT TO PAY (RM)": item.total_payment_to_pay,
+      "DEPOSIT (RM)": item.deposit,
+    }));
 
-    // Step 2: Transform data
-    uploadState.updateProgress(30, "Transforming data...");
-    fileData.value = data.map(
-      (item: {
-        site_id: string;
-        exp_date: string | null;
-        total_rental: number;
-        total_payment_to_pay: number;
-        deposit: number;
-      }) => ({
-        "SITE ID": item.site_id,
-        "EXP DATE": item.exp_date,
-        "TOTAL RENTAL (RM)": item.total_rental,
-        "TOTAL PAYMENT TO PAY (RM)": item.total_payment_to_pay,
-        "DEPOSIT (RM)": item.deposit,
-      })
+    console.log("Calculating metrics...");
+    // Calculate metrics 
+    const sitesData = fileData.value.filter(
+      (row) => row["SITE ID"] && row["SITE ID"].toString().toUpperCase() !== "NO ID"
     );
+    totalSites.value = sitesData.length;
 
-    // Step 3: Calculate metrics
-    uploadState.updateProgress(50, "Calculating metrics...");
+    let totalRentalValue = 0;
+    let totalDuePayment = 0;
+    let expiredCount = 0;
+    let totalDepositValue = 0;
 
-    // [Keep the existing metrics calculation code]
+    fileData.value.forEach((row) => {
+      totalRentalValue += parseCurrency(row["TOTAL RENTAL (RM)"]);
+      totalDuePayment += parseCurrency(row["TOTAL PAYMENT TO PAY (RM)"]);
+      totalDepositValue += parseCurrency(row["DEPOSIT (RM)"]);
 
-    // Step 4: Generate visualizations
-    uploadState.updateProgress(70, "Generating visualizations...");
+      const daysUntil = getDaysUntilExpiration(row["EXP DATE"]?.toString() || "");
+      if (daysUntil === null) {
+        invalidDates.value++;
+      } else if (daysUntil <= 0) {
+        expiredCount++;
+      }
+    });
 
-    // [Keep existing chart generation code]
+    totalRental.value = (totalRentalValue / 1000000).toFixed(2);
+    duePayment.value = (totalDuePayment / 1000000).toFixed(2);
+    expiredContracts.value = expiredCount;
+    totalDeposit.value = (totalDepositValue / 1000000).toFixed(2);
 
-    // Complete the loading process
-    uploadState.updateProgress(100, "Dashboard ready!");
-    uploadState.finishUpload();
+    console.log("Generating visualizations...");
+    // Generate all chart data
+    const rentalRanges = calculateRentalRanges(fileData.value);
+    rentalChartData.value = {
+      labels: Object.keys(rentalRanges),
+      datasets: [
+        {
+          label: "Number of Sites",
+          data: Object.values(rentalRanges),
+          backgroundColor: [
+            "rgba(16, 185, 129, 0.7)",
+            "rgba(52, 211, 153, 0.7)",
+            "rgba(20, 184, 166, 0.7)",
+            "rgba(6, 182, 212, 0.7)",
+            "rgba(14, 165, 233, 0.7)",
+          ],
+          borderColor: [
+            "rgb(5, 150, 105)",
+            "rgb(5, 150, 105)",
+            "rgb(5, 150, 105)",
+            "rgb(5, 150, 105)",
+            "rgb(5, 150, 105)",
+          ],
+          borderWidth: 1,
+        },
+      ],
+    };
+
+    // Timeline data
+    const { months, counts } = calculateExpirationTimeline(fileData.value);
+    expirationTimelineData.value = {
+      labels: months,
+      datasets: [
+        {
+          label: "Contracts Expiring",
+          data: counts,
+          borderColor: "rgb(59, 130, 246)",
+          backgroundColor: "rgba(59, 130, 246, 0.2)",
+          tension: 0.1,
+          fill: true,
+        },
+      ],
+    };
+
+    // Risk data
+    const riskPoints = calculateRenewalRisk(fileData.value);
+    renewalRiskData.value = {
+      datasets: [
+        {
+          label: "Sites",
+          data: riskPoints,
+          backgroundColor: (context) => {
+            const value = context.raw.x;
+            if (value <= 0) return "rgba(239, 68, 68, 0.7)";
+            if (value <= 30) return "rgba(245, 158, 11, 0.7)";
+            if (value <= 60) return "rgba(252, 211, 77, 0.7)";
+            if (value <= 90) return "rgba(59, 130, 246, 0.7)";
+            return "rgba(107, 114, 128, 0.7)";
+          },
+          pointRadius: 5,
+          pointHoverRadius: 7,
+        },
+      ],
+    };
+
+    // Payment flow data
+    const paymentFlow = calculatePaymentFlow(fileData.value);
+    paymentFlowData.value = {
+      labels: paymentFlow.labels,
+      datasets: [
+        {
+          label: "Amount (RM Millions)",
+          data: paymentFlow.values,
+          backgroundColor: [
+            "rgba(16, 185, 129, 0.7)",
+            "rgba(239, 68, 68, 0.7)",
+            "rgba(59, 130, 246, 0.7)",
+          ],
+          borderColor: [
+            "rgb(5, 150, 105)",
+            "rgb(220, 38, 38)",
+            "rgb(37, 99, 235)",
+          ],
+          borderWidth: 1,
+        },
+      ],
+    };
+
+    // Clean up route query params if needed
+    if (route.query.building === "true") {
+      router.replace({
+        path: "/dashboard",
+        query: {
+          ...(route.query.job_id ? { job_id: route.query.job_id } : {}),
+        },
+      });
+    }
+    
+    // Clean up localStorage items
+    localStorage.removeItem("dashboard_building");
+    
+    console.log("Dashboard initialization complete");
   } catch (err) {
-    console.error("Error building dashboard:", err);
+    console.error("Error initializing dashboard:", err);
     error.value = err instanceof Error ? err : new Error(String(err));
-    uploadState.setError(error.value);
   } finally {
     isLoading.value = false;
-    // Note: Modal will be closed after animation completes via the finishUpload method
   }
 });
 
@@ -642,64 +759,39 @@ const cleanUpBuildState = () => {
   }
 };
 
-onMounted(async () => {
-  // Auto-show modal if coming from processing page
-  if (shouldAutoBuild.value) {
-    showDashboardModal.value = true;
-    uploadState.startUpload();
-    uploadState.updateProgress(0, "Building dashboard...");
-  }
 
+
+const refreshDashboard = async () => {
   try {
-    isLoading.value = true;
+    console.log("Starting dashboard refresh...");
+    
+    // Clear previous data
+    fileData.value = [];
+    totalSites.value = 0;
+    invalidDates.value = 0;
 
-    // Only show progress if modal is visible
-    if (showDashboardModal.value) {
-      uploadState.updateProgress(10, "Fetching data from database...");
-    }
+    // Force refresh from database
+    console.log("Fetching data from database...");
+    await siteData.fetchData(true);
 
-    // Fetch data from Supabase
+    // Re-run the same data loading
     const supabaseData = await siteData.fetchData();
+    console.log("Data fetched successfully. Rows:", supabaseData.length);
 
-    if (showDashboardModal.value) {
-      uploadState.updateProgress(30, "Transforming data...");
-    }
+    console.log("Transforming data...");
+    // Transform and process data
+    fileData.value = supabaseData.map((item) => ({
+      "SITE ID": item.site_id,
+      "EXP DATE": item.exp_date,
+      "TOTAL RENTAL (RM)": item.total_rental,
+      "TOTAL PAYMENT TO PAY (RM)": item.total_payment_to_pay,
+      "DEPOSIT (RM)": item.deposit,
+    }));
 
-    if (showDashboardModal.value) {
-      uploadState.updateProgress(100, "Dashboard ready!");
-      uploadState.finishUpload();
-
-      // Clean up after a brief delay to allow animation to complete
-      setTimeout(() => {
-        cleanUpBuildState();
-      }, 1500);
-    }
-
-    // Transform Supabase data to match expected format
-    fileData.value = supabaseData.map(
-      (item: {
-        site_id: string;
-        exp_date: string | null;
-        total_rental: number;
-        total_payment_to_pay: number;
-        deposit: number;
-      }) => ({
-        "SITE ID": item.site_id,
-        "EXP DATE": item.exp_date,
-        "TOTAL RENTAL (RM)": item.total_rental,
-        "TOTAL PAYMENT TO PAY (RM)": item.total_payment_to_pay,
-        "DEPOSIT (RM)": item.deposit,
-      })
-    );
-
-    // Set summary statistics
-    if (showDashboardModal.value) {
-      uploadState.updateProgress(50, "Calculating metrics...");
-    }
-
+    console.log("Calculating metrics...");
+    // Recalculate metrics
     const sitesData = fileData.value.filter(
-      (row) =>
-        row["SITE ID"] && row["SITE ID"].toString().toUpperCase() !== "NO ID"
+      (row) => row["SITE ID"] && row["SITE ID"].toString().toUpperCase() !== "NO ID"
     );
     totalSites.value = sitesData.length;
 
@@ -713,9 +805,7 @@ onMounted(async () => {
       totalDuePayment += parseCurrency(row["TOTAL PAYMENT TO PAY (RM)"]);
       totalDepositValue += parseCurrency(row["DEPOSIT (RM)"]);
 
-      const daysUntil = getDaysUntilExpiration(
-        row["EXP DATE"]?.toString() || ""
-      );
+      const daysUntil = getDaysUntilExpiration(row["EXP DATE"]?.toString() || "");
       if (daysUntil === null) {
         invalidDates.value++;
       } else if (daysUntil <= 0) {
@@ -728,12 +818,8 @@ onMounted(async () => {
     expiredContracts.value = expiredCount;
     totalDeposit.value = (totalDepositValue / 1000000).toFixed(2);
 
-    // Generate chart data
-    if (showDashboardModal.value) {
-      uploadState.updateProgress(70, "Generating visualizations...");
-    }
-
-    // Prepare rental distribution data
+    console.log("Updating visualizations...");
+    // Rebuild all chart data (calling the same functions that are used on initial load)
     const rentalRanges = calculateRentalRanges(fileData.value);
     rentalChartData.value = {
       labels: Object.keys(rentalRanges),
@@ -760,26 +846,7 @@ onMounted(async () => {
       ],
     };
 
-    // Prepare expiration data
-    const expirationStatus = calculateExpirationStatus(fileData.value);
-    expirationChartData.value = {
-      labels: Object.keys(expirationStatus),
-      datasets: [
-        {
-          data: Object.values(expirationStatus),
-          backgroundColor: [
-            "rgb(245, 158, 11)", // Orange for Within 30 Days
-            "rgb(252, 211, 77)", // Yellow for Within 60 Days
-            "rgb(59, 130, 246)", // Blue for Within 90 Days
-            "rgb(16, 185, 129)", // Green for Valid > 90 Days
-          ],
-          hoverOffset: 4,
-          borderWidth: 0,
-        },
-      ],
-    };
-
-    // Prepare expiration timeline data
+    // Update other charts similarly (timeline, risk data, etc.)
     const { months, counts } = calculateExpirationTimeline(fileData.value);
     expirationTimelineData.value = {
       labels: months,
@@ -795,14 +862,13 @@ onMounted(async () => {
       ],
     };
 
-    // Prepare renewal risk data
     const riskPoints = calculateRenewalRisk(fileData.value);
     renewalRiskData.value = {
       datasets: [
         {
           label: "Sites",
           data: riskPoints,
-          backgroundColor: (context: { raw: { x: number } }) => {
+          backgroundColor: (context) => {
             const value = context.raw.x;
             if (value <= 0) return "rgba(239, 68, 68, 0.7)";
             if (value <= 30) return "rgba(245, 158, 11, 0.7)";
@@ -816,7 +882,6 @@ onMounted(async () => {
       ],
     };
 
-    // Prepare payment flow data
     const paymentFlow = calculatePaymentFlow(fileData.value);
     paymentFlowData.value = {
       labels: paymentFlow.labels,
@@ -826,8 +891,8 @@ onMounted(async () => {
           data: paymentFlow.values,
           backgroundColor: [
             "rgba(16, 185, 129, 0.7)", // Emerald
-            "rgba(239, 68, 68, 0.7)", // Red
-            "rgba(59, 130, 246, 0.7)", // Blue
+            "rgba(239, 68, 68, 0.7)",  // Red
+            "rgba(59, 130, 246, 0.7)",  // Blue
           ],
           borderColor: [
             "rgb(5, 150, 105)",
@@ -839,60 +904,11 @@ onMounted(async () => {
       ],
     };
 
-    // Complete the loading process
-    if (showDashboardModal.value) {
-      uploadState.updateProgress(100, "Dashboard ready!");
-      uploadState.finishUpload();
-    }
-  } catch (err) {
-    console.error("Error building dashboard:", err);
-    error.value = err instanceof Error ? err : new Error(String(err));
-    if (showDashboardModal.value) {
-      uploadState.setError(error.value);
-    }
-  } finally {
-    isLoading.value = false;
-    // Modal will be closed after animation completes via the finishUpload method
-  }
-});
-
-const refreshDashboard = async () => {
-  try {
-    showDashboardModal.value = true;
-    uploadState.startUpload();
-    uploadState.updateProgress(10, "Refreshing dashboard data...");
-
-    // Clear previous data
-    fileData.value = [];
-    totalSites.value = 0;
-    invalidDates.value = 0;
-
-    // Force refresh from database
-    await siteData.fetchData(true);
-
-    // Re-run the same data loading as in onMounted
-    const supabaseData = await siteData.fetchData();
-
-    uploadState.updateProgress(40, "Updating visualizations...");
-
-    // Transform and process data (simplified - would need full processing code)
-    fileData.value = supabaseData.map((item) => ({
-      "SITE ID": item.site_id,
-      "EXP DATE": item.exp_date,
-      "TOTAL RENTAL (RM)": item.total_rental,
-      "TOTAL PAYMENT TO PAY (RM)": item.total_payment_to_pay,
-      "DEPOSIT (RM)": item.deposit,
-    }));
-
-    // Recalculate all metrics and charts
-    // ... (similar to your onMounted code)
-
-    uploadState.updateProgress(100, "Dashboard refreshed!");
-    uploadState.finishUpload();
+    console.log("Dashboard refresh completed successfully");
+    
   } catch (err) {
     console.error("Error refreshing dashboard:", err);
     error.value = err instanceof Error ? err : new Error(String(err));
-    uploadState.setError(error.value);
   }
 };
 

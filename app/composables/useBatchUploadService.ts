@@ -26,6 +26,16 @@ interface BatchUploadState {
 // Define the shape of site data to match our database schema
 type SiteInsert = Database["public"]["Tables"]["sites"]["Insert"];
 
+interface JobStatusMap {
+  [jobId: string]:
+    | "idle"
+    | "queued"
+    | "processing"
+    | "complete"
+    | "error"
+    | "cancelled";
+}
+
 const cancelUpload = async (): Promise<void> => {
   const supabase = useSupabaseClient<Database>();
   const toast = useToast();
@@ -134,6 +144,8 @@ export const useBatchUploadService = () => {
   const isUploading = computed(() =>
     ["preparing", "uploading", "processing"].includes(state.value.status)
   );
+
+  const jobStatus = ref<JobStatusMap>({});
 
   // Create a new upload job in the database
   const createUploadJob = async (
@@ -547,9 +559,13 @@ export const useBatchUploadService = () => {
   // Process a job in the background
   const processBackgroundJob = async (jobId: string) => {
     try {
+      jobStatus.value[jobId] = "processing";
       // Get the stored job data
       const storedData = localStorage.getItem(`bg_upload_${jobId}`);
-      if (!storedData) throw new Error("No data found for background job");
+      if (!storedData) {
+        jobStatus.value[jobId] = "error";
+        throw new Error("No data found for background job");
+      }
 
       const { transformedData, batchSize, batches, fileName } =
         JSON.parse(storedData);
@@ -604,6 +620,8 @@ export const useBatchUploadService = () => {
         }
       }
 
+      jobStatus.value[jobId] = "complete";
+
       // Complete the job
       await supabase
         .from("upload_jobs")
@@ -618,10 +636,11 @@ export const useBatchUploadService = () => {
 
       // Clean up local storage
       localStorage.removeItem(`bg_upload_${jobId}`);
-
       return { success: true, processedRecords };
     } catch (error) {
       console.error("Error in background processing:", error);
+
+      jobStatus.value[jobId] = 'error';
 
       // Update job status to error
       await supabase
@@ -664,5 +683,6 @@ export const useBatchUploadService = () => {
     startAsyncProcessing,
     getJobStatus,
     cancelUpload,
+    jobStatus,
   };
 };

@@ -2,52 +2,58 @@
 
 <script setup lang="ts">
 definePageMeta({
-  ssr: false
-})
+  ssr: false,
+});
 
-import * as z from 'zod'
-import type { FormSubmitEvent } from '@nuxt/ui'
+import * as z from "zod";
+import type { FormSubmitEvent } from "@nuxt/ui";
 
-const router = useRouter()
+const router = useRouter();
 const schema = z.object({
-  email: z.string().email('Invalid email'),
-  password: z.string().min(8, 'Must be at least 8 characters')
-})
+  email: z.string().email("Invalid email"),
+  password: z.string().min(8, "Must be at least 8 characters"),
+});
 
-type Schema = z.output<typeof schema>
+type Schema = z.output<typeof schema>;
 
 const state = reactive<Partial<Schema>>({
-  email: '',
-  password: ''
-})
+  email: "",
+  password: "",
+});
 
-const toast = useToast()
+const toast = useToast();
 async function onSubmit(event: FormSubmitEvent<Schema>) {
-  toast.add({ title: 'Success', description: 'The form has been submitted.', color: 'success' })
-  console.log(event.data)
-  
+  toast.add({
+    title: "Success",
+    description: "The form has been submitted.",
+    color: "success",
+  });
+  console.log(event.data);
+
   // Add a small delay to show the toast before redirecting
   setTimeout(() => {
-    router.push('/dataupload')
-  }, 1000)
+    router.push("/dataupload");
+  }, 1000);
 }
 </script>
 
 <template>
-<ClientOnly>
-  <UForm :schema="schema" :state="state" class="space-y-4" @submit="onSubmit">
-    <UFormField label="Email" name="email">
-      <UInput v-model="state.email" />
-    </UFormField>
+  <ClientOnly>
+      <UForm
+        :schema="schema"
+        :state="state"
+        class="space-y-4"
+        @submit="onSubmit"
+      >
+        <UFormField label="Email" name="email">
+          <UInput v-model="state.email" />
+        </UFormField>
 
-    <UFormField label="Password" name="password">
-      <UInput v-model="state.password" type="password" />
-    </UFormField>
+        <UFormField label="Password" name="password">
+          <UInput v-model="state.password" type="password" />
+        </UFormField>
 
-    <UButton type="submit">
-      Submit
-    </UButton>
-  </UForm>
-</ClientOnly>
+        <UButton type="submit"> Submit </UButton>
+      </UForm>
+  </ClientOnly>
 </template>
-
