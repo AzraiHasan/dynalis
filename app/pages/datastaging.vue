@@ -227,85 +227,6 @@
       </UCard>
     </div>
 
-    <UploadProgressModal
-      v-if="showProcessModal"
-      :is-open="uploadState.isUploading.value"
-      @update:is-open="uploadState.isUploading.value = $event"
-      :progress="uploadState.progress.value"
-      :status="uploadState.status.value"
-      :status-message="uploadState.statusMessage.value"
-      :error="uploadState.error.value || undefined"
-      @close="() => { uploadState.isUploading.value = false; showProcessModal = false }"
-      @cancel="async () => await cancelUpload()"
-      @continue="async () => await navigateToDashboard()"
-    >
-      <template #footer>
-        <div class="flex justify-end gap-2">
-          <UButton
-            v-if="uploadState.status.value === 'error'"
-            color="neutral"
-            loading-auto
-            @click="uploadState.isUploading.value = false"
-          >
-            Close
-          </UButton>
-          <UButton
-            v-if="
-              uploadState.status.value !== 'complete' &&
-              uploadState.status.value !== 'error'
-            "
-            color="neutral"
-            loading-auto
-            :disabled="uploadState.status.value === 'uploading'"
-            @click="cancelUpload"
-          >
-            Cancel
-          </UButton>
-          <UButton
-            v-if="uploadState.status.value === 'complete'"
-            color="primary"
-            loading-auto
-            @click="navigateToDashboard"
-          >
-            Continue to Dashboard
-          </UButton>
-        </div>
-      </template>
-    </UploadProgressModal>
-
-    <!-- Debug Data Display -->
-    <!-- <UCard class="mb-4">
-      <template #header>
-        <div class="flex items-center justify-between">
-          <h2 class="text-lg font-semibold">Data Preview</h2>
-          <UButton
-            v-if="storedData"
-            size="sm"
-            icon="i-lucide-clipboard"
-            @click="copyToClipboard"
-          >
-            Copy JSON
-          </UButton>
-        </div>
-      </template>
-      
-      <div v-if="storedData" class="space-y-4"> -->
-    <!-- Summary -->
-    <!-- <div class="text-sm text-gray-600">
-          <p>Total Rows: {{ storedData.fileData.length }}</p>
-          <p>Headers: {{ storedData.headers.join(', ') }}</p>
-        </div> -->
-
-    <!-- Data Preview -->
-    <!-- <div class="overflow-auto max-h-96">
-          <pre class="text-xs bg-gray-50 p-4 rounded">{{ formattedData }}</pre>
-        </div>
-      </div>
-      <div v-else class="text-gray-500 italic">
-        No data available
-      </div>
-    </UCard> -->
-
     <!-- Navigation Buttons -->
     <div class="flex justify-between mt-6">
       <UButton
@@ -319,6 +240,7 @@
           icon="i-lucide-cpu"
           color="primary"
           @click="handleProcessData"
+          :loading="uploadState.isUploading.value"
         />
       </div>
     </div>
@@ -370,7 +292,6 @@ const chatContainer = ref<HTMLElement | null>(null);
 const fileName = computed(
   () => storedData.value?.fileName || route.query.fileName || "No file selected"
 );
-const showProcessModal = ref(false)
 const toast = useToast();
 
 // Chat logic
@@ -398,9 +319,9 @@ const showBackgroundOption = computed(() => {
 
 const handleProcessData = async () => {
   try {
-    showProcessModal.value = true;
     const stored = localStorage.getItem("uploadedFileData");
     if (!stored) {
+      console.error("No data available for processing");
       toast.add({
         title: "No Data",
         description: "Please upload a file first.",
@@ -421,17 +342,22 @@ const handleProcessData = async () => {
       !Array.isArray(data.fileData) ||
       data.fileData.length === 0
     ) {
+      console.error("Invalid data structure:", data);
       throw new Error("Invalid data structure");
     }
 
-    // Start the upload process and show the modal
+    console.log(`Starting processing of ${data.fileData.length} records`);
+    
+    // Start the upload process
     uploadState.startUpload();
     uploadState.isUploading.value = true;
+    console.log("Upload state initialized, status:", uploadState.status.value);
 
     // Use the batch upload service
     const batchUploadService = useBatchUploadService();
 
     // Check for interrupted uploads
+    console.log("Checking for previous uploads...");
     uploadState.updateProgress(10, "Checking for previous uploads...");
     const incompleteUploads = await batchUploadService.checkIncompleteUploads(
       data.fileName
@@ -440,6 +366,7 @@ const handleProcessData = async () => {
     let result;
     if (incompleteUploads.length > 0) {
       // Ask user if they want to resume
+      console.log("Found incomplete uploads:", incompleteUploads);
       const resumeConfirmed = window.confirm(
         `Found an interrupted upload from ${new Date(
           incompleteUploads[0].created_at
@@ -447,6 +374,7 @@ const handleProcessData = async () => {
       );
 
       if (resumeConfirmed) {
+        console.log("Resuming previous upload:", incompleteUploads[0].id);
         uploadState.updateProgress(20, `Resuming previous upload...`);
         result = await batchUploadService.resumeUpload(
           incompleteUploads[0].id,
@@ -454,6 +382,7 @@ const handleProcessData = async () => {
         );
       } else {
         // Start fresh background upload
+        console.log("Starting new background process (user declined resume)");
         uploadState.updateProgress(20, "Starting new background process...");
         result = await batchUploadService.startAsyncProcessing(
           data.fileData,
@@ -462,6 +391,7 @@ const handleProcessData = async () => {
       }
     } else {
       // No previous upload, start fresh background process
+      console.log("No previous uploads found, starting new process");
       uploadState.updateProgress(20, "Starting background processing...");
       result = await batchUploadService.startAsyncProcessing(
         data.fileData,
@@ -470,38 +400,59 @@ const handleProcessData = async () => {
     }
 
     // Update progress and status
+    console.log("Processing started with job ID:", result.jobId);
     uploadState.updateProgress(
       100,
       `Processing started. Your data is being prepared.`
     );
     uploadState.status.value = "complete";
+    console.log("Upload state updated to complete");
 
     // Store the job ID for reference in the dashboard
     localStorage.setItem("background_job_id", result.jobId);
+    console.log("Job ID stored in localStorage:", result.jobId);
 
     // Clear the uploaded file data as it's now being processed
     localStorage.removeItem("uploadedFileData");
+    
+    // Auto navigate to dashboard
+    console.log("Processing complete, navigating to dashboard");
+    await navigateToDashboard();
+    
   } catch (error) {
     console.error("Error processing data:", error);
     uploadState.setError(
       error instanceof Error ? error : new Error(String(error))
     );
+    toast.add({
+      title: "Error",
+      description: error instanceof Error ? error.message : String(error),
+      color: "error",
+      duration: 5000,
+    });
   }
 };
 
 const navigateToDashboard = async (): Promise<void> => {
   try {
+    console.log("Navigating to dashboard");
     // Clear upload-related data before navigation
     uploadState.isUploading.value = false;
     uploadState.status.value = 'idle';
 
     // Get job ID
     const jobId = localStorage.getItem("background_job_id");
+    console.log("Retrieved job ID for dashboard:", jobId);
     
     // Set a flag to indicate we're coming from processing
     localStorage.setItem("dashboard_building", "true");
     
     // Navigate to dashboard with job ID if available
+    console.log("Redirecting to dashboard with parameters:", { 
+      job_id: jobId || undefined,
+      building: "true" 
+    });
+    
     await router.push({
       path: "/dashboard",
       query: { 
@@ -509,9 +460,6 @@ const navigateToDashboard = async (): Promise<void> => {
         building: "true" 
       },
     });
-
-    // Clear temporary data after successful navigation
-    localStorage.removeItem("uploadedFileData");
 
     toast.add({
       title: "Success",
@@ -619,6 +567,7 @@ const formatDate = (date: Date): string => {
 
 const cancelUpload = async (): Promise<void> => {
   try {
+    console.log("Cancelling upload");
     const batchUploadService = useBatchUploadService();
     await batchUploadService.cancelUpload();
 
@@ -630,6 +579,7 @@ const cancelUpload = async (): Promise<void> => {
     uploadState.isUploading.value = false;
     uploadState.status.value = "idle";
     uploadState.progress.value = 0;
+    console.log("Upload cancelled successfully");
   } catch (error) {
     console.error("Error cancelling upload:", error);
     toast.add({
@@ -760,33 +710,28 @@ const handleBack = () => {
 // Initialize data on mount
 onMounted(() => {
   try {
+    console.log("Initializing data staging");
     uploadState.isUploading.value = false;
     uploadState.progress.value = 0;
     uploadState.status.value = "idle";
     uploadState.statusMessage.value = "";
     uploadState.error.value = null;
     const stored = localStorage.getItem("uploadedFileData");
-    console.log("Raw data from localStorage:", stored);
+    console.log("Raw data from localStorage:", stored ? "Available" : "Not available");
 
     if (stored) {
       storedData.value = JSON.parse(stored);
-      console.log("Parsed data:", storedData.value);
+      console.log("Data parsed successfully, rows:", storedData.value?.fileData?.length);
 
       if (
         Array.isArray(storedData.value?.fileData) &&
         storedData.value.fileData.length > 0
       ) {
-        console.log("Sample row:", storedData.value.fileData[0]);
-        // Check if keys exist
-        const firstRow = storedData.value.fileData[0];
-        if (firstRow) {
-          console.log("Has SITE ID?", "SITE ID" in firstRow);
-          console.log("Has TOTAL RENTAL?", "TOTAL RENTAL (RM)" in firstRow);
-        }
+        console.log("Sample row keys:", Object.keys(storedData.value.fileData[0] || {}));
       }
     }
   } catch (error) {
-    console.error("Error:", error);
+    console.error("Error initializing data staging:", error);
   }
 });
 
