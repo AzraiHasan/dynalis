@@ -60,7 +60,7 @@
     </div>
 
     <!-- Charts Grid -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
       <!-- Rental Distribution -->
       <UCard>
         <template #header>
