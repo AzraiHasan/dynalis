@@ -236,10 +236,10 @@
       />
       <div class="space-x-2">
         <UButton
-          label="Process Data"
+          label="Commit Data"
           icon="i-lucide-cpu"
           color="primary"
-          @click="handleProcessData"
+          @click="handleCommitData"
           :loading="uploadState.isUploading.value"
         />
       </div>
@@ -317,7 +317,7 @@ const showBackgroundOption = computed(() => {
   return storedData.value.fileData.length > 500;
 });
 
-const handleProcessData = async () => {
+const handleCommitData = async () => {
   try {
     const stored = localStorage.getItem("uploadedFileData");
     if (!stored) {
