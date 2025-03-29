@@ -157,16 +157,18 @@ const fileEstimate = ref("");
 const router = useRouter();
 
 // Step configurations for UStepper
-const items = ref<StepperItem[]>([
+const items = computed<StepperItem[]>(() => [
   {
     title: 'Upload File',
     description: 'Select and upload your data file',
-    icon: 'i-lucide-upload-cloud'
+    icon: 'i-lucide-upload-cloud',
+    color: 'primary'
   },
   {
     title: 'Validate Data',
     description: 'Review and check data quality',
-    icon: 'i-lucide-check-circle'
+    icon: 'i-lucide-check-circle',
+    color: currentStep.value === 1 ? 'neutral' : 'primary'
   }
 ]);
 

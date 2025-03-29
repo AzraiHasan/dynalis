@@ -23,6 +23,10 @@ const state = reactive<Partial<Schema>>({
 const toast = useToast();
 const isLoading = ref(false);
 
+if (typeof window !== 'undefined') {
+  localStorage.removeItem("uploadedFileData");
+}
+
 async function onSubmit(event: FormSubmitEvent<Schema>) {
   isLoading.value = true;
 
@@ -40,7 +44,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
     // Add a small delay to show the toast before redirecting
     setTimeout(() => {
       router.push("/dataupload");
-    }, 1000);
+    }, 500);
   } finally {
     isLoading.value = false;
   }
@@ -60,7 +64,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
             />
           </div>
           <h1 class="text-2xl font-bold text-gray-800">Dynalis Intepreter</h1>
-          <p class="text-gray-600 mt-2">Sign in to access your dashboard</p>
+          <p class="text-gray-600 mt-2">Your Data Analytics Asssistant</p>
         </div>
 
         <!-- Form -->
