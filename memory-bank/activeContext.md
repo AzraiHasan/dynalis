@@ -1,23 +1,26 @@
 # Active Context: Current Work Focus
 
 ## Current Development
-- Implementing batch upload processing logic (useBatchUploadService.ts)
-- Enhancing data staging/validation interface (datastaging.vue)
-- Improving upload state management (useUploadState.ts)
+- Implementing upload cancellation functionality
+- Adding background processing for large batches
+- Enhancing job tracking and status monitoring
+- Implementing SQL functions for batch processing
 
 ## Recent Changes
-- Added Supabase migrations for upload tracking
-- Created batch upload service composable
-- Implemented data staging page
+- Added mark_cancelled_upload_records function
+- Created process_sites_batch function
+- Implemented upload cancellation in useBatchUploadService
+- Added background job processing
+- Enhanced upload job tracking
 
 ## Next Steps
-- Complete batch processing service implementation
-- Enhance validation in data staging area
-- Add error handling for upload failures
-- Implement job status tracking in dashboard
+- Add comprehensive error recovery for cancelled uploads
+- Implement cleanup procedures for failed jobs
+- Add performance monitoring for batch processing
+- Enhance user feedback during cancellation
 
 ## Considerations
-- Performance with large file batches
-- Data validation requirements
-- User feedback during processing
-- Error recovery mechanisms
+- Performance impact of background processing
+- Data consistency during cancellation
+- Error handling for partial uploads
+- Job status tracking accuracy
