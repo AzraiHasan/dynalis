@@ -103,6 +103,111 @@
           <p class="text-xs text-gray-500 mt-1">Showing first 5 rows of {{ fileData.length }} total records</p>
         </div>
         
+        <!-- Summary Statistics -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <UCard class="bg-gray-50">
+            <div class="flex items-center space-x-3">
+              <div class="flex items-center justify-center bg-primary-100 h-12 w-12 rounded-lg">
+                <Icon name="i-lucide-database" class="h-6 w-6 text-primary-500" />
+              </div>
+              <div>
+                <p class="text-sm text-gray-500">Total Rows</p>
+                <p class="text-2xl font-semibold">{{ fileData.length }}</p>
+              </div>
+            </div>
+          </UCard>
+          
+          <UCard class="bg-gray-50">
+            <div class="flex items-center space-x-3">
+              <div class="flex items-center justify-center bg-blue-100 h-12 w-12 rounded-lg">
+                <Icon name="i-lucide-columns" class="h-6 w-6 text-blue-500" />
+              </div>
+              <div>
+                <p class="text-sm text-gray-500">Total Columns</p>
+                <p class="text-2xl font-semibold">{{ headers.length }}</p>
+              </div>
+            </div>
+          </UCard>
+          
+          <UCard class="bg-gray-50">
+            <div class="flex items-center space-x-3">
+              <div class="flex items-center justify-center bg-amber-100 h-12 w-12 rounded-lg">
+                <Icon name="i-lucide-alert-circle" class="h-6 w-6 text-amber-500" />
+              </div>
+              <div>
+                <p class="text-sm text-gray-500">Missing Values</p>
+                <p class="text-2xl font-semibold">{{ getTotalMissingValues() }}</p>
+              </div>
+            </div>
+          </UCard>
+          
+          <UCard class="bg-gray-50">
+            <div class="flex items-center space-x-3">
+              <div class="flex items-center justify-center bg-gray-100 h-12 w-12 rounded-lg">
+                <Icon name="i-lucide-minus" class="h-6 w-6 text-gray-500" />
+              </div>
+              <div>
+                <p class="text-sm text-gray-500">Dash Values</p>
+                <p class="text-2xl font-semibold">{{ getTotalDashValues() }}</p>
+                <p class="text-xs text-gray-400">Cells with "-" characters</p>
+              </div>
+            </div>
+          </UCard>
+        </div>
+        
+        <!-- Column Quality Check -->
+        <div>
+          <h3 class="text-lg font-medium mb-2 flex items-center">
+            <Icon name="i-lucide-shield-check" class="mr-2 text-gray-600" />
+            Data Quality Check
+          </h3>
+          
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            <UCard v-for="column in headers" :key="column" class="bg-gray-50">
+              <template #header>
+                <h3 class="font-medium text-sm">{{ column }}</h3>
+              </template>
+              
+              <div class="space-y-2">
+                <div class="flex items-center justify-between">
+                  <span class="text-sm text-gray-600">
+                    Empty Cells: 
+                  </span>
+                  <UBadge :color="getColumnValidation(column).emptyCells > 0 ? 'warning' : 'success'">
+                    {{ getColumnValidation(column).emptyCells }}
+                  </UBadge>
+                </div>
+                
+                <div v-if="getColumnValidation(column).irregularCells > 0" 
+                     class="flex items-center justify-between">
+                  <span class="text-sm text-orange-600">
+                    Irregularities:
+                  </span>
+                  <UBadge color="warning">
+                    {{ getColumnValidation(column).irregularCells }}
+                  </UBadge>
+                </div>
+              </div>
+            </UCard>
+          </div>
+        </div>
+        
+        <!-- Data Quality Alert -->
+        <UAlert
+          :color="hasEmptyCells ? 'warning' : 'success'"
+          :icon="hasEmptyCells ? 'i-lucide-alert-triangle' : 'i-lucide-check-circle'"
+          class="mb-4"
+        >
+          <div v-if="hasEmptyCells">
+            <UAlertTitle>Data Quality Issues Detected</UAlertTitle>
+            <UAlertDescription>Empty cells and data irregularities may cause errors during further analysis. Consider fixing these issues before proceeding.</UAlertDescription>
+          </div>
+          <div v-else>
+            <UAlertTitle>Data Quality Check Passed</UAlertTitle>
+            <UAlertDescription>Your data looks good with no empty cells detected.</UAlertDescription>
+          </div>
+        </UAlert>
+        
         <!-- Navigation Buttons -->
         <div class="flex justify-between pt-4 border-t">
           <UButton
@@ -134,7 +239,7 @@ import { useRouter } from "vue-router";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
 import { useFileUpload } from "~/composables/useFileUpload";
-import type { StepperItem } from "@nuxt/ui"
+import type { StepperItem } from "@nuxt/ui";
 
 // Interface definitions remain the same
 interface FileRow {
@@ -198,7 +303,7 @@ const triggerFileInput = () => {
 const handleFileDrop = (event: DragEvent) => {
   dragActive.value = false;
   if (!event.dataTransfer?.files.length) return;
-  
+
   if (event.dataTransfer?.files[0]) {
     handleFileSelection(event.dataTransfer.files[0]);
   }
@@ -207,7 +312,7 @@ const handleFileDrop = (event: DragEvent) => {
 const handleFileChange = (event: Event) => {
   const input = event.target as HTMLInputElement;
   const file = input.files?.[0];
-  
+
   if (file) {
     handleFileSelection(file);
   }
@@ -232,9 +337,10 @@ const handleFileSelection = (file: File) => {
 
   // Format the file size
   const fileSizeMB = file.size / (1024 * 1024);
-  fileEstimate.value = fileSizeMB < 1 
-    ? `${(fileSizeMB * 1024).toFixed(1)} KB` 
-    : `${fileSizeMB.toFixed(2)} MB`;
+  fileEstimate.value =
+    fileSizeMB < 1
+      ? `${(fileSizeMB * 1024).toFixed(1)} KB`
+      : `${fileSizeMB.toFixed(2)} MB`;
 
   selectedFileName.value = file.name;
   selectedFile.value = file;
@@ -253,24 +359,27 @@ const processFile = async () => {
   try {
     // Use the file upload composable
     fileData.value = await fileUpload.processAndUpload(selectedFile.value);
-    headers.value = fileData.value.length > 0 && fileData.value[0]
+    headers.value =
+      fileData.value.length > 0 && fileData.value[0]
         ? Object.keys(fileData.value[0])
         : [];
-    
+
     // Move to next step after processing
     currentStep.value = 2;
-    
+
     toast.add({
       title: "File processed successfully",
       description: `${fileData.value.length} rows loaded`,
-      color: "success"
+      color: "success",
     });
   } catch (error) {
-    errorMessage.value = "Error processing file: " + (error instanceof Error ? error.message : "Unknown error");
+    errorMessage.value =
+      "Error processing file: " +
+      (error instanceof Error ? error.message : "Unknown error");
     toast.add({
       title: "Error processing file",
       description: errorMessage.value,
-      color: "error"
+      color: "error",
     });
   } finally {
     isProcessing.value = false;
@@ -290,6 +399,83 @@ const getTotalMissingValues = () => {
       ).length
     );
   }, 0);
+};
+
+// Helper functions for column validation
+const getEmptyCellCount = (column: string): number => {
+  return fileData.value.filter(
+    (row) =>
+      row[column] === null || row[column] === undefined || row[column] === ""
+  ).length;
+};
+
+const isValidDate = (value: any): boolean => {
+  if (!value) return false;
+
+  // Try each format
+  for (const dateFormat of DATE_FORMATS) {
+    try {
+      const parsedDate = parse(value.toString(), dateFormat, new Date());
+      if (isValid(parsedDate)) {
+        return true;
+      }
+    } catch (error) {
+      continue;
+    }
+  }
+
+  // Fallback to native Date parsing
+  const date = new Date(value);
+  return isValid(date);
+};
+
+const isValidCurrency = (value: any): boolean => {
+  if (!value) return false;
+  // Matches format like "RM 1,234.56" or "1234.56" or "1,234"
+  const currencyRegex = /^(RM\s*)?[\d,]+(\.\d{2})?$/;
+  return currencyRegex.test(value.toString().trim());
+};
+
+const getColumnValidation = (column: string): ColumnValidation => {
+  const emptyCells = getEmptyCellCount(column);
+  let irregularCells = 0;
+  const errors: ValidationError[] = [];
+
+  fileData.value.forEach((row, index) => {
+    const value = row[column];
+    if (value !== null && value !== undefined && value !== "") {
+      const columnLower = column.toLowerCase();
+
+      if (columnLower.includes("date")) {
+        if (!isValidDate(value)) {
+          irregularCells++;
+          errors.push({
+            row: index + 1,
+            column,
+            value: value.toString(),
+            error: `Invalid date format. Expected formats: ${DATE_FORMATS.join(
+              ", "
+            )}`,
+          });
+        }
+      } else if (
+        columnLower.includes("rental") ||
+        columnLower.includes("payment") ||
+        columnLower.includes("deposit")
+      ) {
+        if (!isValidCurrency(value)) irregularCells++;
+      } else if (columnLower.includes("id")) {
+        // Assuming IDs shouldn't be empty and shouldn't contain spaces
+        if (typeof value !== "string" || value.includes(" ")) irregularCells++;
+      }
+    }
+  });
+
+  return {
+    emptyCells,
+    irregularCells,
+    errors,
+  };
 };
 
 const getTotalDashValues = () => {
@@ -323,16 +509,16 @@ const clearAll = () => {
 const handleProceed = () => {
   try {
     const stored = localStorage.getItem("uploadedFileData");
-    
+
     if (!stored) {
       toast.add({
         title: "No Data",
         description: "Please upload a file first.",
-        color: "error"
+        color: "error",
       });
       return;
     }
-    
+
     // Navigate to data staging
     router.push({
       path: "/datastaging",
