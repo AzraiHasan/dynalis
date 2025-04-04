@@ -94,55 +94,8 @@
 
       <!-- Step 2: Data Preview and Validation (Only shown when currentStep is 2) -->
       <div v-if="currentStep === 2" class="space-y-6">
-        <!-- Data Preview Section -->
-        <div>
-          <h3 class="text-lg font-medium mb-2">Data Preview</h3>
-          <div class="overflow-x-auto border rounded-lg">
-            <table class="min-w-full divide-y divide-gray-200">
-              <thead class="bg-gray-50">
-                <tr>
-                  <th
-                    v-for="header in previewHeaders"
-                    :key="header"
-                    class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    {{ header }}
-                  </th>
-                </tr>
-              </thead>
-              <tbody class="bg-white divide-y divide-gray-200">
-                <tr v-for="(row, index) in previewData" :key="index">
-                  <td
-                    v-for="header in previewHeaders"
-                    :key="`${index}-${header}`"
-                    class="px-3 py-2 text-sm"
-                  >
-                    <span
-                      v-if="
-                        row[header] === null ||
-                        row[header] === undefined ||
-                        row[header] === ''
-                      "
-                      class="text-gray-300 italic"
-                      >Empty</span
-                    >
-                    <span
-                      v-else-if="row[header] === '-' || row[header] === '–'"
-                      class="text-gray-400"
-                      >-</span
-                    >
-                    <span v-else>{{ row[header] }}</span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <p class="text-xs text-gray-500 mt-1">
-            Showing first 5 rows of {{ fileData.length }} total records
-          </p>
-        </div>
-
         <!-- Summary Statistics -->
+        <h3 class="text-lg font-medium mb-2">Summary Statistics</h3>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <UCard class="bg-gray-50">
             <div class="flex items-center space-x-3">
@@ -209,6 +162,56 @@
             </div>
           </UCard>
         </div>
+        
+        <!-- Data Preview Section -->
+        <div>
+          <h3 class="text-lg font-medium mb-2">Data Preview</h3>
+          <div class="overflow-x-auto border rounded-lg">
+            <table class="min-w-full divide-y divide-gray-200">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th
+                    v-for="header in previewHeaders"
+                    :key="header"
+                    class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
+                    {{ header }}
+                  </th>
+                </tr>
+              </thead>
+              <tbody class="bg-white divide-y divide-gray-200">
+                <tr v-for="(row, index) in previewData" :key="index">
+                  <td
+                    v-for="header in previewHeaders"
+                    :key="`${index}-${header}`"
+                    class="px-3 py-2 text-sm"
+                  >
+                    <span
+                      v-if="
+                        row[header] === null ||
+                        row[header] === undefined ||
+                        row[header] === ''
+                      "
+                      class="text-gray-300 italic"
+                      >Empty</span
+                    >
+                    <span
+                      v-else-if="row[header] === '-' || row[header] === '–'"
+                      class="text-gray-400"
+                      >-</span
+                    >
+                    <span v-else>{{ row[header] }}</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="text-xs text-gray-500 mt-1">
+            Showing first 5 rows of {{ fileData.length }} total records
+          </p>
+        </div>
+
+        
 
         <!-- Column Quality Check -->
         <div>
@@ -342,16 +345,16 @@ const router = useRouter();
 // Step configurations for UStepper
 const items = computed<StepperItem[]>(() => [
   {
-    title: "Upload File",
+    title: "1. Upload File",
     description: "Select and upload your data file",
     icon: "i-lucide-upload-cloud",
     color: "primary",
   },
   {
-    title: "Validate Data",
+    title: "2. Validate Data",
     description: "Review and check data quality",
     icon: "i-lucide-check-circle",
-    color: currentStep.value === 1 ? "neutral" : "primary",
+    color: currentStep.value === 2 ? "primary" : "neutral",
   },
 ]);
 
