@@ -15,9 +15,17 @@ Provides a streamlined workflow for uploading and processing batches of data fil
 - Dashboard for monitoring (dashboard.vue)
 - Upload state management (useUploadState.ts)
 - Batch processing service (useBatchUploadService.ts)
+- Background job processing
+- Upload cancellation system
+- Data deduplication
+- Job status tracking
 
 ## User Experience Goals
 - Minimize time spent on repetitive upload tasks
 - Provide clear status at each processing stage
 - Prevent data quality issues through validation
 - Maintain history of all upload activities
+- Real-time feedback on upload status
+- Reliable upload cancellation
+- Clear visibility of processing status
+- Prevention of duplicate entries

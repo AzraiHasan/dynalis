@@ -7,12 +7,19 @@
   - Sites table
   - Upload tracking tables
 - Batch upload service foundation
+- Upload cancellation functionality
+- Background job processing
+- Data deduplication system
+- Upload job tracking
 
 ## In Progress
 - Batch processing logic
 - Data validation in staging area
 - Upload state management
 - Job status tracking
+- Real-time status updates
+- Performance optimization
+- Error recovery system
 
 ## Remaining Work
 - Complete batch processing service
@@ -26,3 +33,6 @@
 - Limited validation in staging area
 - Basic status tracking only
 - No performance metrics
+- Limited real-time feedback
+- No performance metrics for batch processing
+- Basic error recovery only

@@ -9,6 +9,10 @@ A Nuxt.js application with Supabase backend for managing batch data processing a
 - Upload progress tracking
 - Dashboard for monitoring jobs
 - Supabase integration for data storage
+- Background processing capabilities
+- Upload cancellation and recovery
+- Real-time job status tracking
+- Data deduplication handling
 
 ## Goals
 - Reliable batch processing pipeline
