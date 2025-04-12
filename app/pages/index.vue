@@ -8,6 +8,8 @@ import * as z from "zod";
 import type { FormSubmitEvent } from "@nuxt/ui";
 
 const router = useRouter();
+const { fetch: fetchUserSession } = useUserSession();
+
 const schema = z.object({
   email: z.string().email("Invalid email"),
   password: z.string().min(8, "Must be at least 8 characters"),
@@ -31,20 +33,31 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
   isLoading.value = true;
 
   try {
-    // Simulate a slight delay for better UX
-    await new Promise((r) => setTimeout(r, 800));
+    // Call our new authentication endpoint
+    const response = await $fetch('/api/auth/login', {
+      method: 'POST',
+      body: event.data
+    });
+
+    // Fetch the user session after successful login
+    await fetchUserSession();
 
     toast.add({
       title: "Success",
-      description: "The form has been submitted.",
+      description: "You have been logged in successfully.",
       color: "success",
     });
-    console.log(event.data);
 
     // Add a small delay to show the toast before redirecting
     setTimeout(() => {
       router.push("/dataupload");
     }, 500);
+  } catch (error: any) {
+    toast.add({
+      title: "Error",
+      description: error.message || "Login failed. Please check your credentials.",
+      color: "error",
+    });
   } finally {
     isLoading.value = false;
   }
