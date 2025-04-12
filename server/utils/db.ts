@@ -10,7 +10,6 @@ export const useDbConnection = () => {
   }
 }
 
-// Ensure database is initialized with schema
 export const initializeDatabase = async () => {
   const { db, status } = useDbConnection()
   if (status !== 'connected' || db === null) {
@@ -19,7 +18,7 @@ export const initializeDatabase = async () => {
   }
   
   try {
-    // Create sites table (matching your current schema)
+    // Create sites table (existing code)
     await db.sql`
       CREATE TABLE IF NOT EXISTS sites (
         id TEXT PRIMARY KEY,
@@ -28,6 +27,18 @@ export const initializeDatabase = async () => {
         total_rental REAL NOT NULL DEFAULT 0,
         total_payment_to_pay REAL NOT NULL DEFAULT 0,
         deposit REAL NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )
+    `
+    
+    // Add users table
+    await db.sql`
+      CREATE TABLE IF NOT EXISTS users (
+        id TEXT PRIMARY KEY,
+        email TEXT NOT NULL UNIQUE,
+        name TEXT,
+        password_hash TEXT NOT NULL,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       )

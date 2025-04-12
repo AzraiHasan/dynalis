@@ -1,8 +1,9 @@
 // server/utils/migrationUtils.ts
-import { useSiteService } from '~/utils/supabaseService'
-import { useSitesRepository } from '../repositories/sitesRepository'
-import type { Site } from '~/types/supabase'
 
+import { useSitesRepository } from '../repositories/sitesRepository';
+import type { Site } from '~/types/supabase';
+
+// Create an interface for migration results
 interface MigrationResult {
   total: number;
   successful: number;
@@ -12,45 +13,66 @@ interface MigrationResult {
 }
 
 /**
- * Migrates site data from Supabase to SQLite database
- * Uses batch processing to handle large datasets efficiently
+ * Checks if migration is needed by verifying if SQLite database has data
+ * This function doesn't depend on Supabase, so it's safe to use
+ */
+export const checkMigrationNeeded = async (): Promise<boolean> => {
+  try {
+    const sitesRepo = useSitesRepository();
+    
+    // Check if the SQLite database already has data
+    const existingSites = await sitesRepo.findAll();
+    return existingSites.length === 0;
+  } catch (error) {
+    console.error('Error checking migration status:', error);
+    return true; // Assume migration is needed if we can't check
+  }
+};
+
+/**
+ * Implementation of the migration utility using direct HTTP fetch
+ * instead of the Supabase client to avoid import issues
  */
 export const migrateSitesToSQLite = async (): Promise<MigrationResult> => {
-  const startTime = Date.now()
+  const startTime = Date.now();
   const result: MigrationResult = {
     total: 0,
     successful: 0,
     failed: 0,
     errors: [],
     timeElapsed: 0
-  }
+  };
 
   try {
-    // 1. Get the site service to fetch data from Supabase
-    const siteService = useSiteService()
+    // 1. Get the site repository for SQLite operations
+    const sitesRepo = useSitesRepository();
     
-    // 2. Get the site repository for SQLite operations
-    const sitesRepo = useSitesRepository()
+    // 2. Fetch sites from an API endpoint instead of direct Supabase access
+    // This endpoint needs to be implemented separately
+    console.log('Fetching sites from API...');
+    const response = await fetch('/api/sites/export');
     
-    // 3. Fetch all sites from current storage
-    console.log('Fetching sites from Supabase...')
-    const sites = await siteService.fetchSiteData()
+    if (!response.ok) {
+      throw new Error(`Failed to fetch sites: ${response.statusText}`);
+    }
     
-    result.total = sites.length
-    console.log(`Found ${sites.length} sites to migrate`)
+    const sites = await response.json();
     
-    // 4. Process in batches for memory efficiency
-    const batchSize = 50
-    const batches = Math.ceil(sites.length / batchSize)
+    result.total = sites.length;
+    console.log(`Found ${sites.length} sites to migrate`);
+    
+    // 3. Process in batches for memory efficiency
+    const batchSize = 50;
+    const batches = Math.ceil(sites.length / batchSize);
     
     for (let i = 0; i < batches; i++) {
-      const startIdx = i * batchSize
-      const endIdx = Math.min(startIdx + batchSize, sites.length)
-      const batchData = sites.slice(startIdx, endIdx)
+      const startIdx = i * batchSize;
+      const endIdx = Math.min(startIdx + batchSize, sites.length);
+      const batchData = sites.slice(startIdx, endIdx);
       
-      console.log(`Processing batch ${i + 1}/${batches} (${startIdx} to ${endIdx})`)
+      console.log(`Processing batch ${i + 1}/${batches} (${startIdx} to ${endIdx})`);
       
-      // 5. Transform and insert each site using the repository
+      // 4. Transform and insert each site using the repository
       for (const site of batchData) {
         try {
           // Transform the site to match the repository format
@@ -60,43 +82,38 @@ export const migrateSitesToSQLite = async (): Promise<MigrationResult> => {
             total_rental: site.total_rental,
             total_payment_to_pay: site.total_payment_to_pay,
             deposit: site.deposit
-          }
+          };
           
           // Insert into SQLite
-          await sitesRepo.upsert(siteData)
-          result.successful++
+          await sitesRepo.upsert(siteData);
+          result.successful++;
         } catch (error) {
-          result.failed++
+          result.failed++;
           result.errors.push({
             siteId: site.site_id,
             error: error instanceof Error ? error.message : String(error)
-          })
-          console.error(`Error migrating site ${site.site_id}:`, error)
+          });
+          console.error(`Error migrating site ${site.site_id}:`, error);
         }
       }
       
       // Report progress after each batch
-      console.log(`Progress: ${result.successful}/${result.total} sites migrated successfully`)
+      console.log(`Progress: ${result.successful}/${result.total} sites migrated successfully`);
     }
   } catch (error) {
-    console.error('Migration failed:', error)
-    result.failed = result.total - result.successful
+    console.error('Migration failed:', error);
+    result.failed = result.total - result.successful;
   } finally {
-    result.timeElapsed = Date.now() - startTime
-    console.log(`Migration completed in ${result.timeElapsed}ms`)
-    console.log(`Results: ${result.successful} successful, ${result.failed} failed`)
+    result.timeElapsed = Date.now() - startTime;
+    console.log(`Migration completed in ${result.timeElapsed}ms`);
+    console.log(`Results: ${result.successful} successful, ${result.failed} failed`);
   }
 
-  return result
-}
+  return result;
+};
 
 /**
- * Checks if migration is needed by verifying if SQLite database is empty
+ * Create a new API endpoint that will provide the site data for migration
+ * This allows us to decouple the migration logic from direct Supabase dependencies
  */
-export const checkMigrationNeeded = async (): Promise<boolean> => {
-  const sitesRepo = useSitesRepository()
-  
-  // Check if the SQLite database already has data
-  const existingSites = await sitesRepo.findAll()
-  return existingSites.length === 0
-}
+// server/api/sites/export.get.ts (implement separately)
