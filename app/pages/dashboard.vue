@@ -235,6 +235,7 @@
 <script setup lang="ts">
 import { useUploadState } from "~/composables/useUploadState";
 import { ref, computed, onMounted } from "vue";
+import { useSQLiteSiteData } from '~/composables/useSQLiteSiteData'
 import { useSiteService } from "~/utils/supabaseService";
 import { useSiteData } from "~/composables/useSiteData";
 import { useRouter } from "vue-router";
@@ -325,6 +326,9 @@ const isLoading = ref(true);
 const error = ref<Error | null>(null);
 const siteService = useSiteService();
 const siteData = useSiteData();
+const sqliteData = useSQLiteSiteData()
+const useNewBackend = ref(true) // This can be toggled via UI if needed
+const dataComparison = ref<{matching: boolean, differences?: any} | null>(null)
 
 const shouldAutoBuild = computed(() => {
   return route.query.building === "true";
@@ -332,23 +336,33 @@ const shouldAutoBuild = computed(() => {
 
 onMounted(async () => {
   try {
-    console.log("Initializing dashboard...");
-    isLoading.value = true;
+    console.log("Initializing dashboard...")
+    isLoading.value = true
     
     // Check if we're coming from a job
-    const jobId = route.query.job_id;
+    const jobId = route.query.job_id
     if (jobId) {
-      console.log(`Initializing from job: ${jobId}`);
+      console.log(`Initializing from job: ${jobId}`)
     }
     
-    // Fetch data from Supabase
-    console.log("Fetching initial data from database...");
-    const supabaseData = await siteData.fetchData();
-    console.log(`Data fetched successfully. ${supabaseData.length} rows retrieved.`);
-
-    console.log("Transforming data...");
-    // Transform Supabase data to match expected format
-    fileData.value = supabaseData.map((item) => ({
+    // Fetch data from both sources for validation during transition
+    console.log("Fetching data from multiple sources for validation...")
+    const supabaseData = await siteData.fetchData() || []
+    const sqliteResult = await sqliteData.fetchData() || []
+    
+    // Compare datasets (temporary validation code)
+    if (supabaseData.length !== sqliteResult.length) {
+      console.warn(`Data source count mismatch: Supabase (${supabaseData.length}) vs SQLite (${sqliteResult.length})`)
+      dataComparison.value = { matching: false, differences: { countDiff: true } }
+    }
+    
+    // Choose data source based on toggle with null safety
+    const sourceData = useNewBackend.value ? sqliteResult : supabaseData
+    console.log(`Using ${useNewBackend.value ? 'SQLite' : 'Supabase'} as data source (${sourceData.length} records)`)
+    
+    // Continue with existing transformation code
+    console.log("Transforming data...")
+    fileData.value = sourceData.map((item) => ({
       "SITE ID": item.site_id,
       "EXP DATE": item.exp_date,
       "TOTAL RENTAL (RM)": item.total_rental,

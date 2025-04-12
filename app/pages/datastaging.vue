@@ -254,6 +254,7 @@ import { parse, isValid, differenceInDays, format } from "date-fns";
 import { useUploadState } from "~/composables/useUploadState";
 import { useSiteService } from "~/utils/supabaseService";
 import { useBatchUploadService } from "~/composables/useBatchUploadService";
+import { useSQLiteBatchUpload } from "~/composables/useSQLiteBatchUpload";
 import { useSiteData } from "~/composables/useSiteData";
 
 // Router setup
@@ -261,6 +262,13 @@ const router = useRouter();
 const route = useRoute();
 
 const uploadState = useUploadState();
+const sqliteBatchUpload = useSQLiteBatchUpload();
+const useNewBackend = ref(true); // Can be toggled via environment or config
+const uploadComparisonData = ref<{
+  supabase?: any;
+  sqlite?: any;
+  error?: Error | null;
+} | null>(null);
 const siteService = useSiteService();
 const siteData = useSiteData();
 const fileData = ref<FileRow[]>([]);
@@ -347,80 +355,81 @@ const handleCommitData = async () => {
     }
 
     console.log(`Starting processing of ${data.fileData.length} records`);
-    
+
     // Start the upload process
     uploadState.startUpload();
     uploadState.isUploading.value = true;
     console.log("Upload state initialized, status:", uploadState.status.value);
 
-    // Use the batch upload service
-    const batchUploadService = useBatchUploadService();
-
-    // Check for interrupted uploads
-    console.log("Checking for previous uploads...");
-    uploadState.updateProgress(10, "Checking for previous uploads...");
-    const incompleteUploads = await batchUploadService.checkIncompleteUploads(
-      data.fileName
-    );
-
     let result;
-    if (incompleteUploads.length > 0) {
-      // Ask user if they want to resume
-      console.log("Found incomplete uploads:", incompleteUploads);
-      const resumeConfirmed = window.confirm(
-        `Found an interrupted upload from ${new Date(
-          incompleteUploads[0].created_at
-        ).toLocaleString()}. Would you like to resume?`
-      );
 
-      if (resumeConfirmed) {
-        console.log("Resuming previous upload:", incompleteUploads[0].id);
-        uploadState.updateProgress(20, `Resuming previous upload...`);
-        result = await batchUploadService.resumeUpload(
-          incompleteUploads[0].id,
-          data.fileData
-        );
-      } else {
-        // Start fresh background upload
-        console.log("Starting new background process (user declined resume)");
-        uploadState.updateProgress(20, "Starting new background process...");
+    // Handle the upload using the selected backend
+    if (useNewBackend.value) {
+      console.log("Using SQLite backend for data processing");
+      uploadState.updateProgress(15, "Processing with SQLite backend...");
+
+      try {
+        result = await sqliteBatchUpload.processBulkUpload(data.fileData);
+        uploadComparisonData.value = { sqlite: result };
+        console.log("SQLite processing result:", result);
+      } catch (error: unknown) {
+        console.error("SQLite processing error:", error);
+        // Explicitly type the error as Error
+        uploadComparisonData.value = {
+          error: error instanceof Error ? error : new Error(String(error)),
+        };
+
+        // Fallback to Supabase if SQLite fails
+        console.log("Falling back to Supabase backend");
+        uploadState.updateProgress(20, "Falling back to Supabase backend...");
+
+        // Use existing implementation
+        const batchUploadService = useBatchUploadService();
         result = await batchUploadService.startAsyncProcessing(
           data.fileData,
           data.fileName || "upload.csv"
         );
+        uploadComparisonData.value = {
+          ...uploadComparisonData.value,
+          supabase: result,
+        };
       }
     } else {
-      // No previous upload, start fresh background process
-      console.log("No previous uploads found, starting new process");
-      uploadState.updateProgress(20, "Starting background processing...");
+      console.log("Using Supabase backend for data processing");
+      uploadState.updateProgress(15, "Processing with Supabase backend...");
+
+      // Use the existing implementation
+      const batchUploadService = useBatchUploadService();
       result = await batchUploadService.startAsyncProcessing(
         data.fileData,
         data.fileName || "upload.csv"
       );
+      uploadComparisonData.value = { supabase: result };
     }
 
     // Update progress and status
-    console.log("Processing started with job ID:", result.jobId);
-    uploadState.updateProgress(
-      100,
-      `Processing started. Your data is being prepared.`
-    );
+    console.log("Processing completed:", result);
+    uploadState.updateProgress(100, `Processing completed successfully.`);
     uploadState.status.value = "complete";
-    console.log("Upload state updated to complete");
 
-    // Store the job ID for reference in the dashboard
-    localStorage.setItem("background_job_id", result.jobId);
-    console.log("Job ID stored in localStorage:", result.jobId);
-    
-    // Auto navigate to dashboard
+    // Store the job ID for reference in the dashboard (for compatibility)
+    if (result) {
+      // Safely check if jobId exists in the result
+      const jobId = result && "jobId" in result ? result.jobId : undefined;
+      if (jobId) {
+        localStorage.setItem("background_job_id", jobId);
+        console.log("Job ID stored in localStorage:", jobId);
+      }
+    }
+
+    // Navigate to dashboard
     console.log("Processing complete, navigating to dashboard");
     await navigateToDashboard();
-    
   } catch (error) {
-    console.error("Error processing data:", error);
-    uploadState.setError(
-      error instanceof Error ? error : new Error(String(error))
-    );
+    console.error("SQLite processing error:", error);
+    uploadComparisonData.value = {
+      error: error instanceof Error ? error : new Error(String(error)),
+    };
     toast.add({
       title: "Error",
       description: error instanceof Error ? error.message : String(error),
@@ -435,26 +444,26 @@ const navigateToDashboard = async (): Promise<void> => {
     console.log("Navigating to dashboard");
     // Clear upload-related data before navigation
     uploadState.isUploading.value = false;
-    uploadState.status.value = 'idle';
+    uploadState.status.value = "idle";
 
     // Get job ID
     const jobId = localStorage.getItem("background_job_id");
     console.log("Retrieved job ID for dashboard:", jobId);
-    
+
     // Set a flag to indicate we're coming from processing
     localStorage.setItem("dashboard_building", "true");
-    
+
     // Navigate to dashboard with job ID if available
-    console.log("Redirecting to dashboard with parameters:", { 
+    console.log("Redirecting to dashboard with parameters:", {
       job_id: jobId || undefined,
-      building: "true" 
+      building: "true",
     });
-    
+
     await router.push({
       path: "/dashboard",
-      query: { 
+      query: {
         job_id: jobId || undefined,
-        building: "true" 
+        building: "true",
       },
     });
 
@@ -714,17 +723,26 @@ onMounted(() => {
     uploadState.statusMessage.value = "";
     uploadState.error.value = null;
     const stored = localStorage.getItem("uploadedFileData");
-    console.log("Raw data from localStorage:", stored ? "Available" : "Not available");
+    console.log(
+      "Raw data from localStorage:",
+      stored ? "Available" : "Not available"
+    );
 
     if (stored) {
       storedData.value = JSON.parse(stored);
-      console.log("Data parsed successfully, rows:", storedData.value?.fileData?.length);
+      console.log(
+        "Data parsed successfully, rows:",
+        storedData.value?.fileData?.length
+      );
 
       if (
         Array.isArray(storedData.value?.fileData) &&
         storedData.value.fileData.length > 0
       ) {
-        console.log("Sample row keys:", Object.keys(storedData.value.fileData[0] || {}));
+        console.log(
+          "Sample row keys:",
+          Object.keys(storedData.value.fileData[0] || {})
+        );
       }
     }
   } catch (error) {

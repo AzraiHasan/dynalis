@@ -1,12 +1,23 @@
 // server/api/sites/export.get.ts
+import { serverSupabaseClient } from '#supabase/server'
+
 export default defineEventHandler(async (event) => {
   try {
     // Require authentication
     await requireUserSession(event)
     
-    // Return a stub response that allows authentication migration to proceed
-    // We can implement the actual data export later in the process
-    return []
+    // Use server-side Supabase client which handles token management
+    const supabase = await serverSupabaseClient(event)
+    
+    // Fetch site data
+    const { data, error } = await supabase
+      .from('sites')
+      .select('*')
+    
+    if (error) throw error
+    
+    console.log(`Exported ${data?.length || 0} sites from Supabase`)
+    return data || []
   } catch (error) {
     console.error('Error in sites export:', error)
     throw createError({

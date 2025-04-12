@@ -41,24 +41,18 @@ export default defineEventHandler(async (event) => {
       statusCode: 401,
       message: 'Invalid credentials'
     });
-} catch (error) {
-  if (error instanceof z.ZodError) {
-    throw createError({
-      statusCode: 400,
-      message: error.errors[0].message
-    });
-  }
-  
-  console.error('Login error:', error);
-  throw createError({
-    statusCode: 500,
-    message: error instanceof Error ? error.message : 'Authentication failed'
-  });
-}
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      throw createError({
+        statusCode: 400,
+        message: error.errors[0].message
+      });
+    }
     
-    return createError({
+    console.error('Login error:', error);
+    throw createError({
       statusCode: 500,
-      message: 'Authentication failed'
+      message: error instanceof Error ? error.message : 'Authentication failed'
     });
   }
-);
+});
