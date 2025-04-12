@@ -1,5 +1,4 @@
 // server/api/auth/login.post.ts
-import { H3Event } from 'h3';
 import * as z from 'zod';
 import { useUsersRepository } from '../../repositories/usersRepository';
 
@@ -10,7 +9,7 @@ const loginSchema = z.object({
 
 type LoginRequest = z.infer<typeof loginSchema>;
 
-export default defineEventHandler(async (event: H3Event) => {
+export default defineEventHandler(async (event) => {
   try {
     // Parse and validate request
     const body = await readBody(event);
@@ -42,17 +41,24 @@ export default defineEventHandler(async (event: H3Event) => {
       statusCode: 401,
       message: 'Invalid credentials'
     });
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return createError({
-        statusCode: 400,
-        message: error.errors[0].message
-      });
-    }
+} catch (error) {
+  if (error instanceof z.ZodError) {
+    throw createError({
+      statusCode: 400,
+      message: error.errors[0].message
+    });
+  }
+  
+  console.error('Login error:', error);
+  throw createError({
+    statusCode: 500,
+    message: error instanceof Error ? error.message : 'Authentication failed'
+  });
+}
     
     return createError({
       statusCode: 500,
       message: 'Authentication failed'
     });
   }
-});
+);
