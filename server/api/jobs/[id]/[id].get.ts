@@ -1,5 +1,5 @@
 // server/api/jobs/[id].get.ts
-import { useJobsRepository } from '../../repositories/jobsRepository'
+import { useJobsRepository } from '../../../repositories/jobsRepository'
 
 export default defineEventHandler(async (event) => {
   try {

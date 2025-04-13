@@ -148,6 +148,37 @@ export const useSQLiteBatchUpload = () => {
       throw error
     }
   }
+
+  const cancelJob = async (jobId: string) => {
+  try {
+    if (!jobId) {
+      throw new Error('Job ID is required')
+    }
+    
+    state.value.status = 'processing'
+    state.value.progress = 0
+    
+    const response = await fetch(`/api/jobs/${jobId}/cancel`, {
+      method: 'POST'
+    })
+    
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.message || 'Failed to cancel job')
+    }
+    
+    const result = await response.json()
+    
+    // Update state
+    state.value.status = 'idle'
+    
+    return result
+  } catch (error) {
+    state.value.error = error instanceof Error ? error : new Error(String(error))
+    state.value.status = 'error'
+    throw error
+  }
+}
   
   // Get job status
   const getJobStatus = async (jobId: string) => {
@@ -161,6 +192,7 @@ export const useSQLiteBatchUpload = () => {
   return {
     processBulkUpload,
     startBackgroundProcessing,
+    cancelJob,
     getJobStatus,
     state,
     isUploading,

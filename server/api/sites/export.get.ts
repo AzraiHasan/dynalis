@@ -1,23 +1,17 @@
-// server/api/sites/export.get.ts
-import { serverSupabaseClient } from '#supabase/server'
+// server/api/sites/export.get.ts - UPDATED
+import { useSitesRepository } from '../../repositories/sitesRepository'
 
 export default defineEventHandler(async (event) => {
   try {
     // Require authentication
     await requireUserSession(event)
     
-    // Use server-side Supabase client which handles token management
-    const supabase = await serverSupabaseClient(event)
+    // Use SQLite repository instead of Supabase
+    const sitesRepo = useSitesRepository()
+    const sites = await sitesRepo.findAll()
     
-    // Fetch site data
-    const { data, error } = await supabase
-      .from('sites')
-      .select('*')
-    
-    if (error) throw error
-    
-    console.log(`Exported ${data?.length || 0} sites from Supabase`)
-    return data || []
+    console.log(`Exported ${sites.length} sites from SQLite`)
+    return sites || []
   } catch (error) {
     console.error('Error in sites export:', error)
     throw createError({

@@ -44,24 +44,17 @@ export const migrateSitesToSQLite = async (): Promise<MigrationResult> => {
   };
 
   try {
-    // 1. Get the site repository for SQLite operations
+    // Get the site repository once and use it throughout
     const sitesRepo = useSitesRepository();
     
-    // 2. Fetch sites from an API endpoint instead of direct Supabase access
-    // This endpoint needs to be implemented separately
-    console.log('Fetching sites from API...');
-    const response = await fetch('/api/sites/export');
-    
-    if (!response.ok) {
-      throw new Error(`Failed to fetch sites: ${response.statusText}`);
-    }
-    
-    const sites = await response.json();
+    // Fetch sites directly from SQLite repository
+    console.log('Fetching sites from SQLite repository...');
+    const sites = await sitesRepo.findAll();
     
     result.total = sites.length;
     console.log(`Found ${sites.length} sites to migrate`);
     
-    // 3. Process in batches for memory efficiency
+    // Rest of processing remains the same
     const batchSize = 50;
     const batches = Math.ceil(sites.length / batchSize);
     
@@ -72,10 +65,8 @@ export const migrateSitesToSQLite = async (): Promise<MigrationResult> => {
       
       console.log(`Processing batch ${i + 1}/${batches} (${startIdx} to ${endIdx})`);
       
-      // 4. Transform and insert each site using the repository
       for (const site of batchData) {
         try {
-          // Transform the site to match the repository format
           const siteData = {
             site_id: site.site_id,
             exp_date: site.exp_date,
@@ -84,7 +75,6 @@ export const migrateSitesToSQLite = async (): Promise<MigrationResult> => {
             deposit: site.deposit
           };
           
-          // Insert into SQLite
           await sitesRepo.upsert(siteData);
           result.successful++;
         } catch (error) {
@@ -97,7 +87,6 @@ export const migrateSitesToSQLite = async (): Promise<MigrationResult> => {
         }
       }
       
-      // Report progress after each batch
       console.log(`Progress: ${result.successful}/${result.total} sites migrated successfully`);
     }
   } catch (error) {
