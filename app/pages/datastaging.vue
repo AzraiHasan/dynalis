@@ -253,7 +253,6 @@ import { useRouter, useRoute } from "vue-router";
 import { parse, isValid, differenceInDays, format } from "date-fns";
 import { useUploadState } from "~/composables/useUploadState";
 import { useSiteService } from "~/utils/supabaseService";
-import { useBatchUploadService } from "~/composables/useBatchUploadService";
 import { useSQLiteBatchUpload } from "~/composables/useSQLiteBatchUpload";
 import { useSiteData } from "~/composables/useSiteData";
 
@@ -263,7 +262,6 @@ const route = useRoute();
 
 const uploadState = useUploadState();
 const sqliteBatchUpload = useSQLiteBatchUpload();
-const useNewBackend = ref(true); // Can be toggled via environment or config
 const uploadComparisonData = ref<{
   supabase?: any;
   sqlite?: any;
@@ -361,63 +359,24 @@ const handleCommitData = async () => {
     uploadState.isUploading.value = true;
     console.log("Upload state initialized, status:", uploadState.status.value);
 
-    let result;
+    // Always use SQLite backend
+    console.log("Using SQLite backend for data processing");
+    uploadState.updateProgress(15, "Processing with SQLite backend...");
 
-    // Handle the upload using the selected backend
-    if (useNewBackend.value) {
-      console.log("Using SQLite backend for data processing");
-      uploadState.updateProgress(15, "Processing with SQLite backend...");
-
-      try {
-        result = await sqliteBatchUpload.processBulkUpload(data.fileData);
-        uploadComparisonData.value = { sqlite: result };
-        console.log("SQLite processing result:", result);
-      } catch (error: unknown) {
-        console.error("SQLite processing error:", error);
-        // Explicitly type the error as Error
-        uploadComparisonData.value = {
-          error: error instanceof Error ? error : new Error(String(error)),
-        };
-
-        // Fallback to Supabase if SQLite fails
-        console.log("Falling back to Supabase backend");
-        uploadState.updateProgress(20, "Falling back to Supabase backend...");
-
-        // Use existing implementation
-        const batchUploadService = useBatchUploadService();
-        result = await batchUploadService.startAsyncProcessing(
-          data.fileData,
-          data.fileName || "upload.csv"
-        );
-        uploadComparisonData.value = {
-          ...uploadComparisonData.value,
-          supabase: result,
-        };
-      }
-    } else {
-      console.log("Using Supabase backend for data processing");
-      uploadState.updateProgress(15, "Processing with Supabase backend...");
-
-      // Use the existing implementation
-      const batchUploadService = useBatchUploadService();
-      result = await batchUploadService.startAsyncProcessing(
-        data.fileData,
-        data.fileName || "upload.csv"
-      );
-      uploadComparisonData.value = { supabase: result };
-    }
+    const result = await sqliteBatchUpload.processBulkUpload(data.fileData);
+    console.log("SQLite processing result:", result);
 
     // Update progress and status
     console.log("Processing completed:", result);
     uploadState.updateProgress(100, `Processing completed successfully.`);
     uploadState.status.value = "complete";
 
-    // Store the job ID for reference in the dashboard (for compatibility)
+    // Store the job ID for reference in the dashboard
     if (result) {
       // Safely check if jobId exists in the result
       const jobId = result && "jobId" in result ? result.jobId : undefined;
       if (jobId) {
-        localStorage.setItem("background_job_id", jobId);
+        localStorage.setItem("background_job_id", String(jobId));
         console.log("Job ID stored in localStorage:", jobId);
       }
     }
@@ -427,9 +386,8 @@ const handleCommitData = async () => {
     await navigateToDashboard();
   } catch (error) {
     console.error("SQLite processing error:", error);
-    uploadComparisonData.value = {
-      error: error instanceof Error ? error : new Error(String(error)),
-    };
+    uploadState.status.value = "error";
+    uploadState.error.value = error instanceof Error ? error : new Error(String(error));
     toast.add({
       title: "Error",
       description: error instanceof Error ? error.message : String(error),
