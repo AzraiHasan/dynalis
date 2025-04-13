@@ -1,6 +1,6 @@
 // composables/useBatchUploadService.ts
 import { ref, computed } from "vue";
-import { useSupabaseClient } from "#imports";
+import { useFetch } from "#imports";
 import { parseDate } from "~/utils/dateUtils";
 import type { Database } from "~/types/supabase";
 import { useUploadState } from "~/composables/useUploadState";
@@ -131,7 +131,6 @@ const cancelUpload = async (): Promise<void> => {
 };
 
 export const useBatchUploadService = () => {
-  const supabase = useSupabaseClient<Database>();
   const state = ref<BatchUploadState>({
     status: "idle",
     progress: 0,
@@ -153,18 +152,17 @@ export const useBatchUploadService = () => {
     totalChunks: number
   ): Promise<string> => {
     try {
-      const { data, error } = await supabase
-        .from("upload_jobs")
-        .insert({
+      const { data, error } = await useFetch('/api/jobs/create', {
+        method: 'POST',
+        body: {
           filename,
           total_chunks: totalChunks,
           status: "created",
-        })
-        .select("id")
-        .single();
+        }
+      });
 
-      if (error) throw error;
-      return data.id;
+      if (error) throw new Error(String(error));
+      return data.value?.jobId;
     } catch (error) {
       console.error("Failed to create upload job:", error);
       throw error;
@@ -179,17 +177,16 @@ export const useBatchUploadService = () => {
     status: string
   ) => {
     try {
-      const { error } = await supabase
-        .from("upload_jobs")
-        .update({
+      const { error } = await useFetch(`/api/jobs/${jobId}/progress`, {
+        method: 'POST',
+        body: {
           chunks_received: chunksReceived,
           processed_records: processedRecords,
           status,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", jobId);
+        }
+      });
 
-      if (error) throw error;
+      if (error) throw new Error(String(error));
     } catch (error) {
       console.error("Failed to update upload job:", error);
       // Don't throw, just log to avoid interrupting the main process
@@ -219,18 +216,14 @@ export const useBatchUploadService = () => {
   // Record error in upload job
   const recordUploadError = async (jobId: string, errorMessage: string) => {
     try {
-      const { error } = await supabase
-        .from("upload_jobs")
-        .update({
-          status: "error",
-          error_message: errorMessage,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", jobId);
-
-      if (error) throw error;
+      const jobsRepo = useJobsRepository()
+      await jobsRepo.updateJob(jobId, {
+        status: "error",
+        error_message: errorMessage,
+        updated_at: new Date().toISOString(),
+      })
     } catch (error) {
-      console.error("Failed to record upload error:", error);
+      console.error("Failed to record upload error:", error)
     }
   };
 
@@ -240,7 +233,7 @@ export const useBatchUploadService = () => {
     fileName: string = "upload.csv"
   ): Promise<any> => {
     try {
-      // Reset state - keep existing reset code
+      // Reset state - keep existing code
       state.value = {
         status: "preparing",
         progress: 0,
@@ -250,8 +243,8 @@ export const useBatchUploadService = () => {
         processedRecords: 0,
       };
 
-      // Transform data - keep existing transformation code
-      const transformedData: SiteInsert[] = data.map((row) => ({
+      // Transform data - same transformation code
+      const transformedData = data.map((row) => ({
         site_id: row["SITE ID"]?.toString() || "NO ID",
         exp_date: row["EXP DATE"]
           ? parseDate(row["EXP DATE"]?.toString() || "")?.toISOString() || null
@@ -261,86 +254,37 @@ export const useBatchUploadService = () => {
         ),
         total_payment_to_pay: parseFloat(
           (row["TOTAL PAYMENT TO PAY (RM)"]?.toString() || "0").replace(
-            /[RM,\s]/g,
-            ""
+            /[RM,\s]/g, ""
           )
         ),
         deposit: parseFloat(
           (row["DEPOSIT (RM)"]?.toString() || "0").replace(/[RM,\s]/g, "")
         ),
-        updated_at: new Date().toISOString(),
       }));
 
-      // Process in batches for better performance
-      const batchSize = 250; // Increased batch size for PostgreSQL function
-      const batches = Math.ceil(transformedData.length / batchSize);
-      state.value.totalBatches = batches;
-
-      // Create an upload job in the database
-      const jobId = await createUploadJob(fileName, batches);
-      state.value.uploadJobId = jobId;
-      state.value.status = "uploading";
-
-      let processedRecords = 0;
-
-      for (let i = 0; i < batches; i++) {
-        const startIdx = i * batchSize;
-        const endIdx = Math.min(startIdx + batchSize, transformedData.length);
-        const batchData = transformedData.slice(startIdx, endIdx);
-
-        try {
-          // Use the PostgreSQL function instead of direct upsert
-          const { data: result, error } = await supabase.rpc(
-            "bulk_upload_sites",
-            {
-              data: JSON.stringify(batchData),
-            }
-          );
-
-          if (error) throw error;
-
-          processedRecords += batchData.length;
-          state.value.processedBatches = i + 1;
-          state.value.processedRecords = processedRecords;
-          state.value.progress = Math.round(((i + 1) / batches) * 100);
-
-          // Update progress in the upload job
-          await updateUploadJobProgress(
-            jobId,
-            i + 1,
-            processedRecords,
-            "uploading"
-          );
-        } catch (error) {
-          console.error(`Error processing batch ${i + 1}:`, error);
-          await recordUploadError(
-            jobId,
-            error instanceof Error ? error.message : String(error)
-          );
-          throw error;
+      // Process via API endpoint instead of direct database calls
+      const { data: result, error } = await useFetch('/api/sites/batch-upload', {
+        method: 'POST',
+        body: {
+          sites: transformedData,
+          fileName
         }
-      }
+      });
 
-      // Keep the existing completion code
-      await completeUploadJob(jobId, processedRecords);
-
+      if (error) throw new Error(String(error));
+      
       state.value.status = "complete";
       state.value.progress = 100;
+      state.value.processedRecords = result.value?.count || 0;
 
-      return { success: true, processedRecords, jobId };
+      return { 
+        success: true, 
+        processedRecords: result.value?.count || 0, 
+        jobId: result.value?.jobId 
+      };
     } catch (error) {
-      // Keep the existing error handling code
       state.value.status = "error";
-      state.value.error =
-        error instanceof Error ? error : new Error(String(error));
-
-      if (state.value.uploadJobId) {
-        await recordUploadError(
-          state.value.uploadJobId,
-          error instanceof Error ? error.message : String(error)
-        );
-      }
-
+      state.value.error = error instanceof Error ? error : new Error(String(error));
       throw error;
     }
   };
@@ -657,16 +601,12 @@ export const useBatchUploadService = () => {
   };
 
   // Get job status
-  const getJobStatus = async (jobId: string) => {
+   const getJobStatus = async (jobId: string) => {
     try {
-      const { data, error } = await supabase
-        .from("upload_jobs")
-        .select("*")
-        .eq("id", jobId)
-        .single();
-
-      if (error) throw error;
-      return data;
+      const { data, error } = await useFetch(`/api/jobs/${jobId}`);
+      
+      if (error) throw new Error(String(error));
+      return data.value;
     } catch (error) {
       console.error("Error getting job status:", error);
       throw error;
@@ -675,6 +615,8 @@ export const useBatchUploadService = () => {
 
   return {
     processBulkUpload,
+    createUploadJob,
+    updateUploadJobProgress,
     resumeUpload,
     checkIncompleteUploads,
     state,
