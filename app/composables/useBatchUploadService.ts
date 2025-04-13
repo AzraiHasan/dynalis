@@ -515,7 +515,7 @@ export const useBatchUploadService = () => {
 };
 
   // Process a job in the background
-  const processBackgroundJob = async (jobId: string) => {
+const processBackgroundJob = async (jobId: string) => {
   try {
     jobStatus.value[jobId] = "processing";
     // Get the stored job data
@@ -528,9 +528,12 @@ export const useBatchUploadService = () => {
     const { transformedData, batchSize, batches, fileName } =
       JSON.parse(storedData);
 
-    // Use repository instead of direct Supabase call
-    const jobsRepo = useJobsRepository();
-    await jobsRepo.updateProgress(jobId, { status: "processing" });
+    // Update job status via API instead of direct repository access
+    await fetch(`/api/jobs/${jobId}/progress`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: "processing" })
+    });
 
     let processedRecords = 0;
 
@@ -541,16 +544,27 @@ export const useBatchUploadService = () => {
       const batchData = transformedData.slice(startIdx, endIdx);
 
       try {
-        // Replace Supabase RPC with sitesRepository call
-        const sitesRepo = useSitesRepository();
-        const batchResult = await sitesRepo.batchUpsert(batchData);
-        processedRecords += batchResult;
-
-        // Update job progress using repository
-        await jobsRepo.updateProgress(jobId, {
-          chunks_received: i + 1,
-          processed_records: processedRecords
+        // Use API endpoint instead of direct repository access
+        const response = await fetch("/api/sites/batch-upload", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sites: batchData })
         });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        processedRecords += result.count || batchData.length;
+
+        // Update job progress via API
+        await updateUploadJobProgress(
+          jobId,
+          i + 1,
+          processedRecords,
+          "processing"
+        );
       } catch (error) {
         await recordUploadError(
           jobId,
@@ -562,8 +576,8 @@ export const useBatchUploadService = () => {
 
     jobStatus.value[jobId] = "complete";
 
-    // Complete the job using repository
-    await jobsRepo.completeJob(jobId, processedRecords);
+    // Complete the job via API
+    await completeUploadJob(jobId, processedRecords);
 
     // Clean up local storage
     localStorage.removeItem(`bg_upload_${jobId}`);
@@ -573,12 +587,11 @@ export const useBatchUploadService = () => {
 
     jobStatus.value[jobId] = 'error';
 
-    // Update job status using repository
-    const jobsRepo = useJobsRepository();
-    await jobsRepo.updateProgress(jobId, {
-      status: 'error',
-      error_message: error instanceof Error ? error.message : String(error)
-    });
+    // Update job status via API
+    await recordUploadError(
+      jobId,
+      error instanceof Error ? error.message : String(error)
+    );
 
     throw error;
   }
