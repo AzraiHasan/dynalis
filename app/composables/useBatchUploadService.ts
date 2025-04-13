@@ -603,6 +603,7 @@ export const useBatchUploadService = () => {
     updateUploadJobProgress,
     resumeUpload,
     checkIncompleteUploads,
+    processBackgroundJob,
     state,
     isUploading,
     progress: computed(() => state.value.progress),
