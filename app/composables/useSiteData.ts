@@ -1,16 +1,12 @@
-// composables/useSiteData.ts
-import { useState } from '#app'
-import { useSiteService } from '~/utils/supabaseService'
+// composables/useSiteData.ts (UPDATED)
+import type { Site } from '~/types/supabase'
 
-// Define the site data type
-type SiteData = any[] | null
-
+// This composable now uses SQLite instead of Supabase
 export const useSiteData = () => {
-  const cachedData = useState<SiteData>('site-data', () => null)
+  const cachedData = useState<Site[] | null>('site-data', () => null)
   const isLoading = useState<boolean>('site-data-loading', () => false)
   const error = useState<Error | null>('site-data-error', () => null)
   const lastFetched = useState<number>('site-data-timestamp', () => 0)
-  const siteService = useSiteService()
   
   const fetchData = async (force = false) => {
     const now = Date.now()
@@ -21,10 +17,17 @@ export const useSiteData = () => {
       error.value = null
       
       try {
-        const data = await siteService.fetchSiteData()
-        cachedData.value = data
+        // Fetch from our SQLite API endpoint
+        const response = await fetch('/api/sites/sqlite')
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch data: ${response.statusText}`)
+        }
+        
+        const result = await response.json()
+        cachedData.value = result.sites
         lastFetched.value = now
-        return data
+        return cachedData.value
       } catch (err) {
         error.value = err instanceof Error ? err : new Error(String(err))
         console.error('Error fetching site data:', err)
