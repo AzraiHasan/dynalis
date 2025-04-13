@@ -1,7 +1,7 @@
 // server/utils/migrationUtils.ts
 
 import { useSitesRepository } from '../repositories/sitesRepository';
-import type { Site } from '~/types/supabase';
+import type { Site } from '~/types/dbsql';
 
 // Create an interface for migration results
 interface MigrationResult {

@@ -254,7 +254,7 @@ import { parse, isValid, differenceInDays, format } from "date-fns";
 import { useUploadState } from "~/composables/useUploadState";
 import { useSiteService } from "~/utils/supabaseService";
 import { useSQLiteBatchUpload } from "~/composables/useSQLiteBatchUpload";
-import { useSiteData } from "~/composables/useSiteData";
+import { useSQLiteSiteData } from "~/composables/useSQLiteSiteData";
 
 // Router setup
 const router = useRouter();
@@ -268,7 +268,7 @@ const uploadComparisonData = ref<{
   error?: Error | null;
 } | null>(null);
 const siteService = useSiteService();
-const siteData = useSiteData();
+const siteData = useSQLiteSiteData();
 const fileData = ref<FileRow[]>([]);
 const totalSites = ref<number>(0);
 const error = ref<Error | null>(null);

@@ -1,7 +1,7 @@
-// utils/supabaseService.ts
+// app/utils/supabaseService.ts
 import { useSupabaseClient } from '#imports'
 import { parseDate } from '~/utils/dateUtils'
-import type { Database } from '~/types/supabase'
+import type { Database } from '~/types/dbsql'
 
 // Input data interface
 export interface FileRow {

@@ -237,7 +237,6 @@ import { useUploadState } from "~/composables/useUploadState";
 import { ref, computed, onMounted } from "vue";
 import { useSQLiteSiteData } from '~/composables/useSQLiteSiteData'
 import { useSiteService } from "~/utils/supabaseService";
-import { useSiteData } from "~/composables/useSiteData";
 import { useRouter } from "vue-router";
 import {
   getDaysUntilExpiration,
@@ -325,7 +324,7 @@ const uploadState = useUploadState(); */
 const isLoading = ref(true);
 const error = ref<Error | null>(null);
 const siteService = useSiteService();
-const siteData = useSiteData();
+const siteData = useSQLiteSiteData();
 const sqliteData = useSQLiteSiteData()
 const useNewBackend = ref(true) // This can be toggled via UI if needed
 const dataComparison = ref<{matching: boolean, differences?: any} | null>(null)
@@ -347,17 +346,17 @@ onMounted(async () => {
     
     // Fetch data from both sources for validation during transition
     console.log("Fetching data from multiple sources for validation...")
-    const supabaseData = await siteData.fetchData() || []
+    const dbsql = await siteData.fetchData() || []
     const sqliteResult = await sqliteData.fetchData() || []
     
     // Compare datasets (temporary validation code)
-    if (supabaseData.length !== sqliteResult.length) {
-      console.warn(`Data source count mismatch: Supabase (${supabaseData.length}) vs SQLite (${sqliteResult.length})`)
+    if (dbsql.length !== sqliteResult.length) {
+      console.warn(`Data source count mismatch: Supabase (${dbsql.length}) vs SQLite (${sqliteResult.length})`)
       dataComparison.value = { matching: false, differences: { countDiff: true } }
     }
     
     // Choose data source based on toggle with null safety
-    const sourceData = useNewBackend.value ? sqliteResult : supabaseData
+    const sourceData = useNewBackend.value ? sqliteResult : dbsql
     console.log(`Using ${useNewBackend.value ? 'SQLite' : 'Supabase'} as data source (${sourceData.length} records)`)
     
     // Continue with existing transformation code
@@ -789,12 +788,12 @@ const refreshDashboard = async () => {
     await siteData.fetchData(true);
 
     // Re-run the same data loading
-    const supabaseData = await siteData.fetchData();
-    console.log("Data fetched successfully. Rows:", supabaseData.length);
+    const dbsql = await siteData.fetchData();
+    console.log("Data fetched successfully. Rows:", dbsql?.length ?? 0);
 
     console.log("Transforming data...");
     // Transform and process data
-    fileData.value = supabaseData.map((item) => ({
+    fileData.value = (dbsql ?? []).map((item) => ({
       "SITE ID": item.site_id,
       "EXP DATE": item.exp_date,
       "TOTAL RENTAL (RM)": item.total_rental,

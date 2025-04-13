@@ -1,5 +1,5 @@
 // composables/useSiteData.ts (UPDATED)
-import type { Site } from '~/types/supabase'
+import type { Site } from '~/types/dbsql'
 
 // This composable now uses SQLite instead of Supabase
 export const useSiteData = () => {

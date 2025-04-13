@@ -1,6 +1,5 @@
 // app/composables/useSQLiteSiteData.ts
-import { useState } from '#app'
-import type { Site } from '~/types/supabase'
+import type { Site } from '~/types/dbsql' 
 
 // This composable provides the same interface as useSiteData but uses SQLite instead
 export const useSQLiteSiteData = () => {

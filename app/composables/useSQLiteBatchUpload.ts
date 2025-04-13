@@ -1,6 +1,6 @@
 // app/composables/useSQLiteBatchUpload.ts
 import { ref, computed } from 'vue'
-import type { Site } from '~/types/supabase'
+import type { Site } from '~/types/dbsql'
 
 // Define state interface for type safety
 interface UploadState {

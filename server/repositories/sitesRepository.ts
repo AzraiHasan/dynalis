@@ -1,6 +1,6 @@
 // server/repositories/sitesRepository.ts
 import { useDbConnection } from '../utils/db'
-import type { Site } from '~/types/supabase'
+import type { Site } from '~/types/dbsql'
 
 // Helper function to transform database rows to typed objects
 const transformSiteRow = (row: Record<string, any>): Site => {

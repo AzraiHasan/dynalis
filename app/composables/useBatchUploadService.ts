@@ -1,7 +1,7 @@
 // composables/useBatchUploadService.ts
 import { parseDate } from "~/utils/dateUtils";
 import { useUploadState } from "~/composables/useUploadState";
-import type { Site } from "~/types/supabase";
+import type { Site } from "~/types/dbsql";
 
 interface BatchUploadState {
   status:

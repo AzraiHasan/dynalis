@@ -1,6 +1,6 @@
 // server/api/sites/batch-upload.post.ts
 import { useSitesRepository } from '../../repositories/sitesRepository'
-import type { Site } from '~/types/supabase'
+import type { Site } from '~/types/dbsql'
 
 // Define input type for better type safety
 interface SiteInput {
