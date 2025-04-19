@@ -236,7 +236,6 @@
 import { useUploadState } from "~/composables/useUploadState";
 import { ref, computed, onMounted } from "vue";
 import { useSQLiteSiteData } from '~/composables/useSQLiteSiteData'
-import { useSiteService } from "~/utils/supabaseService";
 import { useRouter } from "vue-router";
 import {
   getDaysUntilExpiration,
@@ -323,7 +322,6 @@ const uploadState = useUploadState(); */
 
 const isLoading = ref(true);
 const error = ref<Error | null>(null);
-const siteService = useSiteService();
 const siteData = useSQLiteSiteData();
 const sqliteData = useSQLiteSiteData()
 const useNewBackend = ref(true) // This can be toggled via UI if needed

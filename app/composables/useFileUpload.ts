@@ -1,6 +1,5 @@
 // composables/useFileUpload.ts
 import { ref, computed } from 'vue'
-import { useSupabaseClient } from '#imports'
 import Papa from 'papaparse'
 import * as XLSX from 'xlsx'
 import { parseDate } from '~/utils/dateUtils'
@@ -22,7 +21,6 @@ interface FileDataRow {
 }
 
 export const useFileUpload = () => {
-  const supabase = useSupabaseClient()
   const uploadState = ref<UploadState>({
     uploadId: '',
     status: 'idle',

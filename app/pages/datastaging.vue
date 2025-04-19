@@ -241,6 +241,7 @@
           color="primary"
           @click="handleCommitData"
           :loading="uploadState.isUploading.value"
+          :disabled="!storedData?.fileData?.length"
         />
       </div>
     </div>
@@ -252,7 +253,6 @@ import { ref, computed, onMounted, watch, nextTick } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { parse, isValid, differenceInDays, format } from "date-fns";
 import { useUploadState } from "~/composables/useUploadState";
-import { useSiteService } from "~/utils/supabaseService";
 import { useSQLiteBatchUpload } from "~/composables/useSQLiteBatchUpload";
 import { useSQLiteSiteData } from "~/composables/useSQLiteSiteData";
 
@@ -263,11 +263,9 @@ const route = useRoute();
 const uploadState = useUploadState();
 const sqliteBatchUpload = useSQLiteBatchUpload();
 const uploadComparisonData = ref<{
-  supabase?: any;
   sqlite?: any;
   error?: Error | null;
 } | null>(null);
-const siteService = useSiteService();
 const siteData = useSQLiteSiteData();
 const fileData = ref<FileRow[]>([]);
 const totalSites = ref<number>(0);
@@ -327,7 +325,6 @@ const handleCommitData = async () => {
   try {
     const stored = localStorage.getItem("uploadedFileData");
     if (!stored) {
-      console.error("No data available for processing");
       toast.add({
         title: "No Data",
         description: "Please upload a file first.",
@@ -343,49 +340,25 @@ const handleCommitData = async () => {
       fileName: string;
     };
 
-    if (
-      !data.fileData ||
-      !Array.isArray(data.fileData) ||
-      data.fileData.length === 0
-    ) {
-      console.error("Invalid data structure:", data);
+    if (!data.fileData?.length) {
       throw new Error("Invalid data structure");
     }
 
-    console.log(`Starting processing of ${data.fileData.length} records`);
-
-    // Start the upload process
     uploadState.startUpload();
     uploadState.isUploading.value = true;
-    console.log("Upload state initialized, status:", uploadState.status.value);
-
-    // Always use SQLite backend
-    console.log("Using SQLite backend for data processing");
     uploadState.updateProgress(15, "Processing with SQLite backend...");
 
     const result = await sqliteBatchUpload.processBulkUpload(data.fileData);
-    console.log("SQLite processing result:", result);
 
-    // Update progress and status
-    console.log("Processing completed:", result);
+    if ('jobId' in result) {
+      localStorage.setItem("background_job_id", String(result.jobId));
+    }
+
     uploadState.updateProgress(100, `Processing completed successfully.`);
     uploadState.status.value = "complete";
 
-    // Store the job ID for reference in the dashboard
-    if (result) {
-      // Safely check if jobId exists in the result
-      const jobId = result && "jobId" in result ? result.jobId : undefined;
-      if (jobId) {
-        localStorage.setItem("background_job_id", String(jobId));
-        console.log("Job ID stored in localStorage:", jobId);
-      }
-    }
-
-    // Navigate to dashboard
-    console.log("Processing complete, navigating to dashboard");
     await navigateToDashboard();
   } catch (error) {
-    console.error("SQLite processing error:", error);
     uploadState.status.value = "error";
     uploadState.error.value = error instanceof Error ? error : new Error(String(error));
     toast.add({
@@ -556,6 +529,43 @@ const cancelUpload = async (): Promise<void> => {
 };
 
 // Data processing
+const computeMetrics = (data: FileRow[]) => {
+  const metrics = {
+    totalRental: 0,
+    totalPaymentToPay: 0,
+    totalDeposit: 0,
+    expirations: {
+      expired: 0,
+      within30Days: 0,
+      within60Days: 0,
+      within90Days: 0,
+      invalidDates: 0
+    }
+  };
+
+  data.forEach(row => {
+    // Parse numeric values
+    metrics.totalRental += parseFloat((row["TOTAL RENTAL (RM)"]?.toString() || "0").replace(/[RM,\s]/g, "")) || 0;
+    metrics.totalPaymentToPay += parseFloat((row["TOTAL PAYMENT TO PAY (RM)"]?.toString() || "0").replace(/[RM,\s]/g, "")) || 0;
+    metrics.totalDeposit += parseFloat((row["DEPOSIT (RM)"]?.toString() || "0").replace(/[RM,\s]/g, "")) || 0;
+
+    // Process expiration dates
+    const expDate = row["EXP DATE"] ? parse(row["EXP DATE"].toString(), "dd/MM/yyyy", new Date()) : null;
+    if (!expDate || !isValid(expDate)) {
+      metrics.expirations.invalidDates++;
+      return;
+    }
+
+    const daysUntilExpiration = differenceInDays(expDate, new Date());
+    if (daysUntilExpiration < 0) metrics.expirations.expired++;
+    else if (daysUntilExpiration <= 30) metrics.expirations.within30Days++;
+    else if (daysUntilExpiration <= 60) metrics.expirations.within60Days++;
+    else if (daysUntilExpiration <= 90) metrics.expirations.within90Days++;
+  });
+
+  return metrics;
+};
+
 const metrics = computed(() => {
   if (!storedData.value?.fileData)
     return {
