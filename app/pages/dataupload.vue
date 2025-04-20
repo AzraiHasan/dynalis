@@ -162,7 +162,7 @@
             </div>
           </UCard>
         </div>
-        
+
         <!-- Data Preview Section -->
         <div>
           <h3 class="text-lg font-medium mb-2">Data Preview</h3>
@@ -211,7 +211,27 @@
           </p>
         </div>
 
-        
+        <div class="mb-6">
+          <h3 class="text-lg font-medium mb-2 flex items-center">
+            <Icon name="i-lucide-git-merge" class="mr-2 text-gray-600" />
+            Header Mapping
+          </h3>
+
+          <div class="bg-gray-50 p-4 rounded-md mb-4">
+            <p class="text-sm text-gray-600">
+              Map your file columns to standard system fields. This helps
+              standardize data across uploads.
+            </p>
+          </div>
+
+          <HeaderMappingPanel
+            :file-headers="headers"
+            :system-fields="systemFields"
+            :initial-mapping="currentMapping"
+            @update="updateMapping"
+            @save="saveMapping"
+          />
+        </div>
 
         <!-- Column Quality Check -->
         <div>
@@ -221,20 +241,20 @@
           </h3>
 
           <!-- Data Quality Alert -->
-        <div v-if="hasEmptyCells" class="mb-4">
-          <UAlert
-            color="warning"
-            title="Data Quality Issues Detected"
-            description="Empty cells and data irregularities may cause errors during further analysis. Consider fixing these issues before proceeding."
-          />
-        </div>
-        <div v-else class="mb-4">
-          <UAlert
-            color="success"
-            title="Data Quality Check Passed"
-            description="Your data looks good with no empty cells detected."
-          />
-        </div>
+          <div v-if="hasEmptyCells" class="mb-4">
+            <UAlert
+              color="warning"
+              title="Data Quality Issues Detected"
+              description="Empty cells and data irregularities may cause errors during further analysis. Consider fixing these issues before proceeding."
+            />
+          </div>
+          <div v-else class="mb-4">
+            <UAlert
+              color="success"
+              title="Data Quality Check Passed"
+              description="Your data looks good with no empty cells detected."
+            />
+          </div>
 
           <div
             class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
@@ -272,8 +292,6 @@
           </div>
         </div>
 
-        
-
         <!-- Navigation Buttons -->
         <div class="flex justify-between pt-4 border-t">
           <UButton
@@ -308,6 +326,8 @@ import { useFileUpload } from "~/composables/useFileUpload";
 import type { StepperItem } from "@nuxt/ui";
 import { parse, isValid } from "date-fns";
 import { DATE_FORMATS } from "~/utils/dateUtils";
+import { useHeaderMapping } from '~/composables/useHeaderMapping';
+import HeaderMappingPanel from '~/components/HeaderMappingPanel.vue';
 
 // Interface definitions remain the same
 interface FileRow {
@@ -341,6 +361,9 @@ const toast = useToast();
 const dragActive = ref(false);
 const fileEstimate = ref("");
 const router = useRouter();
+const { systemFields, fetchSystemFields } = useHeaderMapping();
+const currentMapping = ref<Record<string, string>>({});
+const mappingSaved = ref(false);
 
 // Step configurations for UStepper
 const items = computed<StepperItem[]>(() => [
@@ -427,6 +450,46 @@ const handleFileSelection = (file: File) => {
   selectedFile.value = file;
 };
 
+async function loadSystemFields() {
+  try {
+    await fetchSystemFields();
+  } catch (error) {
+    console.error('Failed to load system fields:', error);
+    toast.add({
+      title: 'Error',
+      description: 'Failed to load mapping fields',
+      color: 'error'
+    });
+  }
+}
+
+function updateMapping(mapping: Record<string, string>) {
+  currentMapping.value = mapping;
+  mappingSaved.value = false;
+}
+
+async function saveMapping(mapping: Record<string, string>) {
+  try {
+    // Add save logic here
+    mappingSaved.value = true;
+    toast.add({
+      title: 'Success',
+      description: 'Mapping configuration saved',
+      color: 'success'
+    });
+  } catch (error) {
+    console.error('Failed to save mapping:', error);
+    toast.add({
+      title: 'Error',
+      description: 'Failed to save mapping configuration',
+      color: 'error'
+    });
+  }
+}
+
+onMounted(() => {
+  loadSystemFields();
+});
 // Process file and move to next step
 const processFile = async () => {
   if (!selectedFile.value) {
