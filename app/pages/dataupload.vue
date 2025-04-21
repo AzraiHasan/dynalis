@@ -5,6 +5,12 @@
         <h1 class="text-xl font-semibold">Data Upload</h1>
       </template>
 
+      <MappingInitializer
+        v-if="currentStep === 1"
+        @statusChanged="handleMappingStatusChange"
+        class="mb-6"
+      />
+
       <!-- Step Indicator with proper interaction -->
       <UStepper
         v-model="currentStep"
@@ -326,8 +332,9 @@ import { useFileUpload } from "~/composables/useFileUpload";
 import type { StepperItem } from "@nuxt/ui";
 import { parse, isValid } from "date-fns";
 import { DATE_FORMATS } from "~/utils/dateUtils";
-import { useHeaderMapping } from '~/composables/useHeaderMapping';
-import HeaderMappingPanel from '~/components/HeaderMappingPanel.vue';
+import { useHeaderMapping } from "~/composables/useHeaderMapping";
+import HeaderMappingPanel from "~/components/HeaderMappingPanel.vue";
+import MappingInitializer from "~/components/MappingInitializer.vue";
 
 // Interface definitions remain the same
 interface FileRow {
@@ -364,6 +371,11 @@ const router = useRouter();
 const { systemFields, fetchSystemFields } = useHeaderMapping();
 const currentMapping = ref<Record<string, string>>({});
 const mappingSaved = ref(false);
+const isMappingInitialized = ref(false);
+
+function handleMappingStatusChange(status: boolean): void {
+  isMappingInitialized.value = status;
+}
 
 // Step configurations for UStepper
 const items = computed<StepperItem[]>(() => [
@@ -454,11 +466,11 @@ async function loadSystemFields() {
   try {
     await fetchSystemFields();
   } catch (error) {
-    console.error('Failed to load system fields:', error);
+    console.error("Failed to load system fields:", error);
     toast.add({
-      title: 'Error',
-      description: 'Failed to load mapping fields',
-      color: 'error'
+      title: "Error",
+      description: "Failed to load mapping fields",
+      color: "error",
     });
   }
 }
@@ -473,16 +485,16 @@ async function saveMapping(mapping: Record<string, string>) {
     // Add save logic here
     mappingSaved.value = true;
     toast.add({
-      title: 'Success',
-      description: 'Mapping configuration saved',
-      color: 'success'
+      title: "Success",
+      description: "Mapping configuration saved",
+      color: "success",
     });
   } catch (error) {
-    console.error('Failed to save mapping:', error);
+    console.error("Failed to save mapping:", error);
     toast.add({
-      title: 'Error',
-      description: 'Failed to save mapping configuration',
-      color: 'error'
+      title: "Error",
+      description: "Failed to save mapping configuration",
+      color: "error",
     });
   }
 }
