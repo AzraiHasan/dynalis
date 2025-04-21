@@ -468,6 +468,8 @@ const handleFileSelection = (file: File) => {
 
   selectedFileName.value = file.name;
   selectedFile.value = file;
+
+  console.log("File selected:", file.name, file.type, file.size);
 };
 
 async function loadSystemFields() {
@@ -521,6 +523,7 @@ const processFile = async () => {
   errorMessage.value = "";
 
   try {
+    console.log("Starting file processing...");
     // Use the file upload composable
     fileData.value = await fileUpload.processAndUpload(selectedFile.value);
     headers.value =
@@ -548,6 +551,10 @@ const processFile = async () => {
   } finally {
     isProcessing.value = false;
   }
+  console.log("File processing complete:", {
+  rows: fileData.value.length,
+  headers: headers.value
+});
 };
 
 // Data validation helpers
