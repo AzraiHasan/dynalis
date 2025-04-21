@@ -3,8 +3,8 @@ import { ref, computed } from 'vue'
 import type { SystemField, MappingConfiguration } from '~/types/mapping'
 
 export const useMappingState = () => {
-  // State tracking
-  const isInitialized = ref(false)
+  // Use useState for persistence
+  const isInitialized = useState<boolean>('mapping-initialized', () => false)
   const isInitializing = ref(false)
   const isChecking = ref(false)
   const systemFields = ref<SystemField[]>([])
@@ -44,6 +44,7 @@ export const useMappingState = () => {
       systemFields.value = fields
     }
     lastChecked.value = new Date()
+    console.log("Finish checking, isChecking:", isChecking.value);
   }
   
   // Set error state

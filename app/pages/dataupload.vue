@@ -380,7 +380,9 @@ const mappingSaved = ref(false);
 const mappingState = useMappingState();
 
 function handleMappingStatusChange(status: boolean): void {
+  console.log("Mapping status changed:", status);
   mappingState.isInitialized.value = status;
+  console.log("Updated isInitialized:", mappingState.isInitialized.value);
 }
 
 // Step configurations for UStepper

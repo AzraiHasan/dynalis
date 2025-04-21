@@ -73,11 +73,17 @@ async function checkInitializationStatus(): Promise<void> {
     const data = await response.json();
     const fields = data.fields || [];
 
+    console.log("Initialization check:", {
+      fieldsFound: fields.length,
+      fields,
+    });
+
     // Update state using the composable
     mappingState.finishChecking(fields.length > 0, fields);
 
     // Emit status to parent component
     emit("statusChanged", mappingState.isInitialized.value);
+    console.log("Emitting status change:", mappingState.isInitialized.value);
   } catch (error) {
     const errorMessage =
       "Unable to check mapping framework status. Please try again.";
@@ -100,6 +106,7 @@ async function checkInitializationStatus(): Promise<void> {
 
 // Run check on component mount
 onMounted(() => {
+  console.log("MappingInitializer mounted, checking initialization status");
   checkInitializationStatus();
 });
 
@@ -120,7 +127,10 @@ const emit = defineEmits<{
       </template>
 
       <!-- Loading State -->
-      <div v-if="mappingState.isChecking" class="flex justify-center py-6">
+      <div
+        v-if="mappingState.isChecking.value"
+        class="flex justify-center py-6"
+      >
         <div class="flex items-center gap-2">
           <UIcon name="i-lucide-loader-2" class="animate-spin text-gray-500" />
           <span class="text-gray-600">Checking initialization status...</span>
@@ -128,7 +138,7 @@ const emit = defineEmits<{
       </div>
 
       <!-- Error State -->
-      <div v-else-if="mappingState.error" class="py-4">
+      <div v-else-if="mappingState.error && mappingState.error.value" class="py-4">
         <UAlert
           color="error"
           :description="
@@ -140,7 +150,7 @@ const emit = defineEmits<{
       <!-- Main Content States -->
       <div v-else class="space-y-4">
         <!-- Initialized State -->
-        <div v-if="mappingState.isInitialized">
+        <div v-if="mappingState.isInitialized.value">
           <UAlert
             color="success"
             title="Framework Initialized"
@@ -200,5 +210,9 @@ const emit = defineEmits<{
         size="xs"
       />
     </UTooltip>
+    <div class="hidden">
+        isChecking: {{ mappingState.isChecking.value }} 
+        isInitialized: {{ mappingState.isInitialized.value }}
+      </div>
   </div>
 </template>
