@@ -175,9 +175,30 @@ const emit = defineEmits<{
                 ? "Initializing..."
                 : "Initialize Mapping Framework"
             }}
+            <UTooltip
+              text="This will create the necessary database tables and default field mappings"
+            >
+              <UButton
+                class="ml-2"
+                color="neutral"
+                variant="ghost"
+                icon="i-lucide-info"
+                size="xs"
+              />
+            </UTooltip>
           </UButton>
         </div>
       </div>
     </UCard>
+    <UTooltip
+      text="The mapping framework allows you to standardize data columns between different file uploads"
+    >
+      <UButton
+        color="neutral"
+        variant="ghost"
+        icon="i-lucide-help-circle"
+        size="xs"
+      />
+    </UTooltip>
   </div>
 </template>
