@@ -22,10 +22,9 @@
       <!-- Step 1: File Upload (Only shown when currentStep is 1) -->
       <div v-if="currentStep === 1" class="space-y-4">
         <div
+          v-if="isMappingInitialized"
           class="border-2 border-dashed rounded-lg p-10 text-center cursor-pointer hover:bg-gray-50 transition"
-          :class="
-            dragActive ? 'border-primary-500 bg-primary-50' : 'border-gray-300'
-          "
+          :class="dragActive ? 'border-primary-500 bg-primary-50' : 'border-gray-300'"
           @dragenter.prevent="dragActive = true"
           @dragleave.prevent="dragActive = false"
           @dragover.prevent="dragActive = true"
@@ -74,6 +73,12 @@
           {{ errorMessage }}
         </div>
 
+        <div v-else class="border-2 border-dashed rounded-lg p-10 text-center border-gray-200 bg-gray-50">
+          <UIcon name="i-lucide-lock" class="text-gray-400 mx-auto h-12 w-12 mb-4" />
+          <h3 class="text-lg font-medium text-gray-600">Initialize mapping framework first</h3>
+          <p class="text-sm text-gray-500">Please initialize the mapping framework above before uploading files</p>
+        </div>
+
         <div class="flex justify-between">
           <UButton
             v-if="selectedFileName"
@@ -86,7 +91,7 @@
           </UButton>
 
           <UButton
-            v-if="selectedFileName"
+            v-if="selectedFileName && isMappingInitialized"
             icon="i-lucide-file-check"
             color="primary"
             @click="processFile"
