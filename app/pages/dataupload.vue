@@ -22,7 +22,7 @@
       <!-- Step 1: File Upload (Only shown when currentStep is 1) -->
       <div v-if="currentStep === 1" class="space-y-4">
         <div
-          v-if="isMappingInitialized"
+          v-if="mappingState.isInitialized.value"
           class="border-2 border-dashed rounded-lg p-10 text-center cursor-pointer hover:bg-gray-50 transition"
           :class="dragActive ? 'border-primary-500 bg-primary-50' : 'border-gray-300'"
           @dragenter.prevent="dragActive = true"
@@ -91,7 +91,7 @@
           </UButton>
 
           <UButton
-            v-if="selectedFileName && isMappingInitialized"
+            v-if="selectedFileName && mappingState.isInitialized.value"
             icon="i-lucide-file-check"
             color="primary"
             @click="processFile"
@@ -340,6 +340,7 @@ import { DATE_FORMATS } from "~/utils/dateUtils";
 import { useHeaderMapping } from "~/composables/useHeaderMapping";
 import HeaderMappingPanel from "~/components/HeaderMappingPanel.vue";
 import MappingInitializer from "~/components/MappingInitializer.vue";
+import { useMappingState } from '~/composables/useMappingState'
 
 // Interface definitions remain the same
 interface FileRow {
@@ -376,10 +377,10 @@ const router = useRouter();
 const { systemFields, fetchSystemFields } = useHeaderMapping();
 const currentMapping = ref<Record<string, string>>({});
 const mappingSaved = ref(false);
-const isMappingInitialized = ref(false);
+const mappingState = useMappingState();
 
 function handleMappingStatusChange(status: boolean): void {
-  isMappingInitialized.value = status;
+  mappingState.isInitialized.value = status;
 }
 
 // Step configurations for UStepper
