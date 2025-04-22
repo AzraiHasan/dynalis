@@ -4,6 +4,26 @@
   <div class="header-mapping-panel">
     <h3 class="text-lg font-medium mb-4">Header Mapping Configuration</h3>
 
+    <div v-if="savedConfigurations.length > 0" class="mb-4">
+      <h4 class="text-md font-medium mb-2">Saved Mapping Configurations</h4>
+      <div class="flex items-center gap-2">
+        <USelect
+          v-model="selectedConfig"
+          :items="configOptions"
+          placeholder="Select a saved mapping"
+          class="flex-1"
+        />
+        <UButton
+          color="primary"
+          variant="soft"
+          @click="applySelectedMapping"
+          :disabled="!selectedConfig"
+        >
+          Apply Mapping
+        </UButton>
+      </div>
+    </div>
+
     <!-- Display detected headers and mapping options -->
     <div v-if="fileHeaders.length > 0" class="space-y-4">
       <UCard v-for="header in fileHeaders" :key="header" class="p-3">
@@ -35,7 +55,6 @@
 
     <!-- Action buttons -->
     <div class="flex justify-end mt-4 space-x-2">
-      
       <UButton
         v-if="hasChanges"
         color="primary"
@@ -58,7 +77,8 @@
         Unsaved changes
       </UBadge>
     </div>
-    <div class="p-4 bg-gray-100 mt-4 rounded text-xs">
+    <!-- Debugging -->
+    <!-- <div class="p-4 bg-gray-100 mt-4 rounded text-xs">
       <p>System Fields Available: {{ systemFields.length }}</p>
       <p>Options Generated: {{ systemFieldOptions.length }}</p>
       <pre>{{ JSON.stringify(systemFieldOptions, null, 2) }}</pre>
@@ -69,13 +89,15 @@
       <pre v-if="systemFields.length">
 First field: {{ JSON.stringify(systemFields[0], null, 2) }}</pre
       >
-    </div>
+    </div> -->
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from "vue";
-import type { SystemField } from "~/types/mapping";
+import { ref, computed, onMounted } from "vue";
+import type { SystemField, MappingConfiguration } from "~/types/mapping";
+const savedConfigurations = ref<MappingConfiguration[]>([]);
+const selectedConfig = ref<string | undefined>(undefined);
 
 const toast = useToast();
 
@@ -113,6 +135,14 @@ const systemFieldOptions = computed(() => {
   }));
 });
 
+const configOptions = computed(() => {
+  return savedConfigurations.value.map(config => ({
+    label: config.name,
+    value: config.id,
+    description: `Created: ${new Date(config.createdAt).toLocaleString()}`
+  }));
+});
+
 const hasChanges = computed(() => {
   return JSON.stringify(mappings.value) !== originalMappings;
 });
@@ -145,15 +175,34 @@ async function loadSavedMappings() {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
     const result = await response.json();
-    console.log('Saved mapping configurations:', result);
-    // You'll implement selection UI in the next step
+    savedConfigurations.value = result.configurations || [];
   } catch (error) {
     console.error('Error loading saved mappings:', error);
-    toast.add({
-      title: "Error",
-      description: "Failed to load saved mappings",
-      color: "error"
-    });
   }
 }
+
+function applySelectedMapping() {
+  if (!selectedConfig.value) return;
+  
+  const config = savedConfigurations.value.find(c => c.id === selectedConfig.value);
+  if (!config) return;
+  
+  // Create a new mapping object from the selected configuration
+  const newMapping: Record<string, string> = {};
+  
+  for (const mapping of config.mappings) {
+    // Only apply mappings for headers that exist in the current file
+    if (props.fileHeaders.includes(mapping.userHeaderName)) {
+      newMapping[mapping.userHeaderName] = mapping.systemFieldId;
+    }
+  }
+  
+  // Update the current mapping
+  mappings.value = newMapping;
+  emit("update", newMapping);
+}
+
+onMounted(() => {
+  loadSavedMappings();
+});
 </script>
