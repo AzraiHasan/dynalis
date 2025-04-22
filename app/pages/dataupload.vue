@@ -239,6 +239,8 @@
             :file-headers="headers"
             :system-fields="systemFields"
             :initial-mapping="currentMapping"
+            :saved-successfully="mappingSaved"
+            :is-saving="isMappingSaving"
             @update="updateMapping"
             @save="saveMapping"
           />
@@ -490,15 +492,35 @@ function updateMapping(mapping: Record<string, string>) {
   mappingSaved.value = false;
 }
 
+const isMappingSaving = ref(false);
+
 async function saveMapping(mapping: Record<string, string>) {
   try {
-    // Add save logic here
+    isMappingSaving.value = true;
+    
+  // Create a name for the mapping configuration based on file name
+    const configName = selectedFileName.value 
+      ? `Mapping for ${selectedFileName.value}` 
+      : `Mapping ${new Date().toISOString()}`;
+    
+    // Use the headerMapping composable to save the mapping
+    const result = await useHeaderMapping().saveMapping(
+      configName,
+      headers.value,
+      mapping
+    );
+    
+    // Update state
     mappingSaved.value = true;
+    mappingState.setMappingConfig(result);
+    
     toast.add({
       title: "Success",
       description: "Mapping configuration saved",
       color: "success",
     });
+    
+    return result;
   } catch (error) {
     console.error("Failed to save mapping:", error);
     toast.add({
@@ -506,8 +528,12 @@ async function saveMapping(mapping: Record<string, string>) {
       description: "Failed to save mapping configuration",
       color: "error",
     });
+    throw error;
+  } finally {
+   isMappingSaving.value = false;
   }
 }
+
 
 onMounted(() => {
   loadSystemFields();

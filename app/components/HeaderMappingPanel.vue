@@ -35,9 +35,25 @@
 
     <!-- Action buttons -->
     <div class="flex justify-end mt-4 space-x-2">
-      <UButton v-if="hasChanges" color="primary" @click="saveMapping">
+      +
+      <UButton
+        v-if="hasChanges"
+        color="primary"
+        :loading="props.isSaving"
+        @click="saveMapping"
+      >
         Save Mapping
       </UButton>
+      <UBadge
+        v-if="!hasChanges && savedSuccessfully"
+        color="success"
+        class="ml-2"
+      >
+        Mapping saved
+      </UBadge>
+      <UBadge v-else-if="hasChanges" color="warning" class="ml-2">
+        Unsaved changes
+      </UBadge>
     </div>
     <div class="p-4 bg-gray-100 mt-4 rounded text-xs">
       <p>System Fields Available: {{ systemFields.length }}</p>
@@ -62,6 +78,8 @@ interface Props {
   fileHeaders: string[];
   systemFields: SystemField[];
   initialMapping?: Record<string, string>;
+  savedSuccessfully?: boolean;
+  isSaving?: boolean;
 }
 
 interface Emits {
@@ -69,7 +87,11 @@ interface Emits {
   (e: "save", mapping: Record<string, string>): void;
 }
 
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), {
+  initialMapping: () => ({}),
+  savedSuccessfully: false,
+  isSaving: false,
+});
 const emit = defineEmits<Emits>();
 
 // State
@@ -108,5 +130,6 @@ function updateMapping(
 
 function saveMapping() {
   emit("save", { ...mappings.value });
+  // We'll reset this in the parent after save completes
 }
 </script>
