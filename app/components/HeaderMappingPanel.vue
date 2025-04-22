@@ -35,7 +35,7 @@
 
     <!-- Action buttons -->
     <div class="flex justify-end mt-4 space-x-2">
-      +
+      
       <UButton
         v-if="hasChanges"
         color="primary"
@@ -43,6 +43,9 @@
         @click="saveMapping"
       >
         Save Mapping
+      </UButton>
+      <UButton color="secondary" @click="loadSavedMappings" class="mr-2">
+        Load Saved Mappings
       </UButton>
       <UBadge
         v-if="!hasChanges && savedSuccessfully"
@@ -73,6 +76,8 @@ First field: {{ JSON.stringify(systemFields[0], null, 2) }}</pre
 <script setup lang="ts">
 import { ref, computed } from "vue";
 import type { SystemField } from "~/types/mapping";
+
+const toast = useToast();
 
 interface Props {
   fileHeaders: string[];
@@ -131,5 +136,24 @@ function updateMapping(
 function saveMapping() {
   emit("save", { ...mappings.value });
   // We'll reset this in the parent after save completes
+}
+
+async function loadSavedMappings() {
+  try {
+    const response = await fetch('/api/mapping/configurations');
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const result = await response.json();
+    console.log('Saved mapping configurations:', result);
+    // You'll implement selection UI in the next step
+  } catch (error) {
+    console.error('Error loading saved mappings:', error);
+    toast.add({
+      title: "Error",
+      description: "Failed to load saved mappings",
+      color: "error"
+    });
+  }
 }
 </script>

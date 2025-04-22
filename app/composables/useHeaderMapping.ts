@@ -84,7 +84,7 @@ export const useHeaderMapping = () => {
       const session = JSON.parse(userSession || '{}')
       const userId = session?.user?.id || 'anonymous'
       
-      const response = await fetch('/api/mapping/index.post', {
+      const response = await fetch('/api/mapping', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
