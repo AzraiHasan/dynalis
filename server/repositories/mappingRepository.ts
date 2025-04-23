@@ -387,5 +387,35 @@ export const useMappingRepository = () => {
         return false;
       }
     },
+
+    /**
+     * Get all system fields
+     */
+    async getSystemFields(): Promise<SystemField[]> {
+      const result = await db.sql`
+    SELECT * FROM system_fields
+    WHERE status = 'active'
+    ORDER BY name
+  `;
+
+      const rows = result.rows || [];
+      return rows.map((row: Record<string, any>) =>
+        transformSystemFieldRow(row)
+      );
+    },
+
+    /**
+     * Get a system field by ID
+     */
+    async getSystemFieldById(id: string): Promise<SystemField | null> {
+      const result = await db.sql`
+    SELECT * FROM system_fields
+    WHERE id = ${id}
+    LIMIT 1
+  `;
+
+      const rows = result.rows || [];
+      return rows.length > 0 ? transformSystemFieldRow(rows[0]) : null;
+    },
   };
 };

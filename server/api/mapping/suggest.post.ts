@@ -41,7 +41,7 @@ export default defineEventHandler(async (event) => {
       const match = mappingService.findBestMatchingField(header, systemFields);
       
       if (match) {
-        // Calculate confidence score (this is already part of the algorithm)
+        // Calculate confidence score
         const normalizedHeader = header.toLowerCase().trim()
           .replace(/\s+/g, '_')
           .replace(/[^\w]/g, '');
