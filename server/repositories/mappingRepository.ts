@@ -136,6 +136,87 @@ export const useMappingRepository = () => {
           ${field.changeReason || null}
         )
       `;
-    }
+    },
+
+    /**
+ * Get all mapping configurations
+ */
+async getAllMappingConfigurations(): Promise<MappingConfiguration[]> {
+  const result = await db.sql`
+    SELECT * FROM mapping_configurations 
+    ORDER BY created_at DESC
+  `;
+  
+  const configs = result.rows || [];
+  return Promise.all(configs.map(async (row: Record<string, any>) => {
+    // Get mappings for this configuration
+    const mappingsResult = await db.sql`
+      SELECT * FROM field_mappings 
+      WHERE config_id = ${row.id}
+    `;
+    
+    const mappings = (mappingsResult.rows || []).map((mappingRow: Record<string, any>) => 
+      transformFieldMappingRow(mappingRow)
+    );
+    
+    return {
+      id: String(row.id),
+      name: String(row.name),
+      description: row.description || undefined,
+      mappings,
+      createdBy: String(row.created_by),
+      createdAt: new Date(row.created_at),
+      updatedAt: new Date(row.updated_at),
+      version: Number(row.version || 1),
+      status: (row.status || 'draft') as 'draft' | 'published' | 'deprecated',
+      effectiveFrom: row.effective_from ? new Date(row.effective_from) : undefined,
+      effectiveTo: row.effective_to ? new Date(row.effective_to) : undefined,
+      previousVersionId: row.previous_version_id || undefined,
+      changeReason: row.change_reason || undefined
+    };
+  }));
+},
+
+/**
+ * Get a specific mapping configuration by ID
+ */
+async getMappingConfiguration(id: string): Promise<MappingConfiguration | null> {
+  const result = await db.sql`
+    SELECT * FROM mapping_configurations 
+    WHERE id = ${id} LIMIT 1
+  `;
+  
+  if (!result.rows || result.rows.length === 0) {
+    return null;
+  }
+  
+  const row = result.rows[0];
+  
+  // Get mappings for this configuration
+  const mappingsResult = await db.sql`
+    SELECT * FROM field_mappings 
+    WHERE config_id = ${id}
+  `;
+  
+  const mappings = (mappingsResult.rows || []).map((mappingRow: Record<string, any>) => 
+  transformFieldMappingRow(mappingRow)
+);
+  
+  return {
+    id: String(row.id),
+    name: String(row.name),
+    description: row.description || undefined,
+    mappings,
+    createdBy: String(row.created_by),
+    createdAt: new Date(row.created_at),
+    updatedAt: new Date(row.updated_at),
+    version: Number(row.version || 1),
+    status: (row.status || 'draft') as 'draft' | 'published' | 'deprecated',
+    effectiveFrom: row.effective_from ? new Date(row.effective_from) : undefined,
+    effectiveTo: row.effective_to ? new Date(row.effective_to) : undefined,
+    previousVersionId: row.previous_version_id || undefined,
+    changeReason: row.change_reason || undefined
+  };
+}
   };
 };
