@@ -1,14 +1,28 @@
 // app/types/mapping.ts
 
 /**
- * Represents a data field in the system's core schema
+ * Represents a system field with versioning and metadata
  */
 export interface SystemField {
   id: string;
   name: string;
-  dataType: 'string' | 'number' | 'date' | 'boolean' | 'object';
+  dataType: 'string' | 'number' | 'date' | 'boolean' | 'object' | 'array';
   isRequired: boolean;
   description?: string;
+  // New fields for schema evolution
+  version: number;
+  status: 'active' | 'deprecated' | 'draft';
+  createdAt: string;
+  updatedAt: string;
+  createdBy: string;
+  validationRules?: ValidationRule[];
+  metadataProperties?: Record<string, any>;
+}
+
+export interface ValidationRule {
+  type: 'range' | 'regex' | 'enum' | 'length' | 'custom';
+  params: Record<string, any>;
+  errorMessage?: string;
 }
 
 /**
@@ -25,7 +39,7 @@ export interface FieldMapping {
 }
 
 /**
- * Represents a complete mapping configuration for a dataset
+ * Represents a complete mapping configuration for a dataset, with versioning and metadata
  */
 export interface MappingConfiguration {
   id: string;
@@ -36,4 +50,28 @@ export interface MappingConfiguration {
   createdAt: Date;
   updatedAt: Date;
   version: number;
+  // New fields for schema evolution
+  status: 'draft' | 'published' | 'deprecated';
+  effectiveFrom?: Date;
+  effectiveTo?: Date;
+  previousVersionId?: string;
+  changeReason?: string;
+  isCompatibleWith?: string[]; // IDs of other mapping configurations this is compatible with
+  versionHistory?: VersionHistoryEntry[];
+}
+
+export interface VersionHistoryEntry {
+  version: number;
+  versionId: string;
+  timestamp: Date;
+  changedBy: string;
+  changeReason: string;
+  changes: SchemaChange[];
+}
+
+export interface SchemaChange {
+  type: 'added' | 'removed' | 'modified';
+  fieldId: string;
+  previousValue?: any;
+  newValue?: any;
 }
