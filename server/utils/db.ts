@@ -81,6 +81,40 @@ export const initializeDatabase = async () => {
         rejection_reason TEXT
       )
     `
+
+    // Add mapping_configurations table
+await db.sql`
+  CREATE TABLE IF NOT EXISTS mapping_configurations (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT,
+    created_by TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    version INTEGER NOT NULL DEFAULT 1,
+    status TEXT NOT NULL DEFAULT 'draft',
+    effective_from TEXT,
+    effective_to TEXT,
+    previous_version_id TEXT,
+    change_reason TEXT
+  )
+`
+
+// Add field_mappings table
+await db.sql`
+  CREATE TABLE IF NOT EXISTS field_mappings (
+    id TEXT PRIMARY KEY,
+    config_id TEXT NOT NULL,
+    user_header_name TEXT NOT NULL,
+    system_field_id TEXT NOT NULL,
+    transformation_type TEXT,
+    transformation_rule TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    FOREIGN KEY (config_id) REFERENCES mapping_configurations (id),
+    FOREIGN KEY (system_field_id) REFERENCES system_fields (id)
+  )
+`
     
     console.info('Database schema initialized successfully')
     return true
