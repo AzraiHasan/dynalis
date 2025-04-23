@@ -86,7 +86,6 @@ export const useMappingRepository = () => {
             version = ${field.version},
             status = ${field.status || "active"},
             updated_at = ${now},
-            updated_by = ${field.createdBy || null},
             validation_rules = ${
               field.validationRules
                 ? JSON.stringify(field.validationRules)

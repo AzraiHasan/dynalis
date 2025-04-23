@@ -76,3 +76,23 @@ export interface SchemaChange {
   previousValue?: any;
   newValue?: any;
 }
+
+/**
+ * Represents a schema migration for tracking schema evolution
+ */
+export interface SchemaMigration {
+  id: string;
+  name: string;
+  description?: string;
+  version: number;
+  appliedAt?: Date;
+  appliedBy?: string;
+  status: 'pending' | 'applied' | 'failed' | 'rolled_back';
+  operationType: 'create' | 'update' | 'delete' | 'rename' | 'composite';
+  entityType: 'field' | 'mapping' | 'configuration' | 'database';
+  entityId?: string;
+  changes: SchemaChange[];
+  rollbackChanges?: SchemaChange[];
+  isManualRollbackRequired: boolean;
+  dependsOn?: string[]; // IDs of migrations that must be applied first
+}
