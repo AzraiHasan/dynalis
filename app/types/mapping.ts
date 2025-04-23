@@ -15,6 +15,7 @@ export interface SystemField {
   createdAt: string;
   updatedAt: string;
   createdBy: string;
+  changeReason?: string;
   validationRules?: ValidationRule[];
   metadataProperties?: Record<string, any>;
 }

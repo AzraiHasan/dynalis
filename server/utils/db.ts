@@ -1,15 +1,3 @@
-// server/utils/db.ts
-
-export const useDbConnection = () => {
-  try {
-    const db = useDatabase()
-    return { db, status: 'connected' }
-  } catch (error) {
-    console.error('Database connection error:', error)
-    return { db: null, status: 'error', error }
-  }
-}
-
 export const initializeDatabase = async () => {
   const { db, status } = useDbConnection()
   if (status !== 'connected' || db === null) {
@@ -41,6 +29,56 @@ export const initializeDatabase = async () => {
         password_hash TEXT NOT NULL,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
+      )
+    `
+    
+    // Add system_fields table with versioning support
+    await db.sql`
+      CREATE TABLE IF NOT EXISTS system_fields (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        data_type TEXT NOT NULL,
+        is_required INTEGER NOT NULL,
+        description TEXT,
+        version INTEGER NOT NULL DEFAULT 1,
+        status TEXT NOT NULL DEFAULT 'active',
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        created_by TEXT,
+        validation_rules TEXT,
+        metadata_properties TEXT
+      )
+    `
+    
+    // Add system_field_history table
+    await db.sql`
+      CREATE TABLE IF NOT EXISTS system_field_history (
+        id TEXT PRIMARY KEY DEFAULT (uuid()),
+        field_id TEXT NOT NULL,
+        version INTEGER NOT NULL,
+        changed_at TEXT NOT NULL,
+        changed_by TEXT,
+        field_data TEXT NOT NULL,
+        change_reason TEXT,
+        FOREIGN KEY (field_id) REFERENCES system_fields (id)
+      )
+    `
+    
+    // Add schema_change_log table for governance
+    await db.sql`
+      CREATE TABLE IF NOT EXISTS schema_change_log (
+        id TEXT PRIMARY KEY DEFAULT (uuid()),
+        entity_type TEXT NOT NULL,
+        entity_id TEXT NOT NULL,
+        action TEXT NOT NULL,
+        performed_by TEXT NOT NULL,
+        performed_at TEXT NOT NULL,
+        previous_state TEXT,
+        new_state TEXT,
+        approval_status TEXT DEFAULT 'pending',
+        approved_by TEXT,
+        approved_at TEXT,
+        rejection_reason TEXT
       )
     `
     

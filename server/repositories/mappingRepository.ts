@@ -1,5 +1,4 @@
-// server/repositories/mappingRepository.ts
-import { useDbConnection } from '../utils/db';
+// server/repositories/mappingRepository.ts\
 import type { SystemField, FieldMapping, MappingConfiguration } from '~/types/mapping';
 
 // Helper functions to transform DB rows to typed objects
