@@ -236,7 +236,7 @@
 import { useUploadState } from "~/composables/useUploadState";
 import { ref, computed, onMounted } from "vue";
 import { useSQLiteSiteData } from '~/composables/useSQLiteSiteData'
-import { useSiteService } from "~/utils/supabaseService";
+import { useSiteService } from "~/utils/siteService";
 import { useRouter } from "vue-router";
 import {
   getDaysUntilExpiration,

@@ -1,9 +1,9 @@
 // composables/useFileUpload.ts
 import { ref, computed } from 'vue'
-import { useSupabaseClient } from '#imports'
 import Papa from 'papaparse'
 import * as XLSX from 'xlsx'
 import { parseDate } from '~/utils/dateUtils'
+import { useFileUploadStore, type FileDataRow } from '~/stores/fileUploadStore'
 
 // Define interfaces
 interface UploadState {
@@ -17,12 +17,7 @@ interface UploadState {
   processedRecords: number;
 }
 
-interface FileDataRow {
-  [key: string]: string | number | null;
-}
-
 export const useFileUpload = () => {
-  const supabase = useSupabaseClient()
   const uploadState = ref<UploadState>({
     uploadId: '',
     status: 'idle',
@@ -33,6 +28,8 @@ export const useFileUpload = () => {
     chunksUploaded: 0,
     processedRecords: 0
   })
+  
+  const fileUploadStore = useFileUploadStore()
   
   const isUploading = computed(() => 
     ['preparing', 'uploading', 'processing'].includes(uploadState.value.status)
@@ -51,6 +48,9 @@ export const useFileUpload = () => {
         chunksUploaded: 0,
         processedRecords: 0
       }
+      
+      // Reset the store data
+      fileUploadStore.resetData()
       
       // Parse the file
       const data = await parseFile(file)
@@ -92,7 +92,11 @@ export const useFileUpload = () => {
       if (fileExt === 'csv') {
         Papa.parse(file, {
           header: true,
-          complete: (results) => resolve(results.data as FileDataRow[]),
+          complete: (results) => {
+            const data = results.data as FileDataRow[]
+            fileUploadStore.setUploadedData(data, file.name)
+            resolve(data)
+          },
           error: (error) => reject(error)
         })
       } else {
@@ -122,7 +126,12 @@ export const useFileUpload = () => {
             
             // Now we're sure worksheet is not undefined
             const jsonData = XLSX.utils.sheet_to_json<Record<string, any>>(worksheet, { raw: false })
-            resolve(jsonData as FileDataRow[])
+            const typedData = jsonData as FileDataRow[]
+            
+            // Store the data
+            fileUploadStore.setUploadedData(typedData, file.name)
+            
+            resolve(typedData)
           } catch (error) {
             reject(error)
           }
@@ -134,23 +143,8 @@ export const useFileUpload = () => {
   }
   
   const processBatch = async (batch: FileDataRow[]): Promise<FileDataRow[]> => {
-    // Save in localStorage instead of using Supabase directly for now
-    const storedData = localStorage.getItem('uploadedFileData')
-    const existingData = storedData ? JSON.parse(storedData) : { fileData: [], headers: [] }
-    
-    if (batch.length > 0 && existingData.headers.length === 0) {
-      // Fix: Add a check or fallback for batch[0]
-      const firstRow = batch[0];
-      if (firstRow) {
-        existingData.headers = Object.keys(firstRow);
-      }
-    }
-    
-    existingData.fileData = [...existingData.fileData, ...batch]
-    existingData.fileName = uploadState.value.filename
-    
-    localStorage.setItem('uploadedFileData', JSON.stringify(existingData))
-    
+    // Use the store instead of localStorage
+    fileUploadStore.addBatchData(batch)
     return batch
   }
   

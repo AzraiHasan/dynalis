@@ -252,9 +252,10 @@ import { ref, computed, onMounted, watch, nextTick } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { parse, isValid, differenceInDays, format } from "date-fns";
 import { useUploadState } from "~/composables/useUploadState";
-import { useSiteService } from "~/utils/supabaseService";
+import { useBatchUploadService } from "~/composables/useBatchUploadService";
 import { useSQLiteBatchUpload } from "~/composables/useSQLiteBatchUpload";
 import { useSQLiteSiteData } from "~/composables/useSQLiteSiteData";
+import { useFileUploadStore } from "~/stores/fileUploadStore";
 
 // Router setup
 const router = useRouter();
@@ -267,7 +268,6 @@ const uploadComparisonData = ref<{
   sqlite?: any;
   error?: Error | null;
 } | null>(null);
-const siteService = useSiteService();
 const siteData = useSQLiteSiteData();
 const fileData = ref<FileRow[]>([]);
 const totalSites = ref<number>(0);
@@ -325,8 +325,10 @@ const showBackgroundOption = computed(() => {
 
 const handleCommitData = async () => {
   try {
-    const stored = localStorage.getItem("uploadedFileData");
-    if (!stored) {
+    // Use the file upload store instead of localStorage
+    const data = fileUploadStore.uploadedData.value;
+    
+    if (!data.fileData || data.fileData.length === 0) {
       console.error("No data available for processing");
       toast.add({
         title: "No Data",
@@ -337,14 +339,7 @@ const handleCommitData = async () => {
       return;
     }
 
-    const data = JSON.parse(stored) as {
-      fileData: FileRow[];
-      headers: string[];
-      fileName: string;
-    };
-
     if (
-      !data.fileData ||
       !Array.isArray(data.fileData) ||
       data.fileData.length === 0
     ) {
@@ -667,9 +662,13 @@ const formatCurrency = (value: number): string => {
 
 // Navigation
 const handleBack = () => {
-  localStorage.removeItem("uploadedFileData");
+  // Reset the store data instead of removing from localStorage
+  fileUploadStore.resetData();
   router.push("/dataupload");
 };
+
+// Get the file upload store
+const fileUploadStore = useFileUploadStore();
 
 // Initialize data on mount
 onMounted(() => {
@@ -680,16 +679,22 @@ onMounted(() => {
     uploadState.status.value = "idle";
     uploadState.statusMessage.value = "";
     uploadState.error.value = null;
-    const stored = localStorage.getItem("uploadedFileData");
+    
+    // Use the store instead of localStorage
+    const uploadedData = fileUploadStore.uploadedData.value;
     console.log(
-      "Raw data from localStorage:",
-      stored ? "Available" : "Not available"
+      "Data from store:",
+      uploadedData.fileData.length > 0 ? "Available" : "Not available"
     );
 
-    if (stored) {
-      storedData.value = JSON.parse(stored);
+    if (uploadedData.fileData.length > 0) {
+      storedData.value = {
+        fileData: uploadedData.fileData,
+        headers: uploadedData.headers,
+        fileName: uploadedData.fileName
+      };
       console.log(
-        "Data parsed successfully, rows:",
+        "Data loaded successfully, rows:",
         storedData.value?.fileData?.length
       );
 

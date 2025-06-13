@@ -305,6 +305,7 @@ import { useRouter } from "vue-router";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
 import { useFileUpload } from "~/composables/useFileUpload";
+import { useFileUploadStore } from "~/stores/fileUploadStore";
 import type { StepperItem } from "@nuxt/ui";
 import { parse, isValid } from "date-fns";
 import { DATE_FORMATS } from "~/utils/dateUtils";
@@ -587,11 +588,11 @@ const clearAll = () => {
 };
 
 // Navigation to next page
+const fileUploadStore = useFileUploadStore();
+
 const handleProceed = () => {
   try {
-    const stored = localStorage.getItem("uploadedFileData");
-
-    if (!stored) {
+    if (fileUploadStore.uploadedData.value.fileData.length === 0) {
       toast.add({
         title: "No Data",
         description: "Please upload a file first.",
