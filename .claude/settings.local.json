@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(bun run lint:*)"
+      "Bash(bun run lint:*)",
+      "WebFetch(domain:supabase.nuxtjs.org)",
+      "WebFetch(domain:supabase.com)"
     ],
     "deny": []
   }

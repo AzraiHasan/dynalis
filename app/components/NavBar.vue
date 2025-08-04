@@ -8,14 +8,12 @@
         <h1 class="text-xl font-bold">Dynalis Interpreter</h1>
       </div>
       
-      <AuthState v-slot="{ loggedIn, user }">
-        <div v-if="loggedIn" class="flex items-center gap-4">
-          <span class="text-sm text-gray-600">{{ user?.email || user?.id }}</span>
-          <UButton color="error" variant="soft" size="sm" icon="i-lucide-log-out" @click="handleLogout">
-            Logout
-          </UButton>
-        </div>
-      </AuthState>
+      <div v-if="user" class="flex items-center gap-4">
+        <span class="text-sm text-gray-600">{{ user.email }}</span>
+        <UButton color="error" variant="soft" size="sm" icon="i-lucide-log-out" @click="handleLogout">
+          Logout
+        </UButton>
+      </div>
     </nav>
   </UContainer>
 </template>
@@ -23,15 +21,15 @@
 <script setup lang="ts">
 const router = useRouter()
 const toast = useToast()
-const { clear: clearUserSession } = useUserSession()
+const supabase = useSupabaseClient()
+const user = useSupabaseUser()
 
 async function handleLogout() {
   try {
-    // Call our logout endpoint
-    await $fetch('/api/auth/logout', { method: 'POST' })
+    // Sign out with Supabase
+    const { error } = await supabase.auth.signOut()
     
-    // Clear the local session state
-    await clearUserSession()
+    if (error) throw error
     
     toast.add({
       title: "Success",

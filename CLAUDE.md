@@ -9,6 +9,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `bun run dev` - Start development server on http://localhost:3000
 - `bun run build` - Build for production
 - `bun run preview` - Preview production build locally
+- Always ask to manually install packages and provide the installation command
 
 **Code Quality:**
 - `bun run lint` - Run ESLint checks
@@ -91,3 +92,11 @@ The application centers around a sophisticated batch upload system:
 - Uses Nitro's experimental database feature
 - Authentication handled through nuxt-auth-utils
 - Type definitions shared between client and server in `types/` directories
+
+## Code Quality Guidelines
+
+**Code Documentation:**
+- Add descriptive comments for every function
+- Explain the purpose, inputs, outputs, and any complex logic
+- Use JSDoc or TypeScript comment style for better IDE integration
+- Ensure comments provide additional context beyond the code itself

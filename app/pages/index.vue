@@ -8,7 +8,15 @@ import * as z from "zod";
 import type { FormSubmitEvent } from "@nuxt/ui";
 
 const router = useRouter();
-const { fetch: fetchUserSession } = useUserSession();
+const supabase = useSupabaseClient();
+const user = useSupabaseUser();
+
+// Redirect if already logged in
+watchEffect(() => {
+  if (user.value) {
+    router.push('/dataupload');
+  }
+});
 
 const schema = z.object({
   email: z.string().email("Invalid email"),
@@ -24,6 +32,7 @@ const state = reactive<Partial<Schema>>({
 
 const toast = useToast();
 const isLoading = ref(false);
+const isSignUp = ref(false);
 
 if (typeof window !== 'undefined') {
   localStorage.removeItem("uploadedFileData");
@@ -33,33 +42,91 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
   isLoading.value = true;
 
   try {
-    // Call our new authentication endpoint
-    const response = await $fetch('/api/auth/login', {
-      method: 'POST',
-      body: event.data
-    });
+    if (isSignUp.value) {
+      // Sign up with Supabase
+      const { data, error } = await supabase.auth.signUp({
+        email: event.data.email,
+        password: event.data.password,
+      });
 
-    // Fetch the user session after successful login
-    await fetchUserSession();
+      if (error) throw error;
 
-    toast.add({
-      title: "Success",
-      description: "You have been logged in successfully.",
-      color: "success",
-    });
+      // Create profile after successful signup
+      if (data.user) {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: data.user.id,
+            email: data.user.email!,
+            name: null,
+          });
 
-    // Add a small delay to show the toast before redirecting
-    setTimeout(() => {
-      router.push("/dataupload");
-    }, 500);
+        if (profileError) {
+          console.error('Profile creation error:', profileError);
+        }
+      }
+
+      toast.add({
+        title: "Success",
+        description: "Account created! Please check your email to verify your account.",
+        color: "success",
+      });
+    } else {
+      // Sign in with Supabase
+      const { error } = await supabase.auth.signInWithPassword({
+        email: event.data.email,
+        password: event.data.password,
+      });
+
+      if (error) throw error;
+
+      toast.add({
+        title: "Success",
+        description: "You have been logged in successfully.",
+        color: "success",
+      });
+
+      // Redirect will happen automatically via watchEffect
+    }
   } catch (error: any) {
     toast.add({
       title: "Error",
-      description: error.message || "Login failed. Please check your credentials.",
+      description: error.message || "Authentication failed. Please try again.",
       color: "error",
     });
   } finally {
     isLoading.value = false;
+  }
+}
+
+async function signInWithMagicLink() {
+  if (!state.email) {
+    toast.add({
+      title: "Error",
+      description: "Please enter your email address first.",
+      color: "error",
+    });
+    return;
+  }
+
+  try {
+    const { error } = await supabase.auth.signInWithOtp({
+      email: state.email,
+    });
+
+    if (error) throw error;
+
+    toast.add({
+      title: "Magic link sent!",
+      description: "Check your email for the sign-in link.",
+      color: "success",
+    });
+  } catch (error: any) {
+    toast.add({
+      title: "Error",
+      description: error.message || "Failed to send magic link.",
+      color: "error",
+    });
   }
 }
 </script>
@@ -122,14 +189,31 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
             :loading="isLoading"
             class="mt-6"
           >
-            Sign in
+            {{ isSignUp ? 'Sign up' : 'Sign in' }}
           </UButton>
 
-          <div class="text-center mt-4 text-sm text-gray-600">
-            Don't have an account?
-            <UButton variant="link" color="primary" size="xs"
-              >Contact admin</UButton
+          <div class="text-center mt-4">
+            <UButton
+              variant="outline"
+              color="gray"
+              block
+              @click="signInWithMagicLink"
+              :disabled="isLoading"
             >
+              Send Magic Link
+            </UButton>
+          </div>
+
+          <div class="text-center mt-4 text-sm text-gray-600">
+            {{ isSignUp ? 'Already have an account?' : "Don't have an account?" }}
+            <UButton 
+              variant="link" 
+              color="primary" 
+              size="xs"
+              @click="isSignUp = !isSignUp"
+            >
+              {{ isSignUp ? 'Sign in' : 'Sign up' }}
+            </UButton>
           </div>
         </UForm>
       </UCard>
