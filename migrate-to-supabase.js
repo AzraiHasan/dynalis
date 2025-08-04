@@ -34,7 +34,7 @@ if (!supabaseUrl || !supabaseServiceKey) {
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 // Initialize SQLite database
-const sqliteDb = new Database('.data/dynalis.sqlite3', { readonly: true });
+const sqliteDb = new Database('.data/dynalis_db.sqlite', { readonly: true });
 
 console.log('🚀 Starting data migration from SQLite to Supabase...');
 
