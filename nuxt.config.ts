@@ -10,16 +10,22 @@ export default defineNuxtConfig({
 
   supabase: {
     url: process.env.SUPABASE_URL,
-    key: process.env.SUPABASE_KEY,
+    key: process.env.SUPABASE_ANON_KEY,
     redirect: false,
     redirectOptions: {
-      login: '/login',
+      login: '/',
       callback: '/confirm',
-      exclude: ['/*'],
+      exclude: ['/dataupload', '/datastaging', '/dashboard', '/'],
     }
   },
 
   css: ['~/assets/css/main.css'],
+
+  vite: {
+    optimizeDeps: {
+      include: ['xlsx', 'papaparse', 'date-fns']
+    }
+  },
 
   future: {
     compatibilityVersion: 4
