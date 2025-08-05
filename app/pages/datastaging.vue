@@ -2,7 +2,17 @@
 
 <template>
   <div class="container mx-auto p-4">
-    <h1 class="text-2xl font-bold mb-4">Data Staging</h1>
+    <div class="flex justify-between items-center mb-4">
+      <h1 class="text-2xl font-bold">Data Staging</h1>
+      <UButton
+        icon="i-lucide-log-out"
+        color="neutral"
+        variant="ghost"
+        @click="handleLogout"
+      >
+        Logout
+      </UButton>
+    </div>
 
     <!-- Chat Interface -->
     <UCard class="mb-4">
@@ -255,6 +265,7 @@ import { useUploadState } from "~/composables/useUploadState";
 import { useSiteService } from "~/utils/supabaseService";
 import { useBatchUploadService } from "~/composables/useBatchUploadService";
 import { useSiteData } from "~/composables/useSiteData";
+import { useAuth } from "~/composables/useAuth";
 
 // Router setup
 const router = useRouter();
@@ -263,6 +274,7 @@ const route = useRoute();
 const uploadState = useUploadState();
 const siteService = useSiteService();
 const siteData = useSiteData();
+const auth = useAuth();
 const fileData = ref<FileRow[]>([]);
 const totalSites = ref<number>(0);
 const error = ref<Error | null>(null);
@@ -704,8 +716,34 @@ const handleBack = () => {
   router.push("/dataupload");
 };
 
+// Handle logout
+const handleLogout = async () => {
+  try {
+    // Sign out from Supabase
+    await auth.signOut();
+    
+    // Clear any stored data
+    localStorage.removeItem("uploadedFileData");
+    localStorage.removeItem("background_job_id");
+    localStorage.removeItem("dashboard_building");
+    
+    // Navigate back to login page
+    router.push("/");
+  } catch (error) {
+    console.error("Logout error:", error);
+    // Still navigate to login even if logout fails
+    router.push("/");
+  }
+};
+
 // Initialize data on mount
 onMounted(() => {
+  // Auth check first
+  if (!auth.user.value) {
+    router.push('/');
+    return;
+  }
+
   try {
     console.log("Initializing data staging");
     uploadState.isUploading.value = false;

@@ -2,7 +2,18 @@
   <div>
     <UCard class="mb-6">
       <template #header>
-        <h1 class="text-xl font-semibold">Data Upload</h1>
+        <div class="flex justify-between items-center">
+          <h1 class="text-xl font-semibold">Data Upload</h1>
+          <UButton
+            icon="i-lucide-log-out"
+            color="neutral"
+            variant="ghost"
+            size="sm"
+            @click="handleLogout"
+          >
+            Logout
+          </UButton>
+        </div>
       </template>
 
       <!-- Step Indicator with proper interaction -->
@@ -300,11 +311,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from "vue";
+import { ref, computed, onMounted, nextTick } from "vue";
 import { useRouter } from "vue-router";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
 import { useFileUpload } from "~/composables/useFileUpload";
+import { useAuth } from "~/composables/useAuth";
 import type { StepperItem } from "@nuxt/ui";
 import { parse, isValid } from "date-fns";
 import { DATE_FORMATS } from "~/utils/dateUtils";
@@ -341,6 +353,26 @@ const toast = useToast();
 const dragActive = ref(false);
 const fileEstimate = ref("");
 const router = useRouter();
+const auth = useAuth();
+
+// Auth check with a small delay to allow Supabase to initialize
+onMounted(async () => {
+  console.log("DataUpload mounted, user:", auth.user.value?.email || 'null');
+  
+  // Give Supabase a moment to load the session
+  await nextTick();
+  
+  // Check again after a small delay
+  setTimeout(() => {
+    console.log("Delayed auth check, user:", auth.user.value?.email || 'null');
+    if (!auth.user.value) {
+      console.log("No user found after delay, redirecting to login");
+      router.push('/');
+    } else {
+      console.log("User authenticated, staying on dataupload page");
+    }
+  }, 100);
+});
 
 // Step configurations for UStepper
 const items = computed<StepperItem[]>(() => [
@@ -607,6 +639,26 @@ const handleProceed = () => {
     });
   } catch (error) {
     console.error("Error navigating:", error);
+  }
+};
+
+// Handle logout
+const handleLogout = async () => {
+  try {
+    // Sign out from Supabase
+    await auth.signOut();
+    
+    // Clear any stored data
+    localStorage.removeItem("uploadedFileData");
+    localStorage.removeItem("background_job_id");
+    localStorage.removeItem("dashboard_building");
+    
+    // Navigate back to login page
+    router.push("/");
+  } catch (error) {
+    console.error("Logout error:", error);
+    // Still navigate to login even if logout fails
+    router.push("/");
   }
 };
 </script>

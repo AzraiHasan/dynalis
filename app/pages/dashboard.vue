@@ -2,14 +2,24 @@
   <div class="space-y-4">
     <div class="flex justify-between items-center mb-4">
       <h1 class="text-2xl font-bold">Dashboard</h1>
-      <UButton
-        icon="i-lucide-refresh-cw"
-        color="primary"
-        variant="soft"
-        @click="refreshDashboard"
-      >
-        Refresh Data
-      </UButton>
+      <div class="flex items-center gap-2">
+        <UButton
+          icon="i-lucide-refresh-cw"
+          color="primary"
+          variant="soft"
+          @click="refreshDashboard"
+        >
+          Refresh Data
+        </UButton>
+        <UButton
+          icon="i-lucide-log-out"
+          color="neutral"
+          variant="ghost"
+          @click="handleLogout"
+        >
+          Logout
+        </UButton>
+      </div>
     </div>
     <div v-if="!isLoading && !error" class="space-y-4">
       <!-- Summary Cards -->
@@ -238,6 +248,7 @@ import { ref, computed, onMounted } from "vue";
 import { useSiteService } from "~/utils/supabaseService";
 import { useSiteData } from "~/composables/useSiteData";
 import { useRouter } from "vue-router";
+import { useAuth } from "~/composables/useAuth";
 import {
   getDaysUntilExpiration,
   parseDate,
@@ -331,6 +342,12 @@ const shouldAutoBuild = computed(() => {
 });
 
 onMounted(async () => {
+  // Auth check first
+  if (!auth.user.value) {
+    router.push('/');
+    return;
+  }
+
   try {
     console.log("Initializing dashboard...");
     isLoading.value = true;
@@ -497,6 +514,7 @@ onMounted(async () => {
 });
 
 const router = useRouter();
+const auth = useAuth();
 
 // Data refs
 const fileData = ref<FileRow[]>([]);
@@ -914,5 +932,24 @@ const refreshDashboard = async () => {
 
 function handleStaging() {
   router.push("/datastaging");
+}
+
+async function handleLogout() {
+  try {
+    // Sign out from Supabase
+    await auth.signOut();
+    
+    // Clear any stored data
+    localStorage.removeItem("uploadedFileData");
+    localStorage.removeItem("background_job_id");
+    localStorage.removeItem("dashboard_building");
+    
+    // Navigate back to login page
+    router.push("/");
+  } catch (error) {
+    console.error("Logout error:", error);
+    // Still navigate to login even if logout fails
+    router.push("/");
+  }
 }
 </script>
