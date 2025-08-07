@@ -1,134 +1,327 @@
 <template>
   <div>
-    <!-- Upload Section -->
-    <UCard class="mb-4">
+    <UCard class="mb-6">
       <template #header>
-        <h2 class="text-lg font-semibold">Upload Your File</h2>
+        <div class="flex justify-between items-center">
+          <h1 class="text-xl font-semibold">Data Upload</h1>
+          <UButton
+            icon="i-lucide-log-out"
+            color="neutral"
+            variant="ghost"
+            size="sm"
+            @click="handleLogout"
+          >
+            Logout
+          </UButton>
+        </div>
       </template>
 
-      <div class="space-y-4">
-        <UInput
-          type="file"
-          accept=".csv,.xlsx,.xls"
-          @change="handleFileChange"
-        />
+      <!-- Step Indicator with proper interaction -->
+      <UStepper
+        v-model="currentStep"
+        :items="items"
+        :disabled="stepperDisabled"
+        class="mb-6"
+      />
 
-        <p v-if="selectedFileName" class="text-sm text-gray-600">
-          Selected file: {{ selectedFileName }}
-        </p>
-
-        <p v-if="errorMessage" class="text-red-500 text-sm">
-          {{ errorMessage }}
-        </p>
-
-        <div v-if="selectedFileName" class="flex gap-2">
-          <UButton
-            label="Process File"
-            icon="i-lucide-file-check"
-            @click="processFile"
-            :loading="isProcessing"
+      <!-- Step 1: File Upload (Only shown when currentStep is 1) -->
+      <div v-if="currentStep === 1" class="space-y-4">
+        <div
+          class="border-2 border-dashed rounded-lg p-10 text-center cursor-pointer hover:bg-gray-50 transition"
+          :class="
+            dragActive ? 'border-primary-500 bg-primary-50' : 'border-gray-300'
+          "
+          @dragenter.prevent="dragActive = true"
+          @dragleave.prevent="dragActive = false"
+          @dragover.prevent="dragActive = true"
+          @drop.prevent="handleFileDrop"
+          @click="triggerFileInput"
+        >
+          <input
+            ref="fileInput"
+            type="file"
+            accept=".csv,.xlsx,.xls"
+            class="hidden"
+            @change="handleFileChange"
           />
+
+          <div v-if="!selectedFileName" class="space-y-2">
+            <Icon
+              name="i-lucide-upload-cloud"
+              class="text-gray-400 mx-auto h-12 w-12"
+            />
+            <h3 class="text-lg font-medium">Drag and drop your file here</h3>
+            <p class="text-sm text-gray-500">or click to browse files</p>
+            <p class="text-xs text-gray-400">
+              Supports CSV, Excel (.xlsx, .xls)
+            </p>
+          </div>
+
+          <div v-else class="space-y-2">
+            <Icon
+              name="i-lucide-file"
+              class="text-primary-500 mx-auto h-12 w-12"
+            />
+            <h3 class="text-lg font-medium text-primary-700">
+              {{ selectedFileName }}
+            </h3>
+            <p class="text-sm text-gray-500">File selected</p>
+            <p v-if="fileEstimate" class="text-xs text-gray-400">
+              {{ fileEstimate }}
+            </p>
+          </div>
+        </div>
+
+        <div
+          v-if="errorMessage"
+          class="bg-red-50 text-red-500 p-4 rounded-lg text-sm"
+        >
+          {{ errorMessage }}
+        </div>
+
+        <div class="flex justify-between">
           <UButton
-            label="Clear"
+            v-if="selectedFileName"
             icon="i-lucide-x"
-            color="error"
+            color="neutral"
             variant="soft"
             @click="clearAll"
-          />
-        </div>
-      </div>
-    </UCard>
+          >
+            Change File
+          </UButton>
 
-    <!-- Data Analysis Section -->
-    <div
-      v-if="fileData.length > 0"
-      class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4"
-    >
-      <!-- Dataset Summary -->
-      <UCard>
-        <template #header>
-          <h2 class="text-lg font-semibold">Dataset Summary</h2>
-        </template>
-        <div class="space-y-2">
-          <p>Total Rows: {{ fileData.length }}</p>
-          <p>Total Columns: {{ headers.length }}</p>
-          <p>Column Names: {{ headers.join(", ") }}</p>
-          <p>Missing Values: {{ getTotalMissingValues() }}</p>
-          <p>Dash Values: {{ getTotalDashValues() }}</p>
-        </div>
-      </UCard>
-
-      <!-- Proceed Section -->
-      <div v-if="fileData.length > 0" class="mt-6">
-        <div
-          class="mb-4 p-4 rounded-lg"
-          :class="
-            hasEmptyCells
-              ? 'bg-yellow-50 text-yellow-700'
-              : 'bg-green-50 text-green-700'
-          "
-        >
-          <p v-if="hasEmptyCells">
-            Empty cells and data irregularities may cause error during further analysis, please rectify
-            before you decide to proceed
-          </p>
-          <p v-else>You have no empty cells. Click NEXT to proceed</p>
-        </div>
-        
           <UButton
-            label="Proceed"
-            trailing-icon="i-lucide-arrow-right"
-            variant="outline"
-            :color="hasEmptyCells ? 'warning' : 'primary'"
-            @click="handleProceed"
-          />
-        
+            v-if="selectedFileName"
+            icon="i-lucide-file-check"
+            color="primary"
+            @click="processFile"
+            :loading="isProcessing"
+            class="ml-auto"
+          >
+            Process File
+          </UButton>
+        </div>
       </div>
 
-      <!-- Column Statistics -->
-      <UCard>
-        <template #header>
-          <h2 class="text-lg font-semibold">Quality Check</h2>
-        </template>
-        <div
-          class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
-        >
-          <UCard v-for="column in headers" :key="column" class="bg-gray-50">
-            <template #header>
-              <h3 class="font-medium text-sm">{{ column }}</h3>
-            </template>
-            <div class="space-y-2">
-              <div class="flex items-center gap-2">
-                <Icon name="i-lucide-alert-circle" class="text-gray-500" />
-                <span class="text-sm text-gray-600">
-                  Empty Cells: {{ getColumnValidation(column).emptyCells }}
-                </span>
-              </div>
+      <!-- Step 2: Data Preview and Validation (Only shown when currentStep is 2) -->
+      <div v-if="currentStep === 2" class="space-y-6">
+        <!-- Summary Statistics -->
+        <h3 class="text-lg font-medium mb-2">Summary Statistics</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <UCard class="bg-gray-50">
+            <div class="flex items-center space-x-3">
               <div
-                v-if="getColumnValidation(column).irregularCells > 0"
-                class="flex items-center gap-2"
+                class="flex items-center justify-center bg-primary-100 h-12 w-12 rounded-lg"
               >
-                <Icon name="i-lucide-alert-triangle" class="text-orange-500" />
-                <span class="text-sm text-orange-600">
-                  Irregularities:
-                  {{ getColumnValidation(column).irregularCells }}
-                </span>
+                <Icon
+                  name="i-lucide-database"
+                  class="h-6 w-6 text-primary-500"
+                />
+              </div>
+              <div>
+                <p class="text-sm text-gray-500">Total Rows</p>
+                <p class="text-2xl font-semibold">{{ fileData.length }}</p>
+              </div>
+            </div>
+          </UCard>
+
+          <UCard class="bg-gray-50">
+            <div class="flex items-center space-x-3">
+              <div
+                class="flex items-center justify-center bg-blue-100 h-12 w-12 rounded-lg"
+              >
+                <Icon name="i-lucide-columns" class="h-6 w-6 text-blue-500" />
+              </div>
+              <div>
+                <p class="text-sm text-gray-500">Total Columns</p>
+                <p class="text-2xl font-semibold">{{ headers.length }}</p>
+              </div>
+            </div>
+          </UCard>
+
+          <UCard class="bg-gray-50">
+            <div class="flex items-center space-x-3">
+              <div
+                class="flex items-center justify-center bg-amber-100 h-12 w-12 rounded-lg"
+              >
+                <Icon
+                  name="i-lucide-alert-circle"
+                  class="h-6 w-6 text-amber-500"
+                />
+              </div>
+              <div>
+                <p class="text-sm text-gray-500">Missing Values</p>
+                <p class="text-2xl font-semibold">
+                  {{ getTotalMissingValues() }}
+                </p>
+              </div>
+            </div>
+          </UCard>
+
+          <UCard class="bg-gray-50">
+            <div class="flex items-center space-x-3">
+              <div
+                class="flex items-center justify-center bg-gray-100 h-12 w-12 rounded-lg"
+              >
+                <Icon name="i-lucide-minus" class="h-6 w-6 text-gray-500" />
+              </div>
+              <div>
+                <p class="text-sm text-gray-500">Dash Values</p>
+                <p class="text-2xl font-semibold">{{ getTotalDashValues() }}</p>
+                <p class="text-xs text-gray-400">Cells with "-" characters</p>
               </div>
             </div>
           </UCard>
         </div>
-      </UCard>
-    </div>
+        
+        <!-- Data Preview Section -->
+        <div>
+          <h3 class="text-lg font-medium mb-2">Data Preview</h3>
+          <div class="overflow-x-auto border rounded-lg">
+            <table class="min-w-full divide-y divide-gray-200">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th
+                    v-for="header in previewHeaders"
+                    :key="header"
+                    class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
+                    {{ header }}
+                  </th>
+                </tr>
+              </thead>
+              <tbody class="bg-white divide-y divide-gray-200">
+                <tr v-for="(row, index) in previewData" :key="index">
+                  <td
+                    v-for="header in previewHeaders"
+                    :key="`${index}-${header}`"
+                    class="px-3 py-2 text-sm"
+                  >
+                    <span
+                      v-if="
+                        row[header] === null ||
+                        row[header] === undefined ||
+                        row[header] === ''
+                      "
+                      class="text-gray-300 italic"
+                      >Empty</span
+                    >
+                    <span
+                      v-else-if="row[header] === '-' || row[header] === '–'"
+                      class="text-gray-400"
+                      >-</span
+                    >
+                    <span v-else>{{ row[header] }}</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="text-xs text-gray-500 mt-1">
+            Showing first 5 rows of {{ fileData.length }} total records
+          </p>
+        </div>
+
+        
+
+        <!-- Column Quality Check -->
+        <div>
+          <h3 class="text-lg font-medium mb-2 flex items-center">
+            <Icon name="i-lucide-shield-check" class="mr-2 text-gray-600" />
+            Data Quality Check
+          </h3>
+
+          <!-- Data Quality Alert -->
+        <div v-if="hasEmptyCells" class="mb-4">
+          <UAlert
+            color="warning"
+            title="Data Quality Issues Detected"
+            description="Empty cells and data irregularities may cause errors during further analysis. Consider fixing these issues before proceeding."
+          />
+        </div>
+        <div v-else class="mb-4">
+          <UAlert
+            color="success"
+            title="Data Quality Check Passed"
+            description="Your data looks good with no empty cells detected."
+          />
+        </div>
+
+          <div
+            class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
+          >
+            <UCard v-for="column in headers" :key="column" class="bg-gray-50">
+              <template #header>
+                <h3 class="font-medium text-sm">{{ column }}</h3>
+              </template>
+
+              <div class="space-y-2">
+                <div class="flex items-center justify-between">
+                  <span class="text-sm text-gray-600"> Empty Cells: </span>
+                  <UBadge
+                    :color="
+                      getColumnValidation(column).emptyCells > 0
+                        ? 'warning'
+                        : 'success'
+                    "
+                  >
+                    {{ getColumnValidation(column).emptyCells }}
+                  </UBadge>
+                </div>
+
+                <div
+                  v-if="getColumnValidation(column).irregularCells > 0"
+                  class="flex items-center justify-between"
+                >
+                  <span class="text-sm text-orange-600"> Irregularities: </span>
+                  <UBadge color="warning">
+                    {{ getColumnValidation(column).irregularCells }}
+                  </UBadge>
+                </div>
+              </div>
+            </UCard>
+          </div>
+        </div>
+
+        
+
+        <!-- Navigation Buttons -->
+        <div class="flex justify-between pt-4 border-t">
+          <UButton
+            icon="i-lucide-arrow-left"
+            color="neutral"
+            variant="soft"
+            @click="currentStep = 1"
+          >
+            Back to Upload
+          </UButton>
+
+          <UButton
+            trailing-icon="i-lucide-arrow-right"
+            color="primary"
+            :variant="hasEmptyCells ? 'soft' : 'solid'"
+            @click="handleProceed"
+          >
+            Continue to Analysis
+          </UButton>
+        </div>
+      </div>
+    </UCard>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onUnmounted } from "vue";
+import { ref, computed, onMounted, nextTick } from "vue";
 import { useRouter } from "vue-router";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
+import { useFileUpload } from "~/composables/useFileUpload";
+import { useAuth } from "~/composables/useAuth";
+import type { StepperItem } from "@nuxt/ui";
 import { parse, isValid } from "date-fns";
+import { DATE_FORMATS } from "~/utils/dateUtils";
 
+// Interface definitions remain the same
 interface FileRow {
   [key: string]: string | number | null;
 }
@@ -146,37 +339,103 @@ interface ColumnValidation {
   errors: ValidationError[];
 }
 
-interface StoredData {
-  fileData: FileRow[];
-  headers: string[];
-  fileName: string;
-}
-
-const router = useRouter();
+// Step management
+const currentStep = ref(1);
+const fileInput = ref<HTMLInputElement | null>(null);
 const selectedFileName = ref("");
 const errorMessage = ref("");
 const selectedFile = ref<File | null>(null);
 const isProcessing = ref(false);
 const fileData = ref<FileRow[]>([]);
 const headers = ref<string[]>([]);
+const fileUpload = useFileUpload();
+const toast = useToast();
+const dragActive = ref(false);
+const fileEstimate = ref("");
+const router = useRouter();
+const auth = useAuth();
+
+// Auth check with a small delay to allow Supabase to initialize
+onMounted(async () => {
+  console.log("DataUpload mounted, user:", auth.user.value?.email || 'null');
+  
+  // Give Supabase a moment to load the session
+  await nextTick();
+  
+  // Check again after a small delay
+  setTimeout(() => {
+    console.log("Delayed auth check, user:", auth.user.value?.email || 'null');
+    if (!auth.user.value) {
+      console.log("No user found after delay, redirecting to login");
+      router.push('/');
+    } else {
+      console.log("User authenticated, staying on dataupload page");
+    }
+  }, 100);
+});
+
+// Step configurations for UStepper
+const items = computed<StepperItem[]>(() => [
+  {
+    title: "1. Upload File",
+    description: "Select and upload your data file",
+    icon: "i-lucide-upload-cloud",
+    color: "primary",
+  },
+  {
+    title: "2. Validate Data",
+    description: "Review and check data quality",
+    icon: "i-lucide-check-circle",
+    color: currentStep.value === 2 ? "primary" : "neutral",
+  },
+]);
+
+// Control stepper interaction - Step 2 should be disabled until file is processed
+const stepperDisabled = computed(() => {
+  return fileData.value.length === 0;
+});
+
+// Data preview computed properties
+const previewData = computed(() => {
+  return fileData.value.slice(0, 5);
+});
+
+const previewHeaders = computed(() => {
+  return headers.value.slice(0, 6); // Limit to first 6 columns for better display
+});
 
 const hasEmptyCells = computed(() => {
   return getTotalMissingValues() > 0;
 });
 
+// File selection handlers
+const triggerFileInput = () => {
+  fileInput.value?.click();
+};
+
+const handleFileDrop = (event: DragEvent) => {
+  dragActive.value = false;
+  if (!event.dataTransfer?.files.length) return;
+
+  if (event.dataTransfer?.files[0]) {
+    handleFileSelection(event.dataTransfer.files[0]);
+  }
+};
+
 const handleFileChange = (event: Event) => {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+
+  if (file) {
+    handleFileSelection(file);
+  }
+};
+
+const handleFileSelection = (file: File) => {
   errorMessage.value = "";
   selectedFileName.value = "";
   fileData.value = [];
   headers.value = [];
-
-  const input = event.target as HTMLInputElement;
-  const file = input.files?.[0];
-
-  if (!file) {
-    errorMessage.value = "Please select a file";
-    return;
-  }
 
   const validExtensions = [".csv", ".xlsx", ".xls"];
   const fileExtension = file.name
@@ -185,14 +444,22 @@ const handleFileChange = (event: Event) => {
 
   if (!validExtensions.includes(fileExtension)) {
     errorMessage.value = "Please upload only Excel or CSV files";
-    input.value = "";
+    if (fileInput.value) fileInput.value.value = "";
     return;
   }
+
+  // Format the file size
+  const fileSizeMB = file.size / (1024 * 1024);
+  fileEstimate.value =
+    fileSizeMB < 1
+      ? `${(fileSizeMB * 1024).toFixed(1)} KB`
+      : `${fileSizeMB.toFixed(2)} MB`;
 
   selectedFileName.value = file.name;
   selectedFile.value = file;
 };
 
+// Process file and move to next step
 const processFile = async () => {
   if (!selectedFile.value) {
     errorMessage.value = "No file selected";
@@ -203,69 +470,36 @@ const processFile = async () => {
   errorMessage.value = "";
 
   try {
-    const fileExtension = selectedFile.value.name
-      .toLowerCase()
-      .substring(selectedFile.value.name.lastIndexOf("."));
+    // Use the file upload composable
+    fileData.value = await fileUpload.processAndUpload(selectedFile.value);
+    headers.value =
+      fileData.value.length > 0 && fileData.value[0]
+        ? Object.keys(fileData.value[0])
+        : [];
 
-    if (fileExtension === ".csv") {
-      await processCSV(selectedFile.value);
-    } else {
-      await processExcel(selectedFile.value);
-    }
+    // Move to next step after processing
+    currentStep.value = 2;
+
+    toast.add({
+      title: "File processed successfully",
+      description: `${fileData.value.length} rows loaded`,
+      color: "success",
+    });
   } catch (error) {
     errorMessage.value =
       "Error processing file: " +
       (error instanceof Error ? error.message : "Unknown error");
+    toast.add({
+      title: "Error processing file",
+      description: errorMessage.value,
+      color: "error",
+    });
   } finally {
     isProcessing.value = false;
   }
 };
 
-const processCSV = (file: File): Promise<unknown> => {
-  return new Promise((resolve, reject) => {
-    Papa.parse(file, {
-      header: true,
-      complete: (results) => {
-        fileData.value = results.data as FileRow[];
-        headers.value = results.meta.fields || [];
-        resolve(results);
-      },
-      error: (error) => {
-        reject(error);
-      },
-    });
-  });
-};
-
-const processExcel = async (file: File) => {
-  const arrayBuffer = await file.arrayBuffer();
-  const workbook = XLSX.read(arrayBuffer);
-  const firstSheetName = workbook.SheetNames[0];
-
-  if (!firstSheetName) {
-    throw new Error("Excel file is empty");
-  }
-
-  const worksheet = workbook.Sheets[firstSheetName];
-
-  if (!worksheet) {
-    throw new Error("Worksheet not found");
-  }
-
-  if (!worksheet["!ref"]) {
-    throw new Error("Worksheet is empty");
-  }
-
-  const data = XLSX.utils.sheet_to_json<FileRow>(worksheet, { raw: false });
-
-  if (data.length === 0) {
-    throw new Error("No data found in worksheet");
-  }
-
-  fileData.value = data;
-  headers.value = Object.keys(data[0] || {});
-};
-
+// Data validation helpers
 const getTotalMissingValues = () => {
   return headers.value.reduce((total, header) => {
     return (
@@ -280,34 +514,13 @@ const getTotalMissingValues = () => {
   }, 0);
 };
 
-const getTotalDashValues = () => {
-  return headers.value.reduce((total, header) => {
-    return (
-      total +
-      fileData.value.filter(
-        (row) =>
-          row[header] === "-" || row[header] === "–" || row[header] === "—"
-      ).length
-    );
-  }, 0);
-};
-
+// Helper functions for column validation
 const getEmptyCellCount = (column: string): number => {
   return fileData.value.filter(
     (row) =>
       row[column] === null || row[column] === undefined || row[column] === ""
   ).length;
 };
-
-// Define accepted date formats
-const DATE_FORMATS = [
-  "dd/MM/yyyy",
-  "dd-MM-yyyy",
-  "yyyy/MM/dd",
-  "yyyy-MM-dd",
-  "MM/dd/yyyy",
-  "MM-dd-yyyy",
-];
 
 const isValidDate = (value: any): boolean => {
   if (!value) return false;
@@ -378,6 +591,19 @@ const getColumnValidation = (column: string): ColumnValidation => {
   };
 };
 
+const getTotalDashValues = () => {
+  return headers.value.reduce((total, header) => {
+    return (
+      total +
+      fileData.value.filter(
+        (row) =>
+          row[header] === "-" || row[header] === "–" || row[header] === "—"
+      ).length
+    );
+  }, 0);
+};
+
+// Reset to initial state
 const clearAll = () => {
   selectedFileName.value = "";
   errorMessage.value = "";
@@ -385,36 +611,54 @@ const clearAll = () => {
   isProcessing.value = false;
   fileData.value = [];
   headers.value = [];
+  fileEstimate.value = "";
 
-  const fileInput = document.querySelector(
-    'input[type="file"]'
-  ) as HTMLInputElement;
-  if (fileInput) {
-    fileInput.value = "";
+  if (fileInput.value) {
+    fileInput.value.value = "";
   }
 };
 
+// Navigation to next page
 const handleProceed = () => {
   try {
-    const dataToStore: StoredData = {
-      fileData: Array.from(fileData.value), // Convert Proxy to plain array
-      headers: Array.from(headers.value), // Convert Proxy to plain array
-      fileName: selectedFileName.value,
-    };
-    localStorage.setItem("uploadedFileData", JSON.stringify(dataToStore));
-    console.log('Data stored successfully:', dataToStore); // Debug log
-    console.log('Stored data verification:', localStorage.getItem("uploadedFileData")); // Verify storage
+    const stored = localStorage.getItem("uploadedFileData");
 
+    if (!stored) {
+      toast.add({
+        title: "No Data",
+        description: "Please upload a file first.",
+        color: "error",
+      });
+      return;
+    }
+
+    // Navigate to data staging
     router.push({
       path: "/datastaging",
       query: { fileName: selectedFileName.value },
     });
   } catch (error) {
-    console.error("Error storing file data:", error);
+    console.error("Error navigating:", error);
   }
 };
 
-// onUnmounted(() => {
-//   localStorage.removeItem("uploadedFileData");
-// });
+// Handle logout
+const handleLogout = async () => {
+  try {
+    // Sign out from Supabase
+    await auth.signOut();
+    
+    // Clear any stored data
+    localStorage.removeItem("uploadedFileData");
+    localStorage.removeItem("background_job_id");
+    localStorage.removeItem("dashboard_building");
+    
+    // Navigate back to login page
+    router.push("/");
+  } catch (error) {
+    console.error("Logout error:", error);
+    // Still navigate to login even if logout fails
+    router.push("/");
+  }
+};
 </script>

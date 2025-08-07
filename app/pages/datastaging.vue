@@ -1,6 +1,18 @@
+<!-- pages/datastaging.vue -->
+
 <template>
   <div class="container mx-auto p-4">
-    <h1 class="text-2xl font-bold mb-4">Data Staging</h1>
+    <div class="flex justify-between items-center mb-4">
+      <h1 class="text-2xl font-bold">Data Staging</h1>
+      <UButton
+        icon="i-lucide-log-out"
+        color="neutral"
+        variant="ghost"
+        @click="handleLogout"
+      >
+        Logout
+      </UButton>
+    </div>
 
     <!-- Chat Interface -->
     <UCard class="mb-4">
@@ -12,7 +24,7 @@
       </template>
 
       <!-- Messages Display -->
-      <div class=" overflow-y-auto mb-4 space-y-4" ref="chatContainer">
+      <div class="overflow-y-auto mb-4 space-y-4" ref="chatContainer">
         <template v-for="(message, index) in messages" :key="index">
           <!-- User Message -->
           <div v-if="message.role === 'user'" class="flex justify-end">
@@ -36,7 +48,7 @@
                 'Reading data...',
                 'Analyzing context...',
                 'Generating response...',
-                'Done!'
+                'Done!',
               ]"
             />
           </div>
@@ -74,7 +86,7 @@
         </UButton>
       </div>
     </UCard>
-    
+
     <!-- File Info -->
     <UCard class="mb-4">
       <div class="flex items-center gap-2">
@@ -114,8 +126,12 @@
               <Icon name="i-lucide-wallet" class="text-gray-600" />
               <h3 class="text-sm text-gray-600">Total Rental</h3>
             </div>
-            <p class="text-2xl font-semibold">{{ (metrics.totalRental / 1000000).toFixed(2) }}M</p>
-            <p class="text-xs text-gray-400 mt-1">{{ formatCurrency(metrics.totalRental) }}</p>
+            <p class="text-2xl font-semibold">
+              {{ (metrics.totalRental / 1000000).toFixed(2) }}M
+            </p>
+            <p class="text-xs text-gray-400 mt-1">
+              {{ formatCurrency(metrics.totalRental) }}
+            </p>
           </div>
 
           <!-- Due Payment -->
@@ -124,8 +140,12 @@
               <Icon name="i-lucide-credit-card" class="text-gray-600" />
               <h3 class="text-sm text-gray-600">Due Payment</h3>
             </div>
-            <p class="text-2xl font-semibold">{{ (metrics.totalPaymentToPay / 1000000).toFixed(2) }}M</p>
-            <p class="text-xs text-gray-400 mt-1">{{ formatCurrency(metrics.totalPaymentToPay) }}</p>
+            <p class="text-2xl font-semibold">
+              {{ (metrics.totalPaymentToPay / 1000000).toFixed(2) }}M
+            </p>
+            <p class="text-xs text-gray-400 mt-1">
+              {{ formatCurrency(metrics.totalPaymentToPay) }}
+            </p>
           </div>
 
           <!-- Deposit -->
@@ -134,8 +154,12 @@
               <Icon name="i-lucide-banknote" class="text-gray-600" />
               <h3 class="text-sm text-gray-600">Deposit</h3>
             </div>
-            <p class="text-2xl font-semibold">{{ (metrics.totalDeposit / 1000000).toFixed(2) }}M</p>
-            <p class="text-xs text-gray-400 mt-1">{{ formatCurrency(metrics.totalDeposit) }}</p>
+            <p class="text-2xl font-semibold">
+              {{ (metrics.totalDeposit / 1000000).toFixed(2) }}M
+            </p>
+            <p class="text-xs text-gray-400 mt-1">
+              {{ formatCurrency(metrics.totalDeposit) }}
+            </p>
           </div>
         </div>
       </UCard>
@@ -156,78 +180,62 @@
               <Icon name="i-lucide-alert-circle" class="text-red-600" />
               <h3 class="text-sm text-red-600">Expired</h3>
             </div>
-            <p class="text-2xl font-semibold text-red-600">{{ expirationMetrics.expired }}</p>
+            <p class="text-2xl font-semibold text-red-600">
+              {{ expirationMetrics.expired }}
+            </p>
             <p class="text-xs text-red-500 mt-1">Past expiration date</p>
-            <p v-if="expirationMetrics.invalidDates" class="text-xs text-gray-500 mt-1">
+            <p
+              v-if="expirationMetrics.invalidDates"
+              class="text-xs text-gray-500 mt-1"
+            >
               + {{ expirationMetrics.invalidDates }} invalid/missing dates
             </p>
           </div>
 
           <!-- Within 30 Days -->
-          <div class="p-4 bg-orange-50 rounded-lg transition-all hover:bg-orange-100">
+          <div
+            class="p-4 bg-orange-50 rounded-lg transition-all hover:bg-orange-100"
+          >
             <div class="flex items-center gap-2 mb-2">
               <Icon name="i-lucide-clock-alert" class="text-orange-600" />
               <h3 class="text-sm text-orange-600">Within 30 Days</h3>
             </div>
-            <p class="text-2xl font-semibold text-orange-600">{{ expirationMetrics.within30Days }}</p>
+            <p class="text-2xl font-semibold text-orange-600">
+              {{ expirationMetrics.within30Days }}
+            </p>
             <p class="text-xs text-orange-500 mt-1">Urgent attention needed</p>
           </div>
 
           <!-- Within 60 Days -->
-          <div class="p-4 bg-yellow-50 rounded-lg transition-all hover:bg-yellow-100">
+          <div
+            class="p-4 bg-yellow-50 rounded-lg transition-all hover:bg-yellow-100"
+          >
             <div class="flex items-center gap-2 mb-2">
               <Icon name="i-lucide-clock" class="text-yellow-600" />
               <h3 class="text-sm text-yellow-600">Within 60 Days</h3>
             </div>
-            <p class="text-2xl font-semibold text-yellow-600">{{ expirationMetrics.within60Days }}</p>
+            <p class="text-2xl font-semibold text-yellow-600">
+              {{ expirationMetrics.within60Days }}
+            </p>
             <p class="text-xs text-yellow-500 mt-1">Plan for renewal</p>
           </div>
 
           <!-- Within 90 Days -->
-          <div class="p-4 bg-blue-50 rounded-lg transition-all hover:bg-blue-100">
+          <div
+            class="p-4 bg-blue-50 rounded-lg transition-all hover:bg-blue-100"
+          >
             <div class="flex items-center gap-2 mb-2">
               <Icon name="i-lucide-calendar" class="text-blue-600" />
               <h3 class="text-sm text-blue-600">Within 90 Days</h3>
             </div>
-            <p class="text-2xl font-semibold text-blue-600">{{ expirationMetrics.within90Days }}</p>
+            <p class="text-2xl font-semibold text-blue-600">
+              {{ expirationMetrics.within90Days }}
+            </p>
             <p class="text-xs text-blue-500 mt-1">Early planning</p>
           </div>
         </div>
       </UCard>
     </div>
-
-    <!-- Debug Data Display -->
-    <!-- <UCard class="mb-4">
-      <template #header>
-        <div class="flex items-center justify-between">
-          <h2 class="text-lg font-semibold">Data Preview</h2>
-          <UButton
-            v-if="storedData"
-            size="sm"
-            icon="i-lucide-clipboard"
-            @click="copyToClipboard"
-          >
-            Copy JSON
-          </UButton>
-        </div>
-      </template>
-      
-      <div v-if="storedData" class="space-y-4"> -->
-        <!-- Summary -->
-        <!-- <div class="text-sm text-gray-600">
-          <p>Total Rows: {{ storedData.fileData.length }}</p>
-          <p>Headers: {{ storedData.headers.join(', ') }}</p>
-        </div> -->
-        
-        <!-- Data Preview -->
-        <!-- <div class="overflow-auto max-h-96">
-          <pre class="text-xs bg-gray-50 p-4 rounded">{{ formattedData }}</pre>
-        </div>
-      </div>
-      <div v-else class="text-gray-500 italic">
-        No data available
-      </div>
-    </UCard> -->
 
     <!-- Navigation Buttons -->
     <div class="flex justify-between mt-6">
@@ -236,177 +244,450 @@
         icon="i-lucide-arrow-left"
         @click="handleBack"
       />
-      <UButton
-        label="View Dashboard"
-        icon="i-lucide-arrow-right"
-        @click="handleDashboard"
-      />
+      <div class="space-x-2">
+        <UButton
+          label="Commit Data"
+          icon="i-lucide-cpu"
+          color="primary"
+          @click="handleCommitData"
+          :loading="uploadState.isUploading.value"
+        />
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { parse, isValid, differenceInDays, format } from 'date-fns'
+import { ref, computed, onMounted, watch, nextTick } from "vue";
+import { useRouter, useRoute } from "vue-router";
+import { parse, isValid, differenceInDays, format } from "date-fns";
+import { useUploadState } from "~/composables/useUploadState";
+import { useSiteService } from "~/utils/supabaseService";
+import { useBatchUploadService } from "~/composables/useBatchUploadService";
+import { useSiteData } from "~/composables/useSiteData";
+import { useAuth } from "~/composables/useAuth";
 
-const router = useRouter()
-const route = useRoute()
+// Router setup
+const router = useRouter();
+const route = useRoute();
 
-// Initialize data from localStorage
+const uploadState = useUploadState();
+const siteService = useSiteService();
+const siteData = useSiteData();
+const auth = useAuth();
+const fileData = ref<FileRow[]>([]);
+const totalSites = ref<number>(0);
+const error = ref<Error | null>(null);
+
+// Properly typed interfaces
+interface FileRow {
+  [key: string]: string | number | null | undefined;
+  "SITE ID"?: string | number | null;
+  "EXP DATE"?: string | null;
+  "TOTAL RENTAL (RM)"?: string | number | null;
+  "TOTAL PAYMENT TO PAY (RM)"?: string | number | null;
+  "DEPOSIT (RM)"?: string | number | null;
+}
+
+// Initialize data refs
 const storedData = ref<{
-  fileData: any[];
+  fileData: FileRow[];
   headers: string[];
   fileName: string;
-} | null>(null)
+} | null>(null);
 
-onMounted(() => {
-  try {
-    const stored = localStorage.getItem('uploadedFileData')
-    console.log('Initial localStorage check:', stored); // Debug log
-    if (stored) {
-      storedData.value = JSON.parse(stored)
-      console.log('Parsed stored data:', storedData.value); // Debug log
+const userInput = ref("");
+const isLoading = ref(false);
+const loadingStep = ref(0);
+const messages = ref<{ role: "user" | "assistant"; content: string }[]>([]);
+const chatContainer = ref<HTMLElement | null>(null);
+const fileName = computed(
+  () => storedData.value?.fileName || route.query.fileName || "No file selected"
+);
+const toast = useToast();
+
+// Chat logic
+const suggestedPrompts = [
+  "Analyze the distribution of values in my dataset",
+  "Find any outliers in the data",
+  "Summarize the key statistics",
+  "Suggest visualizations for this data",
+];
+
+// Function definitions
+const scrollToBottom = () => {
+  nextTick(() => {
+    if (chatContainer.value) {
+      chatContainer.value.scrollTop = chatContainer.value.scrollHeight;
     }
+  });
+};
+
+const showBackgroundOption = computed(() => {
+  if (!storedData.value?.fileData) return false;
+  // Only show for larger datasets (more than 500 rows)
+  return storedData.value.fileData.length > 500;
+});
+
+const handleCommitData = async () => {
+  try {
+    const stored = localStorage.getItem("uploadedFileData");
+    if (!stored) {
+      console.error("No data available for processing");
+      toast.add({
+        title: "No Data",
+        description: "Please upload a file first.",
+        color: "error",
+        duration: 5000,
+      });
+      return;
+    }
+
+    const data = JSON.parse(stored) as {
+      fileData: FileRow[];
+      headers: string[];
+      fileName: string;
+    };
+
+    if (
+      !data.fileData ||
+      !Array.isArray(data.fileData) ||
+      data.fileData.length === 0
+    ) {
+      console.error("Invalid data structure:", data);
+      throw new Error("Invalid data structure");
+    }
+
+    console.log(`Starting processing of ${data.fileData.length} records`);
+    
+    // Start the upload process
+    uploadState.startUpload();
+    uploadState.isUploading.value = true;
+    console.log("Upload state initialized, status:", uploadState.status.value);
+
+    // Use the batch upload service
+    const batchUploadService = useBatchUploadService();
+
+    // Check for interrupted uploads
+    console.log("Checking for previous uploads...");
+    uploadState.updateProgress(10, "Checking for previous uploads...");
+    const incompleteUploads = await batchUploadService.checkIncompleteUploads(
+      data.fileName
+    );
+
+    let result;
+    if (incompleteUploads.length > 0) {
+      // Ask user if they want to resume
+      console.log("Found incomplete uploads:", incompleteUploads);
+      const resumeConfirmed = window.confirm(
+        `Found an interrupted upload from ${new Date(
+          incompleteUploads[0].created_at
+        ).toLocaleString()}. Would you like to resume?`
+      );
+
+      if (resumeConfirmed) {
+        console.log("Resuming previous upload:", incompleteUploads[0].id);
+        uploadState.updateProgress(20, `Resuming previous upload...`);
+        result = await batchUploadService.resumeUpload(
+          incompleteUploads[0].id,
+          data.fileData
+        );
+      } else {
+        // Start fresh background upload
+        console.log("Starting new background process (user declined resume)");
+        uploadState.updateProgress(20, "Starting new background process...");
+        result = await batchUploadService.startAsyncProcessing(
+          data.fileData,
+          data.fileName || "upload.csv"
+        );
+      }
+    } else {
+      // No previous upload, start fresh background process
+      console.log("No previous uploads found, starting new process");
+      uploadState.updateProgress(20, "Starting background processing...");
+      result = await batchUploadService.startAsyncProcessing(
+        data.fileData,
+        data.fileName || "upload.csv"
+      );
+    }
+
+    // Update progress and status
+    console.log("Processing started with job ID:", result.jobId);
+    uploadState.updateProgress(
+      100,
+      `Processing started. Your data is being prepared.`
+    );
+    uploadState.status.value = "complete";
+    console.log("Upload state updated to complete");
+
+    // Store the job ID for reference in the dashboard
+    localStorage.setItem("background_job_id", result.jobId);
+    console.log("Job ID stored in localStorage:", result.jobId);
+    
+    // Auto navigate to dashboard
+    console.log("Processing complete, navigating to dashboard");
+    await navigateToDashboard();
+    
   } catch (error) {
-    console.error('Error reading file data:', error)
+    console.error("Error processing data:", error);
+    uploadState.setError(
+      error instanceof Error ? error : new Error(String(error))
+    );
+    toast.add({
+      title: "Error",
+      description: error instanceof Error ? error.message : String(error),
+      color: "error",
+      duration: 5000,
+    });
   }
-})
+};
 
+const navigateToDashboard = async (): Promise<void> => {
+  try {
+    console.log("Navigating to dashboard");
+    // Clear upload-related data before navigation
+    uploadState.isUploading.value = false;
+    uploadState.status.value = 'idle';
+
+    // Get job ID
+    const jobId = localStorage.getItem("background_job_id");
+    console.log("Retrieved job ID for dashboard:", jobId);
+    
+    // Set a flag to indicate we're coming from processing
+    localStorage.setItem("dashboard_building", "true");
+    
+    // Navigate to dashboard with job ID if available
+    console.log("Redirecting to dashboard with parameters:", { 
+      job_id: jobId || undefined,
+      building: "true" 
+    });
+    
+    await router.push({
+      path: "/dashboard",
+      query: { 
+        job_id: jobId || undefined,
+        building: "true" 
+      },
+    });
+
+    toast.add({
+      title: "Success",
+      description: "Upload completed. Redirecting to dashboard.",
+      color: "success",
+      duration: 5000,
+    });
+  } catch (error) {
+    console.error("Error navigating to dashboard:", error);
+    toast.add({
+      title: "Error",
+      description: "Failed to navigate to dashboard. Please try again.",
+      color: "error",
+      duration: 5000,
+    });
+  }
+};
+
+const handleSend = async () => {
+  const message = userInput.value.trim();
+  if (!message || isLoading.value) return;
+
+  messages.value.push({
+    role: "user",
+    content: message,
+  });
+
+  userInput.value = "";
+  scrollToBottom();
+
+  isLoading.value = true;
+  loadingStep.value = 0;
+
+  try {
+    // Simulate loading
+    loadingStep.value = 1;
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    loadingStep.value = 2;
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    loadingStep.value = 3;
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    // Simulate AI response
+    messages.value.push({
+      role: "assistant",
+      content: `This is a placeholder response. The user asked: "${message}"`,
+    });
+  } catch (error) {
+    console.error("Error sending message:", error);
+  } finally {
+    isLoading.value = false;
+    loadingStep.value = 0;
+    scrollToBottom();
+  }
+};
+
+// Date processing
+const DATE_FORMATS = [
+  "dd/MM/yyyy",
+  "dd-MM-yyyy",
+  "yyyy/MM/dd",
+  "yyyy-MM-dd",
+  "MM/dd/yyyy",
+  "MM-dd-yyyy",
+];
+
+const parseDate = (dateStr: string): Date | null => {
+  if (!dateStr || dateStr === "-" || dateStr.trim() === "") {
+    return null;
+  }
+
+  for (const dateFormat of DATE_FORMATS) {
+    try {
+      const parsedDate = parse(dateStr, dateFormat, new Date());
+      if (isValid(parsedDate)) {
+        return parsedDate;
+      }
+    } catch (error) {
+      continue;
+    }
+  }
+
+  const fallbackDate = new Date(dateStr);
+  return isValid(fallbackDate) ? fallbackDate : null;
+};
+
+const getDaysUntilExpiration = (expDate: string): number | null => {
+  const parsedDate = parseDate(expDate);
+
+  if (!parsedDate) {
+    return null;
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  return differenceInDays(parsedDate, today);
+};
+
+const formatDate = (date: Date): string => {
+  return format(date, "dd/MM/yyyy");
+};
+
+const cancelUpload = async (): Promise<void> => {
+  try {
+    console.log("Cancelling upload");
+    const batchUploadService = useBatchUploadService();
+    await batchUploadService.cancelUpload();
+
+    // Clear any stored data
+    localStorage.removeItem("uploadedFileData");
+    localStorage.removeItem("background_job_id");
+
+    // Reset the upload state
+    uploadState.isUploading.value = false;
+    uploadState.status.value = "idle";
+    uploadState.progress.value = 0;
+    console.log("Upload cancelled successfully");
+  } catch (error) {
+    console.error("Error cancelling upload:", error);
+    toast.add({
+      title: "Error",
+      description: "Failed to cancel upload. Please try again.",
+      color: "error",
+      duration: 5000,
+    });
+  }
+};
+
+// Data processing
 const metrics = computed(() => {
-  if (!storedData.value?.fileData) return {
-    totalSites: 0,
-    missingSites: 0,
-    totalRental: 0,
-    totalPaymentToPay: 0,
-    totalDeposit: 0
-  }
+  if (!storedData.value?.fileData)
+    return {
+      totalSites: 0,
+      missingSites: 0,
+      totalRental: 0,
+      totalPaymentToPay: 0,
+      totalDeposit: 0,
+    };
 
-  const data = storedData.value.fileData
+  const data = storedData.value.fileData;
+  const sitesData = data.filter(
+    (row) =>
+      row["SITE ID"] && row["SITE ID"].toString().toUpperCase() !== "NO ID"
+  );
+  const missingSites = data.filter(
+    (row) =>
+      !row["SITE ID"] || row["SITE ID"].toString().toUpperCase() === "NO ID"
+  ).length;
 
-  // Total Sites (excluding "NO ID")
-  const sitesData = data.filter(row => row['SITE ID'] && row['SITE ID'].toString().toUpperCase() !== 'NO ID')
-  const missingSites = data.filter(row => !row['SITE ID'] || row['SITE ID'].toString().toUpperCase() === 'NO ID').length
-
-  // Helper function to parse currency values
   const parseCurrency = (value: any): number => {
-    if (!value) return 0
-    // Remove 'RM' and any commas, then convert to number
-    const numStr = value.toString().replace(/[RM,\s]/g, '')
-    return parseFloat(numStr) || 0
-  }
+    if (!value) return 0;
+    const numStr = value.toString().replace(/[RM,\s]/g, "");
+    return parseFloat(numStr) || 0;
+  };
 
-  // Calculate totals
-  const totalRental = data.reduce((sum, row) => sum + parseCurrency(row['TOTAL RENTAL (RM)']), 0)
-  const totalPaymentToPay = data.reduce((sum, row) => sum + parseCurrency(row['TOTAL PAYMENT TO PAY (RM)']), 0)
-  const totalDeposit = data.reduce((sum, row) => sum + parseCurrency(row['DEPOSIT (RM)']), 0)
+  const totalRental = data.reduce(
+    (sum, row) => sum + parseCurrency(row["TOTAL RENTAL (RM)"]),
+    0
+  );
+  const totalPaymentToPay = data.reduce(
+    (sum, row) => sum + parseCurrency(row["TOTAL PAYMENT TO PAY (RM)"]),
+    0
+  );
+  const totalDeposit = data.reduce(
+    (sum, row) => sum + parseCurrency(row["DEPOSIT (RM)"]),
+    0
+  );
 
   return {
     totalSites: sitesData.length,
     missingSites,
     totalRental,
     totalPaymentToPay,
-    totalDeposit
-  }
-})
-
-// Define accepted date formats
-const DATE_FORMATS = [
-  'dd/MM/yyyy',
-  'dd-MM-yyyy',
-  'yyyy/MM/dd',
-  'yyyy-MM-dd',
-  'MM/dd/yyyy',
-  'MM-dd-yyyy'
-]
-
-const parseDate = (dateStr: string): Date | null => {
-  if (!dateStr || dateStr === '-' || dateStr.trim() === '') {
-    return null
-  }
-
-  // Try each format until one works
-  for (const dateFormat of DATE_FORMATS) {
-    try {
-      const parsedDate = parse(dateStr, dateFormat, new Date())
-      if (isValid(parsedDate)) {
-        return parsedDate
-      }
-    } catch (error) {
-      continue // Try next format
-    }
-  }
-
-  // If no format worked, try native Date parsing as fallback
-  const fallbackDate = new Date(dateStr)
-  return isValid(fallbackDate) ? fallbackDate : null
-}
-
-const getDaysUntilExpiration = (expDate: string): number | null => {
-  const parsedDate = parseDate(expDate)
-  
-  if (!parsedDate) {
-    return null
-  }
-
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-
-  return differenceInDays(parsedDate, today)
-}
-
-// Add a helper to format dates consistently
-const formatDate = (date: Date): string => {
-  return format(date, 'dd/MM/yyyy')
-}
+    totalDeposit,
+  };
+});
 
 const expirationMetrics = computed(() => {
-  if (!storedData.value?.fileData) return {
-    expired: 0,
-    within30Days: 0,
-    within60Days: 0,
-    within90Days: 0,
-    invalidDates: 0,
-    totalProcessed: 0,
-    invalidDatesList: [] as string[] // New field to track invalid dates
-  }
+  if (!storedData.value?.fileData)
+    return {
+      expired: 0,
+      within30Days: 0,
+      within60Days: 0,
+      within90Days: 0,
+      invalidDates: 0,
+      totalProcessed: 0,
+      invalidDatesList: [] as string[],
+    };
 
-  const data = storedData.value.fileData
-  let expired = 0
-  let within30Days = 0
-  let within60Days = 0
-  let within90Days = 0
-  let invalidDates = 0
-  let totalProcessed = 0
-  let invalidDatesList: string[] = []
+  const data = storedData.value.fileData;
+  let expired = 0;
+  let within30Days = 0;
+  let within60Days = 0;
+  let within90Days = 0;
+  let invalidDates = 0;
+  let totalProcessed = 0;
+  let invalidDatesList: string[] = [];
 
-  data.forEach(row => {
-    totalProcessed++
-    const expDate = row['EXP DATE']
-    const daysUntil = getDaysUntilExpiration(expDate)
+  data.forEach((row) => {
+    totalProcessed++;
+    const expDate = row["EXP DATE"];
+    const daysUntil = getDaysUntilExpiration(expDate?.toString() || "");
 
     if (daysUntil === null) {
-      invalidDates++
-      invalidDatesList.push(`Row ${totalProcessed}: "${expDate}"`)
+      invalidDates++;
+      invalidDatesList.push(`Row ${totalProcessed}: "${expDate}"`);
     } else if (daysUntil <= 0) {
-      expired++
+      expired++;
     } else if (daysUntil <= 30) {
-      within30Days++
+      within30Days++;
     } else if (daysUntil <= 60) {
-      within60Days++
+      within60Days++;
     } else if (daysUntil <= 90) {
-      within90Days++
+      within90Days++;
     }
-  })
-
-  // Debug logging with more detail
-  console.log('Expiration Metrics:', {
-    totalProcessed,
-    invalidDates,
-    expired,
-    within30Days,
-    within60Days,
-    within90Days,
-    invalidDatesList
-  })
+  });
 
   return {
     expired,
@@ -415,139 +696,89 @@ const expirationMetrics = computed(() => {
     within90Days,
     invalidDates,
     totalProcessed,
-    invalidDatesList
-  }
-})
+    invalidDatesList,
+  };
+});
 
 // Format currency helper
 const formatCurrency = (value: number): string => {
-  return new Intl.NumberFormat('en-MY', {
-    style: 'currency',
-    currency: 'MYR',
+  return new Intl.NumberFormat("en-MY", {
+    style: "currency",
+    currency: "MYR",
     minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  }).format(value)
-}
+    maximumFractionDigits: 2,
+  }).format(value);
+};
 
-const fileName = computed(() => {
-  return storedData.value?.fileName || route.query.fileName || 'No file selected'
-})
-
-// Format the data for display
-const formattedData = computed(() => {
-  if (!storedData.value) return ''
-  return JSON.stringify(storedData.value, null, 2)
-})
-
-// Copy to clipboard function
-const copyToClipboard = async () => {
-  try {
-    await navigator.clipboard.writeText(formattedData.value)
-    // You could add a toast notification here if you want
-  } catch (err) {
-    console.error('Failed to copy:', err)
-  }
-}
-
+// Navigation
 const handleBack = () => {
-  // Clean up stored data before navigating back
-  localStorage.removeItem('uploadedFileData')
-  router.push('/dataupload')
-}
-const handleDashboard = () => {
-  const stored = localStorage.getItem('uploadedFileData')
-  console.log('Pre-navigation localStorage check:', stored); // Debug log
+  localStorage.removeItem("uploadedFileData");
+  router.push("/dataupload");
+};
 
-  if (!stored) {
-    console.log('No data found in localStorage')
-    alert('No data available. Please upload a file first.')
-    router.push('/dataupload')
-    return
+// Handle logout
+const handleLogout = async () => {
+  try {
+    // Sign out from Supabase
+    await auth.signOut();
+    
+    // Clear any stored data
+    localStorage.removeItem("uploadedFileData");
+    localStorage.removeItem("background_job_id");
+    localStorage.removeItem("dashboard_building");
+    
+    // Navigate back to login page
+    router.push("/");
+  } catch (error) {
+    console.error("Logout error:", error);
+    // Still navigate to login even if logout fails
+    router.push("/");
   }
+};
 
-  console.log('Data available, proceeding to dashboard')
-  router.push('/dashboard')
-}
-
-// Remove the cleanup on unmount since we need the data in the dashboard
-// onUnmounted(() => {
-//   localStorage.removeItem('uploadedFileData')
-// }) // Removed
-
-// Chat related state
-const userInput = ref('')
-const isLoading = ref(false)
-const loadingStep = ref(0)
-const messages = ref<{ role: 'user' | 'assistant'; content: string }[]>([])
-const chatContainer = ref<HTMLElement | null>(null)
-
-// Suggested prompts based on data analysis context
-const suggestedPrompts = [
-  'Analyze the distribution of values in my dataset',
-  'Find any outliers in the data',
-  'Summarize the key statistics',
-  'Suggest visualizations for this data',
-]
-
-// Scroll to bottom of chat
-const scrollToBottom = () => {
-  nextTick(() => {
-    if (chatContainer.value) {
-      chatContainer.value.scrollTop = chatContainer.value.scrollHeight
-    }
-  })
-}
-
-// Handle sending messages
-const handleSend = async () => {
-  const message = userInput.value.trim()
-  if (!message || isLoading.value) return
-
-  messages.value.push({
-    role: 'user',
-    content: message
-  })
-  
-  userInput.value = ''
-  scrollToBottom()
-
-  isLoading.value = true
-  loadingStep.value = 0
+// Initialize data on mount
+onMounted(() => {
+  // Auth check first
+  if (!auth.user.value) {
+    router.push('/');
+    return;
+  }
 
   try {
-    // Simulate different loading stages
-    loadingStep.value = 1
-    await new Promise(resolve => setTimeout(resolve, 500))
-    
-    loadingStep.value = 2
-    await new Promise(resolve => setTimeout(resolve, 500))
-    
-    loadingStep.value = 3
-    await new Promise(resolve => setTimeout(resolve, 500))
-    
-    // Simulate AI response
-    messages.value.push({
-      role: 'assistant',
-      content: `This is a placeholder response. You should implement actual API calls to your LLM endpoint here. The user asked: "${message}"`
-    })
+    console.log("Initializing data staging");
+    uploadState.isUploading.value = false;
+    uploadState.progress.value = 0;
+    uploadState.status.value = "idle";
+    uploadState.statusMessage.value = "";
+    uploadState.error.value = null;
+    const stored = localStorage.getItem("uploadedFileData");
+    console.log("Raw data from localStorage:", stored ? "Available" : "Not available");
+
+    if (stored) {
+      storedData.value = JSON.parse(stored);
+      console.log("Data parsed successfully, rows:", storedData.value?.fileData?.length);
+
+      if (
+        Array.isArray(storedData.value?.fileData) &&
+        storedData.value.fileData.length > 0
+      ) {
+        console.log("Sample row keys:", Object.keys(storedData.value.fileData[0] || {}));
+      }
+    }
   } catch (error) {
-    console.error('Error sending message:', error)
-  } finally {
-    isLoading.value = false
-    loadingStep.value = 0
-    scrollToBottom()
+    console.error("Error initializing data staging:", error);
   }
-}
+});
 
 // Watch for new messages and scroll to bottom
-watch(messages, scrollToBottom, { deep: true })
+watch(messages, scrollToBottom, { deep: true });
 </script>
 
 <style scoped>
 /* Optional: Add custom scrollbar styling */
 .overflow-y-auto {
   scrollbar-width: thin;
-  scrollbar-color: #CBD5E1 transparent;
+  scrollbar-color: #cbd5e1 transparent;
 }
 
 .overflow-y-auto::-webkit-scrollbar {
@@ -559,24 +790,7 @@ watch(messages, scrollToBottom, { deep: true })
 }
 
 .overflow-y-auto::-webkit-scrollbar-thumb {
-  background-color: #CBD5E1;
+  background-color: #cbd5e1;
   border-radius: 3px;
 }
 </style>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

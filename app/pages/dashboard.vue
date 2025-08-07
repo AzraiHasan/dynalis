@@ -1,52 +1,76 @@
 <template>
   <div class="space-y-4">
-    <!-- Summary Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-      <UCard>
-        <div class="flex items-center gap-2">
-          <div class="flex-1">
-            <div class="text-sm text-gray-500">Total Sites</div>
-            <div class="text-2xl font-bold">{{ totalSites }}</div>
+    <div class="flex justify-between items-center mb-4">
+      <h1 class="text-2xl font-bold">Dashboard</h1>
+      <div class="flex items-center gap-2">
+        <UButton
+          icon="i-lucide-refresh-cw"
+          color="primary"
+          variant="soft"
+          @click="refreshDashboard"
+        >
+          Refresh Data
+        </UButton>
+        <UButton
+          icon="i-lucide-log-out"
+          color="neutral"
+          variant="ghost"
+          @click="handleLogout"
+        >
+          Logout
+        </UButton>
+      </div>
+    </div>
+    <div v-if="!isLoading && !error" class="space-y-4">
+      <!-- Summary Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <UCard>
+          <div class="flex items-center gap-2">
+            <div class="flex-1">
+              <div class="text-sm text-gray-500">Total Sites</div>
+              <div class="text-2xl font-bold">{{ totalSites }}</div>
+            </div>
+            <UIcon
+              name="i-lucide-building-2"
+              class="w-8 h-8 text-emerald-500"
+            />
           </div>
-          <UIcon name="i-lucide-building-2" class="w-8 h-8 text-emerald-500" />
-        </div>
-      </UCard>
+        </UCard>
 
-      <UCard>
-        <div class="flex items-center gap-2">
-          <div class="flex-1">
-            <div class="text-sm text-gray-500">Total Rental (RM mil)</div>
-            <div class="text-2xl font-bold">{{ totalRental }}</div>
+        <UCard>
+          <div class="flex items-center gap-2">
+            <div class="flex-1">
+              <div class="text-sm text-gray-500">Total Rental (RM mil)</div>
+              <div class="text-2xl font-bold">{{ totalRental }}</div>
+            </div>
+            <UIcon name="i-lucide-wallet" class="w-8 h-8 text-emerald-500" />
           </div>
-          <UIcon name="i-lucide-wallet" class="w-8 h-8 text-emerald-500" />
-        </div>
-      </UCard>
+        </UCard>
 
-      <UCard>
-        <div class="flex items-center gap-2">
-          <div class="flex-1">
-            <div class="text-sm text-gray-500">Due Payment (RM mil)</div>
-            <div class="text-2xl font-bold">{{ duePayment }}</div>
+        <UCard>
+          <div class="flex items-center gap-2">
+            <div class="flex-1">
+              <div class="text-sm text-gray-500">Due Payment (RM mil)</div>
+              <div class="text-2xl font-bold">{{ duePayment }}</div>
+            </div>
+            <UIcon name="i-lucide-receipt" class="w-8 h-8 text-red-500" />
           </div>
-          <UIcon name="i-lucide-receipt" class="w-8 h-8 text-red-500" />
-        </div>
-      </UCard>
+        </UCard>
 
-      <UCard>
-        <div class="flex items-center gap-2">
-          <div class="flex-1">
-            <div class="text-sm text-gray-500">Deposit (RM mil)</div>
-            <div class="text-2xl font-bold">{{ totalDeposit }}</div>
+        <UCard>
+          <div class="flex items-center gap-2">
+            <div class="flex-1">
+              <div class="text-sm text-gray-500">Deposit (RM mil)</div>
+              <div class="text-2xl font-bold">{{ totalDeposit }}</div>
+            </div>
+            <UIcon name="i-lucide-banknote" class="w-8 h-8 text-blue-500" />
           </div>
-          <UIcon name="i-lucide-banknote" class="w-8 h-8 text-blue-500" />
-        </div>
-      </UCard>
-
-      
+        </UCard>
+      </div>
     </div>
 
     <!-- Charts Grid -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
       <!-- Rental Distribution -->
       <UCard>
         <template #header>
@@ -78,7 +102,9 @@
               <Icon name="i-lucide-alert-circle" class="text-red-600" />
               <h3 class="text-sm text-red-600">Expired</h3>
             </div>
-            <p class="text-2xl font-semibold text-red-600">{{ expiredContracts }}</p>
+            <p class="text-2xl font-semibold text-red-600">
+              {{ expiredContracts }}
+            </p>
             <p class="text-xs text-red-500 mt-1">Past expiration date</p>
             <p v-if="invalidDates" class="text-xs text-gray-500 mt-1">
               + {{ invalidDates }} invalid/missing dates
@@ -86,32 +112,44 @@
           </div>
 
           <!-- Within 30 Days -->
-          <div class="p-4 bg-orange-50 rounded-lg transition-all hover:bg-orange-100">
+          <div
+            class="p-4 bg-orange-50 rounded-lg transition-all hover:bg-orange-100"
+          >
             <div class="flex items-center gap-2 mb-2">
               <Icon name="i-lucide-clock-alert" class="text-orange-600" />
               <h3 class="text-sm text-orange-600">Within 30 Days</h3>
             </div>
-            <p class="text-2xl font-semibold text-orange-600">{{ expirationStatus['Within 30 Days'] }}</p>
+            <p class="text-2xl font-semibold text-orange-600">
+              {{ expirationStatus["Within 30 Days"] }}
+            </p>
             <p class="text-xs text-orange-500 mt-1">Urgent attention needed</p>
           </div>
 
           <!-- Within 60 Days -->
-          <div class="p-4 bg-yellow-50 rounded-lg transition-all hover:bg-yellow-100">
+          <div
+            class="p-4 bg-yellow-50 rounded-lg transition-all hover:bg-yellow-100"
+          >
             <div class="flex items-center gap-2 mb-2">
               <Icon name="i-lucide-clock" class="text-yellow-600" />
               <h3 class="text-sm text-yellow-600">Within 60 Days</h3>
             </div>
-            <p class="text-2xl font-semibold text-yellow-600">{{ expirationStatus['Within 60 Days'] }}</p>
+            <p class="text-2xl font-semibold text-yellow-600">
+              {{ expirationStatus["Within 60 Days"] }}
+            </p>
             <p class="text-xs text-yellow-500 mt-1">Plan for renewal</p>
           </div>
 
           <!-- Within 90 Days -->
-          <div class="p-4 bg-blue-50 rounded-lg transition-all hover:bg-blue-100">
+          <div
+            class="p-4 bg-blue-50 rounded-lg transition-all hover:bg-blue-100"
+          >
             <div class="flex items-center gap-2 mb-2">
               <Icon name="i-lucide-calendar" class="text-blue-600" />
               <h3 class="text-sm text-blue-600">Within 90 Days</h3>
             </div>
-            <p class="text-2xl font-semibold text-blue-600">{{ expirationStatus['Within 90 Days'] }}</p>
+            <p class="text-2xl font-semibold text-blue-600">
+              {{ expirationStatus["Within 90 Days"] }}
+            </p>
             <p class="text-xs text-blue-500 mt-1">Early planning</p>
           </div>
         </div>
@@ -174,13 +212,48 @@
         @click="handleStaging"
       />
     </div>
+    <!-- <UploadProgressModal
+      v-if="showDashboardModal"
+      :is-open="uploadState.isUploading.value"
+      @update:is-open="uploadState.isUploading.value = $event"
+      :progress="uploadState.progress.value"
+      :status="uploadState.status.value"
+      :status-message="uploadState.statusMessage.value"
+      :error="uploadState.error.value || undefined"
+      @close="
+        () => {
+          uploadState.isUploading.value = false;
+          showDashboardModal = false;
+        }
+      "
+      @continue="() => (showDashboardModal = false)"
+    >
+      <template #header>
+        <div class="flex items-center gap-2">
+          <Icon name="i-lucide-bar-chart-2" class="text-gray-600" />
+          <h3 class="text-lg font-semibold">Building Dashboard</h3>
+        </div>
+      </template>
+
+      <template #description>
+        <p>Please wait while we build your dashboard visualizations.</p>
+      </template>
+    </UploadProgressModal> -->
   </div>
 </template>
 
 <script setup lang="ts">
+import { useUploadState } from "~/composables/useUploadState";
 import { ref, computed, onMounted } from "vue";
+import { useSiteService } from "~/utils/supabaseService";
+import { useSiteData } from "~/composables/useSiteData";
 import { useRouter } from "vue-router";
-import { getDaysUntilExpiration, parseDate, formatDate } from '../utils/dateUtils';
+import { useAuth } from "~/composables/useAuth";
+import {
+  getDaysUntilExpiration,
+  parseDate,
+  formatDate,
+} from "../utils/dateUtils";
 import {
   Chart as ChartJS,
   Title,
@@ -255,7 +328,193 @@ interface DoughnutChartData {
   }[];
 }
 
+const route = useRoute();
+/* const showDashboardModal = ref(false);
+const uploadState = useUploadState(); */
+
+const isLoading = ref(true);
+const error = ref<Error | null>(null);
+const siteService = useSiteService();
+const siteData = useSiteData();
+
+const shouldAutoBuild = computed(() => {
+  return route.query.building === "true";
+});
+
+onMounted(async () => {
+  // Auth check first
+  if (!auth.user.value) {
+    router.push('/');
+    return;
+  }
+
+  try {
+    console.log("Initializing dashboard...");
+    isLoading.value = true;
+    
+    // Check if we're coming from a job
+    const jobId = route.query.job_id;
+    if (jobId) {
+      console.log(`Initializing from job: ${jobId}`);
+    }
+    
+    // Fetch data from Supabase
+    console.log("Fetching initial data from database...");
+    const supabaseData = await siteData.fetchData();
+    console.log(`Data fetched successfully. ${supabaseData.length} rows retrieved.`);
+
+    console.log("Transforming data...");
+    // Transform Supabase data to match expected format
+    fileData.value = supabaseData.map((item) => ({
+      "SITE ID": item.site_id,
+      "EXP DATE": item.exp_date,
+      "TOTAL RENTAL (RM)": item.total_rental,
+      "TOTAL PAYMENT TO PAY (RM)": item.total_payment_to_pay,
+      "DEPOSIT (RM)": item.deposit,
+    }));
+
+    console.log("Calculating metrics...");
+    // Calculate metrics 
+    const sitesData = fileData.value.filter(
+      (row) => row["SITE ID"] && row["SITE ID"].toString().toUpperCase() !== "NO ID"
+    );
+    totalSites.value = sitesData.length;
+
+    let totalRentalValue = 0;
+    let totalDuePayment = 0;
+    let expiredCount = 0;
+    let totalDepositValue = 0;
+
+    fileData.value.forEach((row) => {
+      totalRentalValue += parseCurrency(row["TOTAL RENTAL (RM)"]);
+      totalDuePayment += parseCurrency(row["TOTAL PAYMENT TO PAY (RM)"]);
+      totalDepositValue += parseCurrency(row["DEPOSIT (RM)"]);
+
+      const daysUntil = getDaysUntilExpiration(row["EXP DATE"]?.toString() || "");
+      if (daysUntil === null) {
+        invalidDates.value++;
+      } else if (daysUntil <= 0) {
+        expiredCount++;
+      }
+    });
+
+    totalRental.value = (totalRentalValue / 1000000).toFixed(2);
+    duePayment.value = (totalDuePayment / 1000000).toFixed(2);
+    expiredContracts.value = expiredCount;
+    totalDeposit.value = (totalDepositValue / 1000000).toFixed(2);
+
+    console.log("Generating visualizations...");
+    // Generate all chart data
+    const rentalRanges = calculateRentalRanges(fileData.value);
+    rentalChartData.value = {
+      labels: Object.keys(rentalRanges),
+      datasets: [
+        {
+          label: "Number of Sites",
+          data: Object.values(rentalRanges),
+          backgroundColor: [
+            "rgba(16, 185, 129, 0.7)",
+            "rgba(52, 211, 153, 0.7)",
+            "rgba(20, 184, 166, 0.7)",
+            "rgba(6, 182, 212, 0.7)",
+            "rgba(14, 165, 233, 0.7)",
+          ],
+          borderColor: [
+            "rgb(5, 150, 105)",
+            "rgb(5, 150, 105)",
+            "rgb(5, 150, 105)",
+            "rgb(5, 150, 105)",
+            "rgb(5, 150, 105)",
+          ],
+          borderWidth: 1,
+        },
+      ],
+    };
+
+    // Timeline data
+    const { months, counts } = calculateExpirationTimeline(fileData.value);
+    expirationTimelineData.value = {
+      labels: months,
+      datasets: [
+        {
+          label: "Contracts Expiring",
+          data: counts,
+          borderColor: "rgb(59, 130, 246)",
+          backgroundColor: "rgba(59, 130, 246, 0.2)",
+          tension: 0.1,
+          fill: true,
+        },
+      ],
+    };
+
+    // Risk data
+    const riskPoints = calculateRenewalRisk(fileData.value);
+    renewalRiskData.value = {
+      datasets: [
+        {
+          label: "Sites",
+          data: riskPoints,
+          backgroundColor: (context) => {
+            const value = context.raw.x;
+            if (value <= 0) return "rgba(239, 68, 68, 0.7)";
+            if (value <= 30) return "rgba(245, 158, 11, 0.7)";
+            if (value <= 60) return "rgba(252, 211, 77, 0.7)";
+            if (value <= 90) return "rgba(59, 130, 246, 0.7)";
+            return "rgba(107, 114, 128, 0.7)";
+          },
+          pointRadius: 5,
+          pointHoverRadius: 7,
+        },
+      ],
+    };
+
+    // Payment flow data
+    const paymentFlow = calculatePaymentFlow(fileData.value);
+    paymentFlowData.value = {
+      labels: paymentFlow.labels,
+      datasets: [
+        {
+          label: "Amount (RM Millions)",
+          data: paymentFlow.values,
+          backgroundColor: [
+            "rgba(16, 185, 129, 0.7)",
+            "rgba(239, 68, 68, 0.7)",
+            "rgba(59, 130, 246, 0.7)",
+          ],
+          borderColor: [
+            "rgb(5, 150, 105)",
+            "rgb(220, 38, 38)",
+            "rgb(37, 99, 235)",
+          ],
+          borderWidth: 1,
+        },
+      ],
+    };
+
+    // Clean up route query params if needed
+    if (route.query.building === "true") {
+      router.replace({
+        path: "/dashboard",
+        query: {
+          ...(route.query.job_id ? { job_id: route.query.job_id } : {}),
+        },
+      });
+    }
+    
+    // Clean up localStorage items
+    localStorage.removeItem("dashboard_building");
+    
+    console.log("Dashboard initialization complete");
+  } catch (err) {
+    console.error("Error initializing dashboard:", err);
+    error.value = err instanceof Error ? err : new Error(String(err));
+  } finally {
+    isLoading.value = false;
+  }
+});
+
 const router = useRouter();
+const auth = useAuth();
 
 // Data refs
 const fileData = ref<FileRow[]>([]);
@@ -341,7 +600,6 @@ const parseCurrency = (value: any): number => {
   if (!value) return 0;
   return parseFloat(value.toString().replace(/[RM,\s]/g, "")) || 0;
 };
-
 
 const calculateRentalRanges = (data: FileRow[]): Record<string, number> => {
   const ranges: Record<string, number> = {
@@ -469,68 +727,89 @@ const exportData = (): void => {
 };
 
 const expirationStatus = computed(() => {
-  if (!fileData.value) return {
-    'Within 30 Days': 0,
-    'Within 60 Days': 0,
-    'Within 90 Days': 0,
-    'Valid > 90 Days': 0
-  };
+  if (!fileData.value)
+    return {
+      "Within 30 Days": 0,
+      "Within 60 Days": 0,
+      "Within 90 Days": 0,
+      "Valid > 90 Days": 0,
+    };
 
   const status = {
-    'Within 30 Days': 0,
-    'Within 60 Days': 0,
-    'Within 90 Days': 0,
-    'Valid > 90 Days': 0
+    "Within 30 Days": 0,
+    "Within 60 Days": 0,
+    "Within 90 Days": 0,
+    "Valid > 90 Days": 0,
   };
 
-  fileData.value.forEach(row => {
-    const daysUntil = getDaysUntilExpiration(row['EXP DATE']?.toString() || '');
-    
+  fileData.value.forEach((row) => {
+    const daysUntil = getDaysUntilExpiration(row["EXP DATE"]?.toString() || "");
+
     if (daysUntil === null || daysUntil <= 0) {
       // Skip invalid or expired dates since they're shown in separate cards
       return;
     } else if (daysUntil <= 30) {
-      status['Within 30 Days']++;
+      status["Within 30 Days"]++;
     } else if (daysUntil <= 60) {
-      status['Within 60 Days']++;
+      status["Within 60 Days"]++;
     } else if (daysUntil <= 90) {
-      status['Within 90 Days']++;
+      status["Within 90 Days"]++;
     } else {
-      status['Valid > 90 Days']++;
+      status["Valid > 90 Days"]++;
     }
   });
 
   return status;
 });
 
-onMounted(() => {
+const cleanUpBuildState = () => {
+  // Remove the build flag from localStorage
+  localStorage.removeItem("dashboard_building");
+
+  // Clear the query parameters without page reload
+  if (shouldAutoBuild.value) {
+    router.replace({
+      path: "/dashboard",
+      query: {
+        ...(route.query.job_id ? { job_id: route.query.job_id } : {}),
+      },
+    });
+  }
+};
+
+
+
+const refreshDashboard = async () => {
   try {
-    const stored = localStorage.getItem("uploadedFileData");
-    if (!stored) {
-      console.log("No data found in localStorage");
-      router.push("/dataupload");
-      return;
-    }
+    console.log("Starting dashboard refresh...");
+    
+    // Clear previous data
+    fileData.value = [];
+    totalSites.value = 0;
+    invalidDates.value = 0;
 
-    const data = JSON.parse(stored) as { fileData: FileRow[] };
-    console.log("Retrieved data:", data);
+    // Force refresh from database
+    console.log("Fetching data from database...");
+    await siteData.fetchData(true);
 
-    if (
-      !data.fileData ||
-      !Array.isArray(data.fileData) ||
-      data.fileData.length === 0
-    ) {
-      console.log("Invalid or empty data structure:", data);
-      router.push("/dataupload");
-      return;
-    }
+    // Re-run the same data loading
+    const supabaseData = await siteData.fetchData();
+    console.log("Data fetched successfully. Rows:", supabaseData.length);
 
-    fileData.value = data.fileData;
+    console.log("Transforming data...");
+    // Transform and process data
+    fileData.value = supabaseData.map((item) => ({
+      "SITE ID": item.site_id,
+      "EXP DATE": item.exp_date,
+      "TOTAL RENTAL (RM)": item.total_rental,
+      "TOTAL PAYMENT TO PAY (RM)": item.total_payment_to_pay,
+      "DEPOSIT (RM)": item.deposit,
+    }));
 
-    // Set summary statistics
+    console.log("Calculating metrics...");
+    // Recalculate metrics
     const sitesData = fileData.value.filter(
-      (row) =>
-        row["SITE ID"] && row["SITE ID"].toString().toUpperCase() !== "NO ID"
+      (row) => row["SITE ID"] && row["SITE ID"].toString().toUpperCase() !== "NO ID"
     );
     totalSites.value = sitesData.length;
 
@@ -544,11 +823,9 @@ onMounted(() => {
       totalDuePayment += parseCurrency(row["TOTAL PAYMENT TO PAY (RM)"]);
       totalDepositValue += parseCurrency(row["DEPOSIT (RM)"]);
 
-      const daysUntil = getDaysUntilExpiration(
-        row["EXP DATE"]?.toString() || ""
-      );
+      const daysUntil = getDaysUntilExpiration(row["EXP DATE"]?.toString() || "");
       if (daysUntil === null) {
-        invalidDates.value++; // Count invalid dates
+        invalidDates.value++;
       } else if (daysUntil <= 0) {
         expiredCount++;
       }
@@ -559,7 +836,8 @@ onMounted(() => {
     expiredContracts.value = expiredCount;
     totalDeposit.value = (totalDepositValue / 1000000).toFixed(2);
 
-    // Prepare rental distribution data
+    console.log("Updating visualizations...");
+    // Rebuild all chart data (calling the same functions that are used on initial load)
     const rentalRanges = calculateRentalRanges(fileData.value);
     rentalChartData.value = {
       labels: Object.keys(rentalRanges),
@@ -586,26 +864,7 @@ onMounted(() => {
       ],
     };
 
-    // Prepare expiration data
-    const expirationStatus = calculateExpirationStatus(fileData.value);
-    expirationChartData.value = {
-      labels: Object.keys(expirationStatus),
-      datasets: [
-        {
-          data: Object.values(expirationStatus),
-          backgroundColor: [
-            "rgb(245, 158, 11)", // Orange for Within 30 Days
-            "rgb(252, 211, 77)", // Yellow for Within 60 Days
-            "rgb(59, 130, 246)", // Blue for Within 90 Days
-            "rgb(16, 185, 129)", // Green for Valid > 90 Days
-          ],
-          hoverOffset: 4,
-          borderWidth: 0,
-        },
-      ],
-    };
-
-    // Prepare expiration timeline data
+    // Update other charts similarly (timeline, risk data, etc.)
     const { months, counts } = calculateExpirationTimeline(fileData.value);
     expirationTimelineData.value = {
       labels: months,
@@ -621,14 +880,13 @@ onMounted(() => {
       ],
     };
 
-    // Prepare renewal risk data
     const riskPoints = calculateRenewalRisk(fileData.value);
     renewalRiskData.value = {
       datasets: [
         {
           label: "Sites",
           data: riskPoints,
-          backgroundColor: (context: { raw: { x: number } }) => {
+          backgroundColor: (context) => {
             const value = context.raw.x;
             if (value <= 0) return "rgba(239, 68, 68, 0.7)";
             if (value <= 30) return "rgba(245, 158, 11, 0.7)";
@@ -642,7 +900,6 @@ onMounted(() => {
       ],
     };
 
-    // Prepare payment flow data
     const paymentFlow = calculatePaymentFlow(fileData.value);
     paymentFlowData.value = {
       labels: paymentFlow.labels,
@@ -652,8 +909,8 @@ onMounted(() => {
           data: paymentFlow.values,
           backgroundColor: [
             "rgba(16, 185, 129, 0.7)", // Emerald
-            "rgba(239, 68, 68, 0.7)", // Red
-            "rgba(59, 130, 246, 0.7)", // Blue
+            "rgba(239, 68, 68, 0.7)",  // Red
+            "rgba(59, 130, 246, 0.7)",  // Blue
           ],
           borderColor: [
             "rgb(5, 150, 105)",
@@ -664,19 +921,35 @@ onMounted(() => {
         },
       ],
     };
-  } catch (error) {
-    console.error("Error preparing chart data:", error);
-    router.push("/dataupload");
+
+    console.log("Dashboard refresh completed successfully");
+    
+  } catch (err) {
+    console.error("Error refreshing dashboard:", err);
+    error.value = err instanceof Error ? err : new Error(String(err));
   }
-});
+};
 
 function handleStaging() {
   router.push("/datastaging");
 }
+
+async function handleLogout() {
+  try {
+    // Sign out from Supabase
+    await auth.signOut();
+    
+    // Clear any stored data
+    localStorage.removeItem("uploadedFileData");
+    localStorage.removeItem("background_job_id");
+    localStorage.removeItem("dashboard_building");
+    
+    // Navigate back to login page
+    router.push("/");
+  } catch (error) {
+    console.error("Logout error:", error);
+    // Still navigate to login even if logout fails
+    router.push("/");
+  }
+}
 </script>
-
-
-
-
-
-
