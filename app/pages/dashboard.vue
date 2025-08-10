@@ -11,14 +11,6 @@
         >
           Refresh Data
         </UButton>
-        <UButton
-          icon="i-lucide-log-out"
-          color="neutral"
-          variant="ghost"
-          @click="handleLogout"
-        >
-          Logout
-        </UButton>
       </div>
     </div>
     <div v-if="!isLoading && !error" class="space-y-4">
@@ -243,6 +235,10 @@
 </template>
 
 <script setup lang="ts">
+// definePageMeta({
+//   middleware: 'auth'
+// });
+
 import { useUploadState } from "~/composables/useUploadState";
 import { ref, computed, onMounted } from "vue";
 import { useSiteService } from "~/utils/supabaseService";

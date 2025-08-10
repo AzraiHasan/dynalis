@@ -258,6 +258,10 @@
 </template>
 
 <script setup lang="ts">
+// definePageMeta({
+//   middleware: 'auth'
+// });
+
 import { ref, computed, onMounted, watch, nextTick } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { parse, isValid, differenceInDays, format } from "date-fns";

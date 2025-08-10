@@ -311,6 +311,10 @@
 </template>
 
 <script setup lang="ts">
+// definePageMeta({
+//   middleware: 'auth'
+// });
+
 import { ref, computed, onMounted, nextTick } from "vue";
 import { useRouter } from "vue-router";
 import Papa from "papaparse";
