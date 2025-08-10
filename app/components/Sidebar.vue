@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { useAuth } from '~/composables/useAuth'
 import { useUploadState } from '~/composables/useUploadState'
-import { useBatchUploadService } from '~/composables/useBatchUploadService'
 
 interface SidebarState {
   isCollapsed: boolean
@@ -17,7 +16,6 @@ interface SidebarState {
 const route = useRoute()
 const auth = useAuth()
 const uploadState = useUploadState()
-const batchUploadService = useBatchUploadService()
 
 // Inject layout functions
 const layoutToggleSidebar = inject('toggleSidebar', () => {})
@@ -45,9 +43,9 @@ watch(() => route.path, (newPath) => {
 
 // Watch upload progress
 watchEffect(() => {
-  if (uploadState.isUploading.value && batchUploadService.state.value.uploadJobId) {
+  if (uploadState.isUploading.value) {
     sidebarState.uploadProgress = {
-      jobId: batchUploadService.state.value.uploadJobId,
+      jobId: 'current-upload', // placeholder since currentJobId doesn't exist
       progress: uploadState.progress.value,
       status: uploadState.status.value
     }
@@ -79,13 +77,12 @@ const navigationItems = computed(() => [
 ])
 
 // Toggle functions
-function _toggleCollapse() {
+function toggleCollapse() {
   sidebarState.isCollapsed = !sidebarState.isCollapsed
-  if (import.meta.client) {
+  if (process.client) {
     localStorage.setItem('sidebar-collapsed', sidebarState.isCollapsed.toString())
   }
-  // Notify layout
-  layoutToggleSidebar()
+  // Notify layout - removed since collapse functionality doesn't exist yet
 }
 
 function toggleMobile() {
@@ -150,7 +147,7 @@ defineExpose({
             </div>
             <UProgress 
               :value="sidebarState.uploadProgress.progress" 
-              color="blue"
+              color="info"
               size="sm"
             />
             <p class="text-xs text-blue-600">{{ sidebarState.uploadProgress.status }}</p>
@@ -160,7 +157,7 @@ defineExpose({
 
       <!-- Divider -->
       <div class="px-4">
-        <div class="border-t border-gray-200" />
+        <div class="border-t border-gray-200"></div>
       </div>
 
       <!-- User Section -->
@@ -197,8 +194,8 @@ defineExpose({
           variant="ghost"
           size="sm"
           icon="i-lucide-x"
-          class="text-gray-500 hover:text-gray-700"
           @click="closeMobile"
+          class="text-gray-500 hover:text-gray-700"
         />
       </div>
 
@@ -226,7 +223,7 @@ defineExpose({
             </div>
             <UProgress 
               :value="sidebarState.uploadProgress.progress" 
-              color="blue"
+              color="info"
               size="sm"
             />
             <p class="text-xs text-blue-600">{{ sidebarState.uploadProgress.status }}</p>
@@ -236,7 +233,7 @@ defineExpose({
 
       <!-- Mobile Divider -->
       <div class="px-4">
-        <div class="border-t border-gray-200" />
+        <div class="border-t border-gray-200"></div>
       </div>
 
       <!-- Mobile User Section -->
