@@ -24,7 +24,7 @@ export const parseDate = (dateStr: string): Date | null => {
       if (isValid(parsedDate)) {
         return parsedDate;
       }
-    } catch (error) {
+    } catch {
       continue; // Try next format
     }
   }

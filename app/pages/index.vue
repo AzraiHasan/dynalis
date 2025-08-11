@@ -1,11 +1,11 @@
 <!-- pages/index.vue -->
 <script setup lang="ts">
+import { useAuth } from "~/composables/useAuth";
+
 definePageMeta({
   layout: 'auth',
   ssr: false,
 });
-
-import { useAuth } from "~/composables/useAuth";
 
 const router = useRouter();
 const auth = useAuth();

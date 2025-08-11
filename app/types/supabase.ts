@@ -9,6 +9,17 @@ export interface Site {
   updated_at: string;
 }
 
+export interface UploadJob {
+  id: string;
+  filename: string;
+  status: 'created' | 'uploading' | 'completed' | 'cancelled' | 'failed';
+  total_chunks: number;
+  chunks_received: number;
+  processed_records: number;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Database {
   public: {
     Tables: {

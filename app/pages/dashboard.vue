@@ -239,16 +239,13 @@
 //   middleware: 'auth'
 // });
 
-import { useUploadState } from "~/composables/useUploadState";
 import { ref, computed, onMounted } from "vue";
-import { useSiteService } from "~/utils/supabaseService";
 import { useSiteData } from "~/composables/useSiteData";
 import { useRouter } from "vue-router";
 import { useAuth } from "~/composables/useAuth";
 import {
   getDaysUntilExpiration,
   parseDate,
-  formatDate,
 } from "../utils/dateUtils";
 import {
   Chart as ChartJS,
@@ -263,8 +260,8 @@ import {
   LineElement,
   Filler, // Add this import
 } from "chart.js";
-import { Bar, Doughnut, Line, Scatter } from "vue-chartjs";
-import { addMonths, format, differenceInDays } from "date-fns";
+import { Bar, Line, Scatter } from "vue-chartjs";
+import { addMonths, format } from "date-fns";
 
 // Register ChartJS components
 ChartJS.register(
@@ -292,7 +289,7 @@ interface FileRow {
 interface ChartDataset {
   label?: string;
   data: number[] | Array<{ x: number; y: number }>;
-  backgroundColor?: string | string[] | ((context: any) => string);
+  backgroundColor?: string | string[] | ((context: { dataIndex: number; dataset: ChartDataset }) => string);
   borderColor?: string | string[];
   borderWidth?: number;
   tension?: number;
@@ -313,7 +310,7 @@ interface PaymentFlowData {
 }
 
 // Add this interface specifically for doughnut chart data
-interface DoughnutChartData {
+interface _DoughnutChartData {
   labels?: string[];
   datasets: {
     data: number[];
@@ -330,7 +327,6 @@ const uploadState = useUploadState(); */
 
 const isLoading = ref(true);
 const error = ref<Error | null>(null);
-const siteService = useSiteService();
 const siteData = useSiteData();
 
 const shouldAutoBuild = computed(() => {
@@ -523,7 +519,6 @@ const totalDeposit = ref<string>("0");
 
 // Chart data refs
 const rentalChartData = ref<ChartData | null>(null);
-const expirationChartData = ref<DoughnutChartData | null>(null);
 const expirationTimelineData = ref<ChartData | null>(null);
 const renewalRiskData = ref<ChartData | null>(null);
 const paymentFlowData = ref<ChartData | null>(null);
@@ -592,7 +587,7 @@ const chartOptions = {
 };
 
 // Helper functions
-const parseCurrency = (value: any): number => {
+const parseCurrency = (value: string | number | null | undefined): number => {
   if (!value) return 0;
   return parseFloat(value.toString().replace(/[RM,\s]/g, "")) || 0;
 };
@@ -624,7 +619,7 @@ const calculateRentalRanges = (data: FileRow[]): Record<string, number> => {
   return ranges;
 };
 
-const calculateExpirationStatus = (data: FileRow[]): Record<string, number> => {
+const _calculateExpirationStatus = (data: FileRow[]): Record<string, number> => {
   const status: Record<string, number> = {
     "Within 30 Days": 0,
     "Within 60 Days": 0,
@@ -758,7 +753,7 @@ const expirationStatus = computed(() => {
   return status;
 });
 
-const cleanUpBuildState = () => {
+const _cleanUpBuildState = () => {
   // Remove the build flag from localStorage
   localStorage.removeItem("dashboard_building");
 
@@ -930,7 +925,7 @@ function handleStaging() {
   router.push("/datastaging");
 }
 
-async function handleLogout() {
+async function _handleLogout() {
   try {
     // Sign out from Supabase
     await auth.signOut();

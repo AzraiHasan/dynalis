@@ -43,7 +43,7 @@
             accept=".csv,.xlsx,.xls"
             class="hidden"
             @change="handleFileChange"
-          />
+          >
 
           <div v-if="!selectedFileName" class="space-y-2">
             <Icon
@@ -94,9 +94,9 @@
             v-if="selectedFileName"
             icon="i-lucide-file-check"
             color="primary"
-            @click="processFile"
             :loading="isProcessing"
             class="ml-auto"
+            @click="processFile"
           >
             Process File
           </UButton>
@@ -317,8 +317,6 @@
 
 import { ref, computed, onMounted, nextTick } from "vue";
 import { useRouter } from "vue-router";
-import Papa from "papaparse";
-import * as XLSX from "xlsx";
 import { useFileUpload } from "~/composables/useFileUpload";
 import { useAuth } from "~/composables/useAuth";
 import type { StepperItem } from "@nuxt/ui";
@@ -526,7 +524,7 @@ const getEmptyCellCount = (column: string): number => {
   ).length;
 };
 
-const isValidDate = (value: any): boolean => {
+const isValidDate = (value: string | number | null | undefined): boolean => {
   if (!value) return false;
 
   // Try each format
@@ -536,7 +534,7 @@ const isValidDate = (value: any): boolean => {
       if (isValid(parsedDate)) {
         return true;
       }
-    } catch (error) {
+    } catch {
       continue;
     }
   }
@@ -546,7 +544,7 @@ const isValidDate = (value: any): boolean => {
   return isValid(date);
 };
 
-const isValidCurrency = (value: any): boolean => {
+const isValidCurrency = (value: string | number | null | undefined): boolean => {
   if (!value) return false;
   // Matches format like "RM 1,234.56" or "1234.56" or "1,234"
   const currencyRegex = /^(RM\s*)?[\d,]+(\.\d{2})?$/;

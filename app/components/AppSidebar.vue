@@ -17,8 +17,7 @@ const route = useRoute()
 const auth = useAuth()
 const uploadState = useUploadState()
 
-// Inject layout functions
-const layoutToggleSidebar = inject('toggleSidebar', () => {})
+// Inject layout functions (removed unused layoutToggleSidebar)
 
 // Sidebar state management
 const sidebarState = reactive<SidebarState>({
@@ -76,14 +75,7 @@ const navigationItems = computed(() => [
   }
 ])
 
-// Toggle functions
-function toggleCollapse() {
-  sidebarState.isCollapsed = !sidebarState.isCollapsed
-  if (process.client) {
-    localStorage.setItem('sidebar-collapsed', sidebarState.isCollapsed.toString())
-  }
-  // Notify layout - removed since collapse functionality doesn't exist yet
-}
+// Toggle functions (removed unused toggleCollapse)
 
 function toggleMobile() {
   sidebarState.isMobileOpen = !sidebarState.isMobileOpen
@@ -157,7 +149,7 @@ defineExpose({
 
       <!-- Divider -->
       <div class="px-4">
-        <div class="border-t border-gray-200"></div>
+        <div class="border-t border-gray-200"/>
       </div>
 
       <!-- User Section -->
@@ -194,8 +186,8 @@ defineExpose({
           variant="ghost"
           size="sm"
           icon="i-lucide-x"
-          @click="closeMobile"
           class="text-gray-500 hover:text-gray-700"
+          @click="closeMobile"
         />
       </div>
 
@@ -233,7 +225,7 @@ defineExpose({
 
       <!-- Mobile Divider -->
       <div class="px-4">
-        <div class="border-t border-gray-200"></div>
+        <div class="border-t border-gray-200"/>
       </div>
 
       <!-- Mobile User Section -->

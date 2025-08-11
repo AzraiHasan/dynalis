@@ -1,9 +1,10 @@
 // composables/useSiteData.ts
 import { useState } from '#app'
 import { useSiteService } from '~/utils/supabaseService'
+import type { Site } from '~/types/supabase'
 
 // Define the site data type
-type SiteData = any[] | null
+type SiteData = Site[] | null
 
 export const useSiteData = () => {
   const cachedData = useState<SiteData>('site-data', () => null)

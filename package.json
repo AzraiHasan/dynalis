@@ -20,6 +20,7 @@
     "@iconify-json/simple-icons": "^1.2.29",
     "@nuxt/ui": "^3.0.0",
     "@nuxtjs/supabase": "1.5.0",
+    "caniuse-lite": "^1.0.30001733",
     "chart.js": "^4.4.8",
     "date-fns": "^4.1.0",
     "nuxt": "^3.16.0",

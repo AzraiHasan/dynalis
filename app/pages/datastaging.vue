@@ -24,7 +24,7 @@
       </template>
 
       <!-- Messages Display -->
-      <div class="overflow-y-auto mb-4 space-y-4" ref="chatContainer">
+      <div ref="chatContainer" class="overflow-y-auto mb-4 space-y-4">
         <template v-for="(message, index) in messages" :key="index">
           <!-- User Message -->
           <div v-if="message.role === 'user'" class="flex justify-end">
@@ -249,8 +249,8 @@
           label="Commit Data"
           icon="i-lucide-cpu"
           color="primary"
-          @click="handleCommitData"
           :loading="uploadState.isUploading.value"
+          @click="handleCommitData"
         />
       </div>
     </div>
@@ -266,9 +266,7 @@ import { ref, computed, onMounted, watch, nextTick } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { parse, isValid, differenceInDays, format } from "date-fns";
 import { useUploadState } from "~/composables/useUploadState";
-import { useSiteService } from "~/utils/supabaseService";
 import { useBatchUploadService } from "~/composables/useBatchUploadService";
-import { useSiteData } from "~/composables/useSiteData";
 import { useAuth } from "~/composables/useAuth";
 
 // Router setup
@@ -276,12 +274,7 @@ const router = useRouter();
 const route = useRoute();
 
 const uploadState = useUploadState();
-const siteService = useSiteService();
-const siteData = useSiteData();
 const auth = useAuth();
-const fileData = ref<FileRow[]>([]);
-const totalSites = ref<number>(0);
-const error = ref<Error | null>(null);
 
 // Properly typed interfaces
 interface FileRow {
@@ -327,7 +320,7 @@ const scrollToBottom = () => {
   });
 };
 
-const showBackgroundOption = computed(() => {
+const _showBackgroundOption = computed(() => {
   if (!storedData.value?.fileData) return false;
   // Only show for larger datasets (more than 500 rows)
   return storedData.value.fileData.length > 500;
@@ -552,7 +545,7 @@ const parseDate = (dateStr: string): Date | null => {
       if (isValid(parsedDate)) {
         return parsedDate;
       }
-    } catch (error) {
+    } catch {
       continue;
     }
   }
@@ -574,11 +567,11 @@ const getDaysUntilExpiration = (expDate: string): number | null => {
   return differenceInDays(parsedDate, today);
 };
 
-const formatDate = (date: Date): string => {
+const _formatDate = (date: Date): string => {
   return format(date, "dd/MM/yyyy");
 };
 
-const cancelUpload = async (): Promise<void> => {
+const _cancelUpload = async (): Promise<void> => {
   try {
     console.log("Cancelling upload");
     const batchUploadService = useBatchUploadService();
@@ -625,7 +618,7 @@ const metrics = computed(() => {
       !row["SITE ID"] || row["SITE ID"].toString().toUpperCase() === "NO ID"
   ).length;
 
-  const parseCurrency = (value: any): number => {
+  const parseCurrency = (value: string | number | null | undefined): number => {
     if (!value) return 0;
     const numStr = value.toString().replace(/[RM,\s]/g, "");
     return parseFloat(numStr) || 0;
@@ -672,7 +665,7 @@ const expirationMetrics = computed(() => {
   let within90Days = 0;
   let invalidDates = 0;
   let totalProcessed = 0;
-  let invalidDatesList: string[] = [];
+  const invalidDatesList: string[] = [];
 
   data.forEach((row) => {
     totalProcessed++;

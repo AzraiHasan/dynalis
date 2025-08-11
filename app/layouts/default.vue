@@ -9,7 +9,7 @@ function toggleMobileMenu() {
 
 // Load initial state
 onMounted(() => {
-  if (process.client) {
+  if (import.meta.client) {
     // Clear any bad localStorage state for now
     localStorage.removeItem('sidebar-collapsed')
     sidebarCollapsed.value = false
@@ -32,7 +32,7 @@ provide('toggleSidebar', handleSidebarToggle)
   <UApp>
     <div class="min-h-screen bg-gray-50 lg:flex">
       <!-- Sidebar -->
-      <Sidebar ref="sidebarRef" />
+      <AppSidebar ref="sidebarRef" />
       
       <!-- Main Content Area -->
       <div class="flex-1">
@@ -44,8 +44,8 @@ provide('toggleSidebar', handleSidebarToggle)
                 variant="ghost"
                 size="sm"
                 icon="i-lucide-menu"
-                @click="toggleMobileMenu"
                 class="text-gray-500 hover:text-gray-700"
+                @click="toggleMobileMenu"
               />
               <div class="flex items-center space-x-2">
                 <UIcon name="i-lucide-building-2" class="text-emerald-500 w-6 h-6" />

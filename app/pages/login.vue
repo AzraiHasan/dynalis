@@ -1,13 +1,13 @@
 <!-- pages/login.vue -->
 <script setup lang="ts">
+import * as z from "zod";
+import type { FormSubmitEvent } from "@nuxt/ui";
+import { useAuth } from "~/composables/useAuth";
+
 definePageMeta({
   layout: 'auth',
   ssr: false,
 });
-
-import * as z from "zod";
-import type { FormSubmitEvent } from "@nuxt/ui";
-import { useAuth } from "~/composables/useAuth";
 
 const router = useRouter();
 const isSignUp = ref(false);
@@ -86,7 +86,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
 
 async function handleSignIn(data: SignInSchema) {
   try {
-    const result = await auth.signIn(data.email, data.password);
+    const _result = await auth.signIn(data.email, data.password);
     
     toast.add({
       title: "Success",
@@ -98,11 +98,12 @@ async function handleSignIn(data: SignInSchema) {
     setTimeout(() => {
       router.push("/dashboard");
     }, 500);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Sign in error:", error);
+    const errorMessage = error instanceof Error ? error.message : "Invalid email or password";
     toast.add({
       title: "Sign In Failed",
-      description: error.message || "Invalid email or password",
+      description: errorMessage,
       color: "error",
     });
   }
@@ -110,7 +111,7 @@ async function handleSignIn(data: SignInSchema) {
 
 async function handleSignUp(data: SignUpSchema) {
   try {
-    const result = await auth.signUp(data.email, data.password, data.firstName!, data.lastName!);
+    const _result = await auth.signUp(data.email, data.password, data.firstName!, data.lastName!);
     
     toast.add({
       title: "Success",
@@ -127,11 +128,11 @@ async function handleSignUp(data: SignUpSchema) {
       state.firstName = "";
       state.lastName = "";
     }, 1000);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Sign up error:", error);
     toast.add({
       title: "Sign Up Failed",
-      description: error.message || "Failed to create account",
+      description: error instanceof Error ? error.message : "Failed to create account",
       color: "error",
     });
   }
@@ -154,11 +155,11 @@ async function handleForgotPassword() {
       description: "Please check your email for password reset instructions.",
       color: "success",
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Password reset error:", error);
     toast.add({
       title: "Reset Failed",
-      description: error.message || "Failed to send password reset email",
+      description: error instanceof Error ? error.message : "Failed to send password reset email",
       color: "error",
     });
   }

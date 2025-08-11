@@ -1,13 +1,13 @@
 <!-- pages/signup.vue -->
 <script setup lang="ts">
+import * as z from "zod";
+import type { FormSubmitEvent } from "@nuxt/ui";
+import { useAuth } from "~/composables/useAuth";
+
 definePageMeta({
   layout: 'auth',
   ssr: false,
 });
-
-import * as z from "zod";
-import type { FormSubmitEvent } from "@nuxt/ui";
-import { useAuth } from "~/composables/useAuth";
 
 const router = useRouter();
 
@@ -56,7 +56,7 @@ async function onSubmit(event: FormSubmitEvent<SignUpSchema>) {
 
 async function handleSignUp(data: SignUpSchema) {
   try {
-    const result = await auth.signUp(data.email, data.password, data.firstName!, data.lastName!);
+    const _result = await auth.signUp(data.email, data.password, data.firstName!, data.lastName!);
     
     toast.add({
       title: "Success",
@@ -68,11 +68,11 @@ async function handleSignUp(data: SignUpSchema) {
     setTimeout(() => {
       router.push("/login");
     }, 2000);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Sign up error:", error);
     toast.add({
       title: "Sign Up Failed",
-      description: error.message || "Failed to create account",
+      description: error instanceof Error ? error.message : "Failed to create account",
       color: "error",
     });
   }

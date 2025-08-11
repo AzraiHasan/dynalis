@@ -7,11 +7,23 @@
 // TODO: Import job monitoring composables when available
 // import { useJobMonitoring } from '~/composables/useJobMonitoring'
 
-const mockJobs = ref([
+interface Job {
+  id: string;
+  name: string;
+  status: JobStatus;
+  progress: number;
+  recordsProcessed: number;
+  totalRecords: number;
+  startedAt: Date;
+  completedAt: Date | null;
+  errors: number;
+}
+
+const mockJobs = ref<Job[]>([
   {
     id: '1',
     name: 'Sites Data Q1 2024.csv',
-    status: 'completed',
+    status: 'completed' as JobStatus,
     progress: 100,
     recordsProcessed: 1250,
     totalRecords: 1250,
@@ -22,7 +34,7 @@ const mockJobs = ref([
   {
     id: '2',
     name: 'Sites Data Q2 2024.xlsx',
-    status: 'processing',
+    status: 'processing' as JobStatus,
     progress: 67,
     recordsProcessed: 834,
     totalRecords: 1245,
@@ -33,7 +45,7 @@ const mockJobs = ref([
   {
     id: '3',
     name: 'Sites Data Q3 2024.csv',
-    status: 'failed',
+    status: 'failed' as JobStatus,
     progress: 23,
     recordsProcessed: 289,
     totalRecords: 1456,
@@ -43,15 +55,27 @@ const mockJobs = ref([
   }
 ]);
 
+type JobStatus = 'completed' | 'processing' | 'failed' | 'cancelled' | 'pending';
+
+type UIColor = 'primary' | 'secondary' | 'success' | 'info' | 'warning' | 'error' | 'neutral';
+
 const statusColors = {
-  'completed': 'green',
-  'processing': 'blue',
-  'failed': 'red',
-  'cancelled': 'gray',
-  'pending': 'yellow'
+  'completed': 'success',
+  'processing': 'info', 
+  'failed': 'error',
+  'cancelled': 'neutral',
+  'pending': 'warning'
+} as const;
+
+const statusTextColors: Record<JobStatus, string> = {
+  'completed': 'text-green-500',
+  'processing': 'text-blue-500',
+  'failed': 'text-red-500',
+  'cancelled': 'text-gray-500',
+  'pending': 'text-yellow-500'
 };
 
-const statusIcons = {
+const statusIcons: Record<JobStatus, string> = {
   'completed': 'i-lucide-check-circle',
   'processing': 'i-lucide-loader-2',
   'failed': 'i-lucide-x-circle',
@@ -59,8 +83,12 @@ const statusIcons = {
   'pending': 'i-lucide-clock'
 };
 
+function getStatusColor(status: JobStatus): UIColor {
+  return statusColors[status] as UIColor;
+}
+
 function formatDuration(start: Date, end?: Date | null) {
-  if (process.server) {
+  if (import.meta.server) {
     return 'Calculating...'
   }
   
@@ -176,7 +204,7 @@ function viewJobDetails(jobId: string) {
                 :class="[
                   'w-5 h-5',
                   job.status === 'processing' ? 'animate-spin' : '',
-                  `text-${statusColors[job.status]}-500`
+                  statusTextColors[job.status]
                 ]"
               />
               <div>
@@ -189,28 +217,29 @@ function viewJobDetails(jobId: string) {
             
             <div class="flex items-center space-x-2">
               <UBadge 
-                :color="statusColors[job.status]" 
+                :color="getStatusColor(job.status as JobStatus)" 
                 variant="subtle"
                 class="capitalize"
               >
                 {{ job.status }}
               </UBadge>
               
-              <UDropdownMenu :items="[
+              <UDropdownMenu
+:items="[
                 [{
                   label: 'View Details',
                   icon: 'i-lucide-eye',
-                  click: () => viewJobDetails(job.id)
+                  onSelect: () => viewJobDetails(job.id)
                 }],
                 job.status === 'processing' ? [{
                   label: 'Cancel Job',
                   icon: 'i-lucide-stop-circle',
-                  click: () => cancelJob(job.id)
+                  onSelect: () => cancelJob(job.id)
                 }] : [],
                 job.status === 'failed' ? [{
                   label: 'Retry Job',
                   icon: 'i-lucide-refresh-cw',
-                  click: () => retryJob(job.id)
+                  onSelect: () => retryJob(job.id)
                 }] : []
               ]">
                 <UButton
@@ -230,7 +259,7 @@ function viewJobDetails(jobId: string) {
             </div>
             <UProgress 
               :value="job.progress" 
-              :color="statusColors[job.status]"
+              :color="getStatusColor(job.status as JobStatus)"
               size="sm"
             />
           </div>

@@ -2,7 +2,7 @@
 import { ref, computed } from "vue";
 import { useSupabaseClient } from "#imports";
 import { parseDate } from "~/utils/dateUtils";
-import type { Database } from "~/types/supabase";
+import type { Database, Site, UploadJob } from "~/types/supabase";
 import { useUploadState } from "~/composables/useUploadState";
 import type { FileRow } from "~/utils/supabaseService";
 
@@ -541,7 +541,7 @@ export const useBatchUploadService = () => {
     }
   };
 
-  const checkIncompleteUploads = async (fileName?: string): Promise<any[]> => {
+  const checkIncompleteUploads = async (fileName?: string): Promise<UploadJob[]> => {
     try {
       let query = supabase
         .from("upload_jobs")
@@ -581,7 +581,7 @@ export const useBatchUploadService = () => {
   };
 
   // Resume an interrupted upload
-  const resumeUpload = async (jobId: string, data: any[]): Promise<any> => {
+  const resumeUpload = async (jobId: string, data: Site[]): Promise<UploadJob | null> => {
     try {
       // Get the job details
       const job = await getUploadJobDetails(jobId);
@@ -750,7 +750,7 @@ export const useBatchUploadService = () => {
 
       // Start processing after data is stored
       processBackgroundJob(job.id)
-        .then((result) => console.log("Background job completed successfully"))
+        .then((_result) => console.log("Background job completed successfully"))
         .catch((e) => console.error("Background processing error:", e));
 
       return { jobId: job.id };
