@@ -4,6 +4,7 @@ import { useSupabaseClient } from "#imports";
 import { parseDate } from "~/utils/dateUtils";
 import type { Database, Site, UploadJob } from "~/types/supabase";
 import { useUploadState } from "~/composables/useUploadState";
+import { useOptimizedRealTimeUpdates } from "~/composables/useOptimizedRealTimeUpdates";
 import type { FileRow } from "~/utils/supabaseService";
 
 // Memory monitoring utilities
@@ -15,6 +16,85 @@ interface MemoryMetrics {
   timestamp: number;
   phase: string;
 }
+
+// System resource monitoring for batch size optimization
+interface SystemResourceMetrics {
+  memoryUsage: MemoryMetrics;
+  connectionCount: number;
+  avgBatchProcessingTime: number;
+  systemLoad: 'low' | 'medium' | 'high';
+}
+
+// Adaptive batch sizing based on system resources
+const batchSizeOptimizer = {
+  getOptimalBatchSize(totalRecords: number, systemMetrics?: SystemResourceMetrics): number {
+    const baseBatchSize = 250;
+    const minBatchSize = 50;
+    const maxBatchSize = 1000;
+    
+    // If no system metrics, use base size
+    if (!systemMetrics) {
+      return baseBatchSize;
+    }
+    
+    let optimizedSize = baseBatchSize;
+    
+    // Memory-based adjustments
+    const memoryUsageMB = systemMetrics.memoryUsage.heapUsed / (1024 * 1024);
+    if (memoryUsageMB > 200) {
+      optimizedSize = Math.floor(optimizedSize * 0.5); // Reduce by 50%
+    } else if (memoryUsageMB > 150) {
+      optimizedSize = Math.floor(optimizedSize * 0.7); // Reduce by 30%
+    } else if (memoryUsageMB < 50) {
+      optimizedSize = Math.floor(optimizedSize * 1.5); // Increase by 50%
+    }
+    
+    // System load adjustments
+    switch (systemMetrics.systemLoad) {
+      case 'high':
+        optimizedSize = Math.floor(optimizedSize * 0.6);
+        break;
+      case 'medium':
+        optimizedSize = Math.floor(optimizedSize * 0.8);
+        break;
+      case 'low':
+        optimizedSize = Math.floor(optimizedSize * 1.2);
+        break;
+    }
+    
+    // Processing time adjustments
+    if (systemMetrics.avgBatchProcessingTime > 5000) { // >5 seconds
+      optimizedSize = Math.floor(optimizedSize * 0.7);
+    } else if (systemMetrics.avgBatchProcessingTime < 1000) { // <1 second
+      optimizedSize = Math.floor(optimizedSize * 1.3);
+    }
+    
+    // Ensure within bounds
+    optimizedSize = Math.max(minBatchSize, Math.min(maxBatchSize, optimizedSize));
+    
+    // For very small datasets, use smaller batches
+    if (totalRecords < optimizedSize * 2) {
+      optimizedSize = Math.max(minBatchSize, Math.floor(totalRecords / 2));
+    }
+    
+    return optimizedSize;
+  },
+  
+  calculateSystemLoad(metrics: PerformanceMetrics[]): 'low' | 'medium' | 'high' {
+    if (metrics.length === 0) return 'low';
+    
+    const avgProcessingTime = metrics.reduce((sum, m) => sum + (m.batchEndTime - m.batchStartTime), 0) / metrics.length;
+    const avgMemoryDelta = metrics.reduce((sum, m) => sum + m.memoryDelta, 0) / metrics.length;
+    
+    if (avgProcessingTime > 3000 || avgMemoryDelta > 20 * 1024 * 1024) { // >3s or >20MB
+      return 'high';
+    } else if (avgProcessingTime > 1500 || avgMemoryDelta > 10 * 1024 * 1024) { // >1.5s or >10MB
+      return 'medium';
+    }
+    
+    return 'low';
+  }
+};
 
 interface PerformanceMetrics {
   batchStartTime: number;
@@ -75,7 +155,8 @@ interface BatchUploadState {
     | "uploading"
     | "processing"
     | "complete"
-    | "error";
+    | "error"
+    | "throttled";
   progress: number;
   error: Error | null;
   totalBatches: number;
@@ -83,6 +164,15 @@ interface BatchUploadState {
   processedRecords: number;
   uploadJobId?: string;
   abortController?: AbortController;
+  currentBatchSize: number;
+  adaptiveBatchSizing: boolean;
+  throttling: {
+    isThrottled: boolean;
+    maxConcurrentJobs: number;
+    currentActiveJobs: number;
+    throttleReason: string | null;
+    lastThrottleCheck: number;
+  };
   memoryMetrics: {
     currentUsage: number;
     peakUsage: number;
@@ -105,6 +195,89 @@ interface JobStatusMap {
     | "error"
     | "cancelled";
 }
+
+// Job throttling utilities
+const jobThrottler = {
+  async checkSystemLoad(): Promise<{ shouldThrottle: boolean; reason: string | null; activeJobs: number }> {
+    const supabase = useSupabaseClient<Database>();
+    
+    try {
+      // Check current processing jobs
+      const { data: activeJobs, error } = await supabase
+        .from("upload_jobs")
+        .select("id, priority, processing_started_at, last_heartbeat, memory_usage_mb")
+        .eq("status", "processing");
+
+      if (error) {
+        console.error("Error checking system load:", error);
+        return { shouldThrottle: false, reason: null, activeJobs: 0 };
+      }
+
+      const activeJobCount = activeJobs?.length || 0;
+      const maxConcurrentJobs = 3; // Default from migration
+
+      // Check if we're at capacity
+      if (activeJobCount >= maxConcurrentJobs) {
+        return { 
+          shouldThrottle: true, 
+          reason: `Maximum concurrent jobs reached (${activeJobCount}/${maxConcurrentJobs})`,
+          activeJobs: activeJobCount
+        };
+      }
+
+      // Check for stale jobs (no heartbeat in 5+ minutes)
+      const staleJobs = activeJobs?.filter(job => {
+        if (!job.last_heartbeat) return false;
+        const heartbeatAge = Date.now() - new Date(job.last_heartbeat).getTime();
+        return heartbeatAge > 5 * 60 * 1000; // 5 minutes
+      }) || [];
+
+      if (staleJobs.length > 0) {
+        console.warn(`Found ${staleJobs.length} potentially stale jobs`);
+      }
+
+      // Check average memory usage of active jobs
+      const jobsWithMemory = activeJobs?.filter(job => job.memory_usage_mb && job.memory_usage_mb.length > 0) || [];
+      if (jobsWithMemory.length > 0) {
+        const avgMemoryUsage = jobsWithMemory.reduce((sum, job) => {
+          const latestMemory = job.memory_usage_mb[job.memory_usage_mb.length - 1];
+          return sum + latestMemory;
+        }, 0) / jobsWithMemory.length;
+
+        // If average memory usage is high, throttle
+        if (avgMemoryUsage > 300) { // >300MB average
+          return { 
+            shouldThrottle: true, 
+            reason: `High system memory usage detected (${avgMemoryUsage.toFixed(1)}MB average)`,
+            activeJobs: activeJobCount
+          };
+        }
+      }
+
+      return { shouldThrottle: false, reason: null, activeJobs: activeJobCount };
+    } catch (error) {
+      console.error("Error in throttling check:", error);
+      return { shouldThrottle: false, reason: null, activeJobs: 0 };
+    }
+  },
+
+  async waitForCapacity(maxWaitTime: number = 30000): Promise<boolean> {
+    const startTime = Date.now();
+    
+    while (Date.now() - startTime < maxWaitTime) {
+      const { shouldThrottle } = await this.checkSystemLoad();
+      
+      if (!shouldThrottle) {
+        return true; // Capacity available
+      }
+      
+      // Wait 5 seconds before checking again
+      await new Promise(resolve => setTimeout(resolve, 5000));
+    }
+    
+    return false; // Timeout reached
+  }
+};
 
 const cancelUpload = async (): Promise<void> => {
   const supabase = useSupabaseClient<Database>();
@@ -152,10 +325,9 @@ const cancelUpload = async (): Promise<void> => {
       throw new Error(`Failed to update job status: ${updateError.message}`);
     }
 
-    // 3. Clean up partially uploaded data by adding a "cancelled" tag
-    // This allows identifying which records were part of a cancelled upload
-    const { error: cleanupError } = await supabase.rpc(
-      "mark_cancelled_upload_records",
+    // 3. Clean up partially uploaded data using optimized function
+    const { data: cleanupResult, error: cleanupError } = await supabase.rpc(
+      "mark_cancelled_upload_records_optimized",
       {
         job_id: batchUploadService.state.value.uploadJobId,
       }
@@ -163,15 +335,23 @@ const cancelUpload = async (): Promise<void> => {
 
     if (cleanupError) {
       console.error("Warning: Failed to mark cancelled records:", cleanupError);
+    } else if (cleanupResult) {
+      console.log(`Cancellation cleanup completed:`, cleanupResult);
     }
 
-    // 4. Reset upload state
+    // 4. Clean up real-time connections
+    if (batchUploadService.state.value.uploadJobId) {
+      realTimeUpdates.releaseAllConnections();
+      console.log("Released all real-time connections for cancelled job");
+    }
+
+    // 5. Reset upload state
     uploadState.status.value = "idle";
     uploadState.progress.value = 0;
     uploadState.isUploading.value = false;
     uploadState.statusMessage.value = "Upload cancelled";
 
-    // 5. Notify user
+    // 6. Notify user
     toast.add({
       title: "Upload Cancelled",
       description: "The upload process has been cancelled successfully.",
@@ -202,6 +382,8 @@ const cancelUpload = async (): Promise<void> => {
 
 export const useBatchUploadService = () => {
   const supabase = useSupabaseClient<Database>();
+  const realTimeUpdates = useOptimizedRealTimeUpdates();
+  
   const state = ref<BatchUploadState>({
     status: "idle",
     progress: 0,
@@ -209,6 +391,15 @@ export const useBatchUploadService = () => {
     totalBatches: 0,
     processedBatches: 0,
     processedRecords: 0,
+    currentBatchSize: 250,
+    adaptiveBatchSizing: true,
+    throttling: {
+      isThrottled: false,
+      maxConcurrentJobs: 3,
+      currentActiveJobs: 0,
+      throttleReason: null,
+      lastThrottleCheck: 0
+    },
     memoryMetrics: {
       currentUsage: 0,
       peakUsage: 0,
@@ -369,7 +560,7 @@ export const useBatchUploadService = () => {
     fileName: string = "upload.csv"
   ): Promise<{ success: boolean; processedRecords: number; jobId: string; memoryReport?: unknown; memoryMetrics?: unknown }> => {
     try {
-      // Reset state - keep existing reset code
+      // Reset state with new fields
       state.value = {
         status: "preparing",
         progress: 0,
@@ -377,6 +568,15 @@ export const useBatchUploadService = () => {
         totalBatches: 0,
         processedBatches: 0,
         processedRecords: 0,
+        currentBatchSize: 250,
+        adaptiveBatchSizing: true,
+        throttling: {
+          isThrottled: false,
+          maxConcurrentJobs: 3,
+          currentActiveJobs: 0,
+          throttleReason: null,
+          lastThrottleCheck: 0
+        },
         memoryMetrics: {
           currentUsage: 0,
           peakUsage: 0,
@@ -386,6 +586,28 @@ export const useBatchUploadService = () => {
           memoryWarnings: []
         }
       };
+
+      // Check for throttling before starting
+      const throttleCheck = await jobThrottler.checkSystemLoad();
+      state.value.throttling.currentActiveJobs = throttleCheck.activeJobs;
+      state.value.throttling.lastThrottleCheck = Date.now();
+
+      if (throttleCheck.shouldThrottle) {
+        state.value.status = "throttled";
+        state.value.throttling.isThrottled = true;
+        state.value.throttling.throttleReason = throttleCheck.reason;
+        
+        console.log(`Upload throttled: ${throttleCheck.reason}`);
+        
+        // Wait for capacity
+        const hasCapacity = await jobThrottler.waitForCapacity();
+        if (!hasCapacity) {
+          throw new Error(`System overloaded: ${throttleCheck.reason}. Please try again later.`);
+        }
+        
+        state.value.throttling.isThrottled = false;
+        state.value.throttling.throttleReason = null;
+      }
 
       // Initial memory snapshot
       const initialMemory = memoryMonitor.getMemoryUsage('upload-start');
@@ -413,8 +635,23 @@ export const useBatchUploadService = () => {
         updated_at: new Date().toISOString(),
       }));
 
-      // Process in batches for better performance
-      const batchSize = 250; // Increased batch size for PostgreSQL function
+      // Calculate optimal batch size based on system resources
+      let batchSize = 250; // Default
+      
+      if (state.value.adaptiveBatchSizing) {
+        const systemMetrics: SystemResourceMetrics = {
+          memoryUsage: initialMemory,
+          connectionCount: state.value.throttling.currentActiveJobs,
+          avgBatchProcessingTime: 0, // Will be calculated as we go
+          systemLoad: batchSizeOptimizer.calculateSystemLoad(state.value.memoryMetrics.performanceMetrics)
+        };
+        
+        batchSize = batchSizeOptimizer.getOptimalBatchSize(transformedData.length, systemMetrics);
+        state.value.currentBatchSize = batchSize;
+        
+        console.log(`[Batch Optimizer] Using optimized batch size: ${batchSize} (total records: ${transformedData.length})`);
+      }
+      
       const batches = Math.ceil(transformedData.length / batchSize);
       state.value.totalBatches = batches;
 
@@ -422,6 +659,43 @@ export const useBatchUploadService = () => {
       const jobId = await createUploadJob(fileName, batches);
       state.value.uploadJobId = jobId;
       state.value.status = "uploading";
+
+      // Subscribe to real-time updates for this job
+      const unsubscribeRealTime = realTimeUpdates.subscribeToJob(jobId, (update) => {
+        console.log(`[Real-time] Job ${jobId} update:`, update);
+        
+        // Update local state based on real-time updates
+        if (update.chunks_received !== undefined) {
+          state.value.processedBatches = update.chunks_received;
+        }
+        if (update.processed_records !== undefined) {
+          state.value.processedRecords = update.processed_records;
+        }
+        if (update.status) {
+          // Only update status if it's a valid transition
+          const validTransitions = {
+            'uploading': ['processing', 'complete', 'error', 'cancelled'],
+            'processing': ['complete', 'error', 'cancelled'],
+          };
+          
+          const currentStatus = state.value.status;
+          const allowedNext = validTransitions[currentStatus as keyof typeof validTransitions] || [];
+          
+          if (allowedNext.includes(update.status)) {
+            state.value.status = update.status as BatchUploadState['status'];
+          }
+        }
+        
+        // Recalculate progress
+        if (state.value.totalBatches > 0) {
+          state.value.progress = Math.round((state.value.processedBatches / state.value.totalBatches) * 100);
+        }
+      });
+
+      // Store the unsubscribe function for cleanup
+      const cleanup = () => {
+        unsubscribeRealTime();
+      };
 
       let processedRecords = 0;
 
@@ -435,11 +709,13 @@ export const useBatchUploadService = () => {
         const batchData = transformedData.slice(startIdx, endIdx);
 
         try {
-          // Use the PostgreSQL function instead of direct upsert
+          // Use the optimized PostgreSQL function with performance tracking
           const { error } = await supabase.rpc(
-            "bulk_upload_sites",
+            "process_sites_batch_optimized",
             {
-              data: JSON.stringify(batchData),
+              data: batchData,
+              job_id: jobId,
+              batch_number: i + 1
             }
           );
 
@@ -476,6 +752,32 @@ export const useBatchUploadService = () => {
           
           // Log batch completion
           console.log(`[Batch ${i + 1}/${batches}] Processed ${batchData.length} records in ${(batchEndTime - batchStartTime).toFixed(2)}ms, Memory delta: ${memoryMonitor.formatMemorySize(performanceMetrics.memoryDelta)}`);
+
+          // Adaptive batch size adjustment during processing
+          if (state.value.adaptiveBatchSizing && (i + 1) % 5 === 0 && i + 1 < batches) {
+            const currentSystemMetrics: SystemResourceMetrics = {
+              memoryUsage: memoryAfter,
+              connectionCount: state.value.throttling.currentActiveJobs,
+              avgBatchProcessingTime: state.value.memoryMetrics.performanceMetrics
+                .slice(-5) // Last 5 batches
+                .reduce((sum, m) => sum + (m.batchEndTime - m.batchStartTime), 0) / Math.min(5, state.value.memoryMetrics.performanceMetrics.length),
+              systemLoad: batchSizeOptimizer.calculateSystemLoad(state.value.memoryMetrics.performanceMetrics)
+            };
+            
+            const newOptimalSize = batchSizeOptimizer.getOptimalBatchSize(transformedData.length - (i + 1) * batchSize, currentSystemMetrics);
+            
+            // Only adjust if the change is significant (>20% difference)
+            if (Math.abs(newOptimalSize - batchSize) / batchSize > 0.2) {
+              console.log(`[Batch Optimizer] Adjusting batch size: ${batchSize} → ${newOptimalSize} (based on performance metrics)`);
+              batchSize = newOptimalSize;
+              state.value.currentBatchSize = batchSize;
+              
+              // Recalculate remaining batches
+              const remainingRecords = transformedData.length - (i + 1) * state.value.currentBatchSize;
+              const remainingBatches = Math.ceil(remainingRecords / batchSize);
+              state.value.totalBatches = (i + 1) + remainingBatches;
+            }
+          }
 
           // Trigger garbage collection every 10 batches or when memory is high
           if ((i + 1) % 10 === 0 || memoryMonitor.checkMemoryThreshold(memoryAfter.heapUsed)) {
@@ -517,6 +819,9 @@ export const useBatchUploadService = () => {
       // Final garbage collection
       triggerGarbageCollection();
 
+      // Clean up real-time subscription
+      cleanup();
+
       return { 
         success: true, 
         processedRecords, 
@@ -525,6 +830,11 @@ export const useBatchUploadService = () => {
         memoryMetrics: state.value.memoryMetrics
       };
     } catch (error) {
+      // Clean up real-time subscription on error
+      if (typeof cleanup === 'function') {
+        cleanup();
+      }
+
       // Keep the existing error handling code
       state.value.status = "error";
       state.value.error =
@@ -896,5 +1206,14 @@ export const useBatchUploadService = () => {
     memoryMetrics: computed(() => state.value.memoryMetrics),
     resetMemoryMetrics,
     triggerGarbageCollection,
+    // Real-time updates
+    realTimeUpdates,
+    // Performance metrics
+    currentBatchSize: computed(() => state.value.currentBatchSize),
+    throttlingStatus: computed(() => state.value.throttling),
+    isThrottled: computed(() => state.value.throttling.isThrottled),
+    systemLoad: computed(() => 
+      batchSizeOptimizer.calculateSystemLoad(state.value.memoryMetrics.performanceMetrics)
+    ),
   };
 };

@@ -3,7 +3,8 @@
     "allow": [
       "WebFetch(domain:ui.nuxt.com)",
       "Bash(bun run lint:*)",
-      "Bash(mv:*)"
+      "Bash(mv:*)",
+      "Bash(bun run:*)"
     ],
     "deny": []
   }
