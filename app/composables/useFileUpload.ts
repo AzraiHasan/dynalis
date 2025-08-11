@@ -200,14 +200,23 @@ export const useFileUpload = () => {
             }
             
             // Convert back to object format using first row as headers
-            const headers = limitedData[0] as string[]
+            const firstRow = limitedData[0]
+            if (!firstRow || !Array.isArray(firstRow)) {
+              reject(new Error('Invalid Excel data format: first row is not an array'))
+              return
+            }
+            
+            const headers = (firstRow as unknown[]).map(h => String(h || ''))
             const processedData = limitedData.slice(1).map(row => {
               const rowData: FileDataRow = {}
-              headers.forEach((header, index) => {
-                if (header && header.trim()) {
-                  rowData[header.trim()] = (row as unknown[])[index] || null
-                }
-              })
+              if (Array.isArray(row)) {
+                headers.forEach((header, index) => {
+                  if (header && header.trim()) {
+                    const value = (row as unknown[])[index]
+                    rowData[header.trim()] = value === undefined || value === '' ? null : value as string | number | null
+                  }
+                })
+              }
               return rowData
             })
             
