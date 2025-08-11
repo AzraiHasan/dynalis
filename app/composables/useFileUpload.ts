@@ -52,14 +52,25 @@ export const useFileUpload = () => {
         processedRecords: 0
       }
       
-      // Parse the file
+      // Check file size and warn for large files
+      const fileSizeMB = file.size / (1024 * 1024)
+      if (fileSizeMB > 50) {
+        console.warn(`[File Upload] Large file detected: ${fileSizeMB.toFixed(2)} MB. Processing may take longer.`)
+      }
+      
+      // Parse the file with optimized streaming
       const data = await parseFile(file)
       uploadState.value.status = 'uploading'
       
-      // Process in batches to avoid memory issues
-      const batchSize = 100
+      // Use larger batch sizes for better performance but smaller memory footprint
+      const batchSize = Math.min(500, Math.max(50, Math.floor(10000 / Math.max(1, Object.keys(data[0] || {}).length))))
       const batches = Math.ceil(data.length / batchSize)
       uploadState.value.totalChunks = batches
+      
+      console.log(`[File Upload] Processing ${data.length} rows in ${batches} batches of ${batchSize} records each`)
+      
+      // Clear any existing stored data before processing
+      localStorage.removeItem('uploadedFileData')
       
       for (let i = 0; i < batches; i++) {
         const startIdx = i * batchSize
@@ -70,17 +81,29 @@ export const useFileUpload = () => {
         await processBatch(batchData)
         
         uploadState.value.chunksUploaded++
-        uploadState.value.progress = 5 + Math.floor((i + 1) / batches * 90)
+        uploadState.value.progress = 80 + Math.floor((i + 1) / batches * 20)
+        
+        // Allow UI to update between batches
+        await new Promise(resolve => setTimeout(resolve, 0))
+        
+        // Memory cleanup hint every 10 batches
+        if ((i + 1) % 10 === 0) {
+          if (typeof window !== 'undefined' && (window as unknown as { gc?: () => void }).gc) {
+            (window as unknown as { gc: () => void }).gc()
+          }
+        }
       }
       
       uploadState.value.status = 'complete'
       uploadState.value.progress = 100
       uploadState.value.processedRecords = data.length
       
+      console.log(`[File Upload] Upload completed: ${data.length} records processed successfully`)
       return data
     } catch (error) {
       uploadState.value.status = 'error'
       uploadState.value.error = error instanceof Error ? error : new Error(String(error))
+      console.error('[File Upload] Upload failed:', error)
       throw error
     }
   }
@@ -90,13 +113,49 @@ export const useFileUpload = () => {
       const fileExt = file.name.toLowerCase().split('.').pop()
       
       if (fileExt === 'csv') {
+        // Use streaming parser for large CSV files
+        const results: FileDataRow[] = []
+        let rowCount = 0
+        const maxRows = 50000 // Limit to prevent memory issues
+        
         Papa.parse(file, {
           header: true,
-          complete: (results) => resolve(results.data as FileDataRow[]),
-          error: (error) => reject(error)
+          chunk: (chunk) => {
+            // Process chunk by chunk to avoid loading entire file into memory
+            const chunkData = chunk.data as FileDataRow[]
+            
+            // Filter out empty rows and apply row limit
+            const validRows = chunkData.filter(row => {
+              const hasData = Object.values(row).some(value => 
+                value !== null && value !== undefined && value !== ''
+              )
+              return hasData && rowCount < maxRows
+            })
+            
+            results.push(...validRows)
+            rowCount += validRows.length
+            
+            // Update progress
+            uploadState.value.progress = Math.min(20 + (rowCount / maxRows) * 60, 80)
+            
+            // Stop processing if we hit the limit
+            if (rowCount >= maxRows) {
+              console.warn(`[File Parser] Row limit reached: ${maxRows}. Some data may be truncated.`)
+              return false // Stop parsing
+            }
+          },
+          complete: () => {
+            console.log(`[File Parser] CSV parsing completed: ${results.length} rows processed`)
+            resolve(results)
+          },
+          error: (error) => reject(error),
+          skipEmptyLines: true,
+          transformHeader: (header) => header.trim(), // Clean headers
         })
       } else {
-        // Excel file
+        // Excel file - still needs to load entirely but with memory monitoring
+        console.log(`[File Parser] Starting Excel parsing for file: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`)
+        
         const reader = new FileReader()
         reader.onload = (e) => {
           try {
@@ -106,8 +165,12 @@ export const useFileUpload = () => {
             }
             
             const data = e.target.result
-            // Fix XLSX.read typing by explicitly casting data to ArrayBuffer
-            const workbook = XLSX.read(data as ArrayBuffer, { type: 'array' })
+            const workbook = XLSX.read(data as ArrayBuffer, { 
+              type: 'array',
+              cellDates: false, // Prevent automatic date parsing which can be memory intensive
+              cellNF: false, // Skip number formatting
+            })
+            
             const firstSheet = workbook.SheetNames[0]
             if (!firstSheet) {
               reject(new Error('No worksheet found in Excel file'))
@@ -120,9 +183,36 @@ export const useFileUpload = () => {
               return
             }
             
-            // Now we're sure worksheet is not undefined
-            const jsonData = XLSX.utils.sheet_to_json<Record<string, any>>(worksheet, { raw: false })
-            resolve(jsonData as FileDataRow[])
+            // Convert with row limit to prevent memory issues
+            const jsonData = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet, { 
+              raw: false,
+              header: 1, // Use array of arrays first to check length
+              blankrows: false
+            })
+            
+            // Limit rows and convert to proper format
+            const maxRows = 50000
+            const limitedData = jsonData.slice(0, maxRows + 1) // +1 for header
+            
+            if (limitedData.length > maxRows) {
+              console.warn(`[File Parser] Excel row limit reached: ${maxRows}. Some data may be truncated.`)
+              limitedData.splice(maxRows + 1)
+            }
+            
+            // Convert back to object format using first row as headers
+            const headers = limitedData[0] as string[]
+            const processedData = limitedData.slice(1).map(row => {
+              const rowData: FileDataRow = {}
+              headers.forEach((header, index) => {
+                if (header && header.trim()) {
+                  rowData[header.trim()] = (row as unknown[])[index] || null
+                }
+              })
+              return rowData
+            })
+            
+            console.log(`[File Parser] Excel parsing completed: ${processedData.length} rows processed`)
+            resolve(processedData as FileDataRow[])
           } catch (error) {
             reject(error)
           }

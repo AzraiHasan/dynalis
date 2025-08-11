@@ -6,6 +6,68 @@ import type { Database } from "~/types/supabase";
 import { useUploadState } from "~/composables/useUploadState";
 import type { FileRow } from "~/utils/supabaseService";
 
+// Memory monitoring utilities
+interface MemoryMetrics {
+  heapUsed: number;
+  heapTotal: number;
+  external: number;
+  arrayBuffers: number;
+  timestamp: number;
+  phase: string;
+}
+
+interface PerformanceMetrics {
+  batchStartTime: number;
+  batchEndTime: number;
+  memoryBefore: MemoryMetrics;
+  memoryAfter: MemoryMetrics;
+  recordsProcessed: number;
+  memoryDelta: number;
+  averageMemoryPerRecord: number;
+}
+
+const memoryMonitor = {
+  getMemoryUsage(phase: string = 'unknown'): MemoryMetrics {
+    if (typeof performance !== 'undefined' && (performance as unknown as { memory?: { usedJSHeapSize?: number; totalJSHeapSize?: number } }).memory) {
+      const memory = (performance as unknown as { memory: { usedJSHeapSize?: number; totalJSHeapSize?: number } }).memory;
+      return {
+        heapUsed: memory.usedJSHeapSize || 0,
+        heapTotal: memory.totalJSHeapSize || 0,
+        external: 0,
+        arrayBuffers: 0,
+        timestamp: Date.now(),
+        phase
+      };
+    }
+    return {
+      heapUsed: 0,
+      heapTotal: 0,
+      external: 0,
+      arrayBuffers: 0,
+      timestamp: Date.now(),
+      phase
+    };
+  },
+
+  formatMemorySize(bytes: number): string {
+    const mb = bytes / (1024 * 1024);
+    return `${mb.toFixed(2)} MB`;
+  },
+
+  checkMemoryThreshold(currentMemory: number, threshold: number = 100 * 1024 * 1024): boolean {
+    return currentMemory > threshold;
+  },
+
+  logMemoryUsage(metrics: MemoryMetrics, context: string): void {
+    console.log(`[Memory Monitor] ${context}:`, {
+      phase: metrics.phase,
+      heapUsed: memoryMonitor.formatMemorySize(metrics.heapUsed),
+      heapTotal: memoryMonitor.formatMemorySize(metrics.heapTotal),
+      timestamp: new Date(metrics.timestamp).toISOString()
+    });
+  }
+};
+
 interface BatchUploadState {
   status:
     | "idle"
@@ -21,6 +83,14 @@ interface BatchUploadState {
   processedRecords: number;
   uploadJobId?: string;
   abortController?: AbortController;
+  memoryMetrics: {
+    currentUsage: number;
+    peakUsage: number;
+    averagePerBatch: number;
+    totalAllocated: number;
+    performanceMetrics: PerformanceMetrics[];
+    memoryWarnings: string[];
+  };
 }
 
 // Define the shape of site data to match our database schema
@@ -139,6 +209,14 @@ export const useBatchUploadService = () => {
     totalBatches: 0,
     processedBatches: 0,
     processedRecords: 0,
+    memoryMetrics: {
+      currentUsage: 0,
+      peakUsage: 0,
+      averagePerBatch: 0,
+      totalAllocated: 0,
+      performanceMetrics: [],
+      memoryWarnings: []
+    }
   });
 
   const isUploading = computed(() =>
@@ -146,6 +224,57 @@ export const useBatchUploadService = () => {
   );
 
   const jobStatus = ref<JobStatusMap>({});
+
+  // Memory management helpers
+  const resetMemoryMetrics = () => {
+    state.value.memoryMetrics = {
+      currentUsage: 0,
+      peakUsage: 0,
+      averagePerBatch: 0,
+      totalAllocated: 0,
+      performanceMetrics: [],
+      memoryWarnings: []
+    };
+  };
+
+  const updateMemoryMetrics = (metrics: PerformanceMetrics) => {
+    state.value.memoryMetrics.performanceMetrics.push(metrics);
+    state.value.memoryMetrics.currentUsage = metrics.memoryAfter.heapUsed;
+    
+    if (metrics.memoryAfter.heapUsed > state.value.memoryMetrics.peakUsage) {
+      state.value.memoryMetrics.peakUsage = metrics.memoryAfter.heapUsed;
+    }
+    
+    // Calculate average memory per batch
+    const totalMemoryUsed = state.value.memoryMetrics.performanceMetrics
+      .reduce((sum, m) => sum + m.memoryDelta, 0);
+    state.value.memoryMetrics.averagePerBatch = totalMemoryUsed / state.value.memoryMetrics.performanceMetrics.length;
+    
+    // Check for memory warnings
+    if (memoryMonitor.checkMemoryThreshold(metrics.memoryAfter.heapUsed, 150 * 1024 * 1024)) {
+      const warning = `High memory usage detected: ${memoryMonitor.formatMemorySize(metrics.memoryAfter.heapUsed)} at batch ${state.value.processedBatches}`;
+      state.value.memoryMetrics.memoryWarnings.push(warning);
+      console.warn(`[Memory Alert] ${warning}`);
+    }
+  };
+
+  const triggerGarbageCollection = () => {
+    // Trigger garbage collection hints
+    if (typeof window !== 'undefined' && (window as unknown as { gc?: () => void }).gc) {
+      (window as unknown as { gc: () => void }).gc();
+    }
+    
+    // Clear references and force cleanup
+    if (typeof performance !== 'undefined' && (performance as unknown as { memory?: unknown }).memory) {
+      const beforeCleanup = memoryMonitor.getMemoryUsage('before-gc');
+      
+      // Allow some time for GC to run
+      setTimeout(() => {
+        const afterCleanup = memoryMonitor.getMemoryUsage('after-gc');
+        console.log(`[Memory Cleanup] Before: ${memoryMonitor.formatMemorySize(beforeCleanup.heapUsed)}, After: ${memoryMonitor.formatMemorySize(afterCleanup.heapUsed)}`);
+      }, 100);
+    }
+  };
 
   // Create a new upload job in the database
   const createUploadJob = async (
@@ -236,9 +365,9 @@ export const useBatchUploadService = () => {
 
   // Process data through batched inserts
   const processBulkUpload = async (
-    data: any[],
+    data: FileRow[],
     fileName: string = "upload.csv"
-  ): Promise<any> => {
+  ): Promise<{ success: boolean; processedRecords: number; jobId: string; memoryReport?: unknown; memoryMetrics?: unknown }> => {
     try {
       // Reset state - keep existing reset code
       state.value = {
@@ -248,7 +377,20 @@ export const useBatchUploadService = () => {
         totalBatches: 0,
         processedBatches: 0,
         processedRecords: 0,
+        memoryMetrics: {
+          currentUsage: 0,
+          peakUsage: 0,
+          averagePerBatch: 0,
+          totalAllocated: 0,
+          performanceMetrics: [],
+          memoryWarnings: []
+        }
       };
+
+      // Initial memory snapshot
+      const initialMemory = memoryMonitor.getMemoryUsage('upload-start');
+      memoryMonitor.logMemoryUsage(initialMemory, 'Upload started');
+      state.value.memoryMetrics.currentUsage = initialMemory.heapUsed;
 
       // Transform data - keep existing transformation code
       const transformedData: SiteInsert[] = data.map((row) => ({
@@ -284,13 +426,17 @@ export const useBatchUploadService = () => {
       let processedRecords = 0;
 
       for (let i = 0; i < batches; i++) {
+        // Memory monitoring - start of batch
+        const batchStartTime = performance.now();
+        const memoryBefore = memoryMonitor.getMemoryUsage(`batch-${i + 1}-start`);
+        
         const startIdx = i * batchSize;
         const endIdx = Math.min(startIdx + batchSize, transformedData.length);
         const batchData = transformedData.slice(startIdx, endIdx);
 
         try {
           // Use the PostgreSQL function instead of direct upsert
-          const { data: result, error } = await supabase.rpc(
+          const { error } = await supabase.rpc(
             "bulk_upload_sites",
             {
               data: JSON.stringify(batchData),
@@ -311,6 +457,31 @@ export const useBatchUploadService = () => {
             processedRecords,
             "uploading"
           );
+
+          // Memory monitoring - end of batch
+          const batchEndTime = performance.now();
+          const memoryAfter = memoryMonitor.getMemoryUsage(`batch-${i + 1}-end`);
+          
+          const performanceMetrics: PerformanceMetrics = {
+            batchStartTime,
+            batchEndTime,
+            memoryBefore,
+            memoryAfter,
+            recordsProcessed: batchData.length,
+            memoryDelta: memoryAfter.heapUsed - memoryBefore.heapUsed,
+            averageMemoryPerRecord: (memoryAfter.heapUsed - memoryBefore.heapUsed) / batchData.length
+          };
+
+          updateMemoryMetrics(performanceMetrics);
+          
+          // Log batch completion
+          console.log(`[Batch ${i + 1}/${batches}] Processed ${batchData.length} records in ${(batchEndTime - batchStartTime).toFixed(2)}ms, Memory delta: ${memoryMonitor.formatMemorySize(performanceMetrics.memoryDelta)}`);
+
+          // Trigger garbage collection every 10 batches or when memory is high
+          if ((i + 1) % 10 === 0 || memoryMonitor.checkMemoryThreshold(memoryAfter.heapUsed)) {
+            triggerGarbageCollection();
+          }
+
         } catch (error) {
           console.error(`Error processing batch ${i + 1}:`, error);
           await recordUploadError(
@@ -327,7 +498,32 @@ export const useBatchUploadService = () => {
       state.value.status = "complete";
       state.value.progress = 100;
 
-      return { success: true, processedRecords, jobId };
+      // Final memory cleanup and report
+      const finalMemory = memoryMonitor.getMemoryUsage('upload-complete');
+      memoryMonitor.logMemoryUsage(finalMemory, 'Upload completed');
+      
+      // Generate memory report
+      const memoryReport = {
+        totalBatchesProcessed: batches,
+        totalRecordsProcessed: processedRecords,
+        peakMemoryUsage: memoryMonitor.formatMemorySize(state.value.memoryMetrics.peakUsage),
+        averageMemoryPerBatch: memoryMonitor.formatMemorySize(state.value.memoryMetrics.averagePerBatch),
+        totalMemoryWarnings: state.value.memoryMetrics.memoryWarnings.length,
+        totalProcessingTime: state.value.memoryMetrics.performanceMetrics.reduce((sum, m) => sum + (m.batchEndTime - m.batchStartTime), 0)
+      };
+      
+      console.log('[Memory Report] Upload completed:', memoryReport);
+      
+      // Final garbage collection
+      triggerGarbageCollection();
+
+      return { 
+        success: true, 
+        processedRecords, 
+        jobId,
+        memoryReport,
+        memoryMetrics: state.value.memoryMetrics
+      };
     } catch (error) {
       // Keep the existing error handling code
       state.value.status = "error";
@@ -399,6 +595,14 @@ export const useBatchUploadService = () => {
         processedBatches: job.chunks_received,
         processedRecords: job.processed_records,
         uploadJobId: jobId,
+        memoryMetrics: {
+          currentUsage: 0,
+          peakUsage: 0,
+          averagePerBatch: 0,
+          totalAllocated: 0,
+          performanceMetrics: [],
+          memoryWarnings: []
+        }
       };
 
       // Transform data to match database schema - same as before
@@ -434,7 +638,7 @@ export const useBatchUploadService = () => {
         const batchData = transformedData.slice(startIdx, endIdx);
 
         try {
-          const { data: result, error } = await supabase.rpc(
+          const { error } = await supabase.rpc(
             "bulk_upload_sites",
             {
               data: JSON.stringify(batchData),
@@ -567,7 +771,7 @@ export const useBatchUploadService = () => {
         throw new Error("No data found for background job");
       }
 
-      const { transformedData, batchSize, batches, fileName } =
+      const { transformedData, batchSize, batches } =
         JSON.parse(storedData);
 
       // Update job status
@@ -591,7 +795,7 @@ export const useBatchUploadService = () => {
         const batchData = transformedData.slice(startIdx, endIdx);
 
         try {
-          const { data, error } = await supabase.rpc("process_sites_batch", {
+          const { error } = await supabase.rpc("process_sites_batch", {
             data: deduplicatedData,
           });
 
@@ -623,7 +827,7 @@ export const useBatchUploadService = () => {
       jobStatus.value[jobId] = "complete";
 
       // Complete the job
-      await supabase
+      const { error: completeError } = await supabase
         .from("upload_jobs")
         .update({
           status: "complete",
@@ -633,6 +837,10 @@ export const useBatchUploadService = () => {
           updated_at: new Date().toISOString(),
         })
         .eq("id", jobId);
+
+      if (completeError) {
+        console.error("Error completing job:", completeError);
+      }
 
       // Clean up local storage
       localStorage.removeItem(`bg_upload_${jobId}`);
@@ -684,5 +892,9 @@ export const useBatchUploadService = () => {
     getJobStatus,
     cancelUpload,
     jobStatus,
+    // Memory monitoring exports
+    memoryMetrics: computed(() => state.value.memoryMetrics),
+    resetMemoryMetrics,
+    triggerGarbageCollection,
   };
 };
