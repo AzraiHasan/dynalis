@@ -5,6 +5,7 @@ import { parseDate } from "~/utils/dateUtils";
 import type { Database, Site, UploadJob } from "~/types/supabase";
 import { useUploadState } from "~/composables/useUploadState";
 import { useOptimizedRealTimeUpdates } from "~/composables/useOptimizedRealTimeUpdates";
+import { useStatusTrackingManager } from "~/composables/useStatusTrackingManager";
 import type { FileRow } from "~/utils/supabaseService";
 
 // Memory monitoring utilities
@@ -279,7 +280,12 @@ const jobThrottler = {
   }
 };
 
-const cancelUpload = async (): Promise<void> => {
+// Session ID for concurrency control
+const generateSessionId = (): string => {
+  return `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+};
+
+const cancelUpload = async (rollbackChanges: boolean = false): Promise<void> => {
   const supabase = useSupabaseClient<Database>();
   const toast = useToast();
   const batchUploadService = useBatchUploadService();
@@ -301,66 +307,65 @@ const cancelUpload = async (): Promise<void> => {
     uploadState.status.value = "processing";
     uploadState.statusMessage.value = "Cancelling upload...";
 
-    // Create an AbortController instance to cancel ongoing operations
-    const abortController = new AbortController();
-    abortController.abort();
+    const sessionId = generateSessionId();
 
-    // Set state to cancelled
-    batchUploadService.state.value.status = "processing";
-    batchUploadService.state.value.error = new Error(
-      "Upload cancelled by user"
-    );
-
-    // 2. Update the upload_jobs table
-    const { error: updateError } = await supabase
-      .from("upload_jobs")
-      .update({
-        status: "cancelled",
-        error_message: "Upload cancelled by user",
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", batchUploadService.state.value.uploadJobId);
-
-    if (updateError) {
-      throw new Error(`Failed to update job status: ${updateError.message}`);
-    }
-
-    // 3. Clean up partially uploaded data using optimized function
-    const { data: cleanupResult, error: cleanupError } = await supabase.rpc(
-      "mark_cancelled_upload_records_optimized",
+    // Use the new atomic cancellation function with rollback capability
+    const { data: cancellationResult, error: cancellationError } = await supabase.rpc(
+      "cancel_job_with_rollback",
       {
         job_id: batchUploadService.state.value.uploadJobId,
+        rollback_changes: rollbackChanges,
+        session_id: sessionId,
       }
     );
 
-    if (cleanupError) {
-      console.error("Warning: Failed to mark cancelled records:", cleanupError);
-    } else if (cleanupResult) {
-      console.log(`Cancellation cleanup completed:`, cleanupResult);
+    if (cancellationError) {
+      throw new Error(`Cancellation failed: ${cancellationError.message}`);
     }
 
-    // 4. Clean up real-time connections
+    if (!cancellationResult?.success) {
+      throw new Error(cancellationResult?.error || "Cancellation failed");
+    }
+
+    console.log('Cancellation completed:', cancellationResult);
+
+    // Clean up real-time connections
     if (batchUploadService.state.value.uploadJobId) {
       realTimeUpdates.releaseAllConnections();
       console.log("Released all real-time connections for cancelled job");
     }
 
-    // 5. Reset upload state
+    // Reset upload state
     uploadState.status.value = "idle";
     uploadState.progress.value = 0;
     uploadState.isUploading.value = false;
-    uploadState.statusMessage.value = "Upload cancelled";
+    uploadState.statusMessage.value = rollbackChanges 
+      ? "Upload cancelled and changes rolled back"
+      : "Upload cancelled";
 
-    // 6. Notify user
+    // Update batch service state
+    batchUploadService.state.value.status = "idle";
+    batchUploadService.state.value.error = null;
+
+    // Notify user with detailed results
+    const rollbackMsg = cancellationResult.rollback_performed 
+      ? ` (${cancellationResult.records_rolled_back} records rolled back)`
+      : '';
+    
+    const conflictMsg = cancellationResult.conflicts_resolved > 0
+      ? ` ${cancellationResult.conflicts_resolved} conflicts resolved.`
+      : '';
+
     toast.add({
       title: "Upload Cancelled",
-      description: "The upload process has been cancelled successfully.",
+      description: `The upload process has been cancelled successfully${rollbackMsg}.${conflictMsg}`,
       color: "info",
       duration: 5000,
     });
 
     console.log(
-      `Upload job ${batchUploadService.state.value.uploadJobId} cancelled successfully`
+      `Upload job ${batchUploadService.state.value.uploadJobId} cancelled successfully:`,
+      cancellationResult
     );
   } catch (error) {
     // Handle cancellation errors
@@ -383,6 +388,10 @@ const cancelUpload = async (): Promise<void> => {
 export const useBatchUploadService = () => {
   const supabase = useSupabaseClient<Database>();
   const realTimeUpdates = useOptimizedRealTimeUpdates();
+  const statusTracker = useStatusTrackingManager();
+  
+  // Initialize status monitoring
+  const stopStatusMonitoring = statusTracker.startStatusMonitoring(30000); // Check every 30 seconds
   
   const state = ref<BatchUploadState>({
     status: "idle",
@@ -491,7 +500,7 @@ export const useBatchUploadService = () => {
     }
   };
 
-  // Update the upload job progress
+  // Update the upload job progress with status tracking
   const updateUploadJobProgress = async (
     jobId: string,
     chunksReceived: number,
@@ -499,17 +508,34 @@ export const useBatchUploadService = () => {
     status: string
   ) => {
     try {
-      const { error } = await supabase
-        .from("upload_jobs")
-        .update({
-          chunks_received: chunksReceived,
-          processed_records: processedRecords,
-          status,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", jobId);
+      // Use the status tracking manager for atomic updates
+      const success = await statusTracker.updateJobStatusWithRetry(
+        jobId,
+        status,
+        {
+          chunksReceived,
+          processedRecords,
+          timestamp: Date.now(),
+          sequenceNumber: statusTracker.getNextSequenceNumber()
+        }
+      );
 
-      if (error) throw error;
+      if (!success) {
+        console.warn(`Failed to update job ${jobId} status through status tracker, falling back to direct update`);
+        
+        // Fallback to direct database update
+        const { error } = await supabase
+          .from("upload_jobs")
+          .update({
+            chunks_received: chunksReceived,
+            processed_records: processedRecords,
+            status,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", jobId);
+
+        if (error) throw error;
+      }
     } catch (error) {
       console.error("Failed to update upload job:", error);
       // Don't throw, just log to avoid interrupting the main process
@@ -519,18 +545,46 @@ export const useBatchUploadService = () => {
   // Complete the upload job
   const completeUploadJob = async (jobId: string, processedRecords: number) => {
     try {
-      const { error } = await supabase
-        .from("upload_jobs")
-        .update({
-          status: "complete",
-          chunks_received: state.value.totalBatches,
-          processed_records: processedRecords,
-          completed_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", jobId);
+      // Use status tracker for atomic completion
+      const success = await statusTracker.updateJobStatusWithRetry(
+        jobId,
+        "complete",
+        {
+          chunksReceived: state.value.totalBatches,
+          processedRecords,
+          timestamp: Date.now(),
+          sequenceNumber: statusTracker.getNextSequenceNumber()
+        }
+      );
 
-      if (error) throw error;
+      if (success) {
+        // Additional completion data that status tracker doesn't handle
+        const { error } = await supabase
+          .from("upload_jobs")
+          .update({
+            completed_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", jobId);
+
+        if (error) {
+          console.warn("Failed to update completion timestamp:", error);
+        }
+      } else {
+        // Fallback to direct update
+        const { error } = await supabase
+          .from("upload_jobs")
+          .update({
+            status: "complete",
+            chunks_received: state.value.totalBatches,
+            processed_records: processedRecords,
+            completed_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", jobId);
+
+        if (error) throw error;
+      }
     } catch (error) {
       console.error("Failed to complete upload job:", error);
     }
@@ -539,16 +593,43 @@ export const useBatchUploadService = () => {
   // Record error in upload job
   const recordUploadError = async (jobId: string, errorMessage: string) => {
     try {
-      const { error } = await supabase
-        .from("upload_jobs")
-        .update({
-          status: "error",
-          error_message: errorMessage,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", jobId);
+      // Use status tracker for atomic error recording
+      const success = await statusTracker.updateJobStatusWithRetry(
+        jobId,
+        "error",
+        {
+          error: errorMessage,
+          timestamp: Date.now(),
+          sequenceNumber: statusTracker.getNextSequenceNumber()
+        }
+      );
 
-      if (error) throw error;
+      if (success) {
+        // Update error message separately if status update succeeded
+        const { error } = await supabase
+          .from("upload_jobs")
+          .update({
+            error_message: errorMessage,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", jobId);
+
+        if (error) {
+          console.warn("Failed to update error message:", error);
+        }
+      } else {
+        // Fallback to direct update
+        const { error } = await supabase
+          .from("upload_jobs")
+          .update({
+            status: "error",
+            error_message: errorMessage,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", jobId);
+
+        if (error) throw error;
+      }
     } catch (error) {
       console.error("Failed to record upload error:", error);
     }
@@ -709,17 +790,48 @@ export const useBatchUploadService = () => {
         const batchData = transformedData.slice(startIdx, endIdx);
 
         try {
-          // Use the optimized PostgreSQL function with performance tracking
-          const { error } = await supabase.rpc(
-            "process_sites_batch_optimized",
+          // Generate session ID for this batch processing session
+          const sessionId = generateSessionId();
+          
+          // Use the new concurrent processing function with row-level locking
+          const { data: batchResult, error } = await supabase.rpc(
+            "process_sites_batch_with_locking",
             {
               data: batchData,
               job_id: jobId,
-              batch_number: i + 1
+              batch_number: i + 1,
+              session_id: sessionId
             }
           );
 
           if (error) throw error;
+          
+          // Check for conflicts in the batch result
+          if (batchResult?.conflicts_detected > 0) {
+            console.warn(`Batch ${i + 1}: ${batchResult.conflicts_detected} conflicts detected`);
+            
+            // Try to resolve conflicts automatically
+            const { data: resolutionResult } = await supabase.rpc(
+              "resolve_version_conflicts",
+              {
+                job_id: jobId,
+                resolution_strategy: "keep_latest"
+              }
+            );
+            
+            if (resolutionResult?.conflicts_resolved > 0) {
+              console.log(`Auto-resolved ${resolutionResult.conflicts_resolved} conflicts`);
+            }
+          }
+          
+          // Log batch processing results
+          if (batchResult) {
+            console.log(`[Batch ${i + 1}] Results:`, {
+              processed: batchResult.records_processed,
+              conflicts: batchResult.conflicts_detected,
+              time: batchResult.processing_time_ms
+            });
+          }
 
           processedRecords += batchData.length;
           state.value.processedBatches = i + 1;
@@ -1215,5 +1327,13 @@ export const useBatchUploadService = () => {
     systemLoad: computed(() => 
       batchSizeOptimizer.calculateSystemLoad(state.value.memoryMetrics.performanceMetrics)
     ),
+    // Status tracking and concurrency management
+    statusTracker,
+    statusStatistics: statusTracker.statusStatistics,
+    // Cleanup function
+    cleanup: () => {
+      stopStatusMonitoring();
+      statusTracker.processPendingUpdates();
+    }
   };
 };
