@@ -145,6 +145,20 @@ defineExpose({
             <p class="text-xs text-blue-600">{{ sidebarState.uploadProgress.status }}</p>
           </div>
         </div>
+
+        <!-- Template Download (Always Available) -->
+        <div class="pt-4 border-t border-gray-200">
+          <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Resources</p>
+          <a
+            href="/templates/dynalis-sample-data.xlsx"
+            download
+            class="flex items-center gap-3 px-4 py-3 text-gray-600 rounded-lg hover:bg-blue-50 hover:text-blue-700 transition-colors"
+          >
+            <UIcon name="i-lucide-download" class="w-5 h-5" />
+            <span class="font-medium">Sample Template</span>
+          </a>
+          <p class="text-xs text-gray-400 px-4 mt-1">Prepare your data before upload</p>
+        </div>
       </nav>
 
       <!-- Divider -->
@@ -220,6 +234,20 @@ defineExpose({
             />
             <p class="text-xs text-blue-600">{{ sidebarState.uploadProgress.status }}</p>
           </div>
+        </div>
+
+        <!-- Mobile Template Download -->
+        <div class="pt-4 border-t border-gray-200">
+          <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Resources</p>
+          <a
+            href="/templates/dynalis-sample-data.xlsx"
+            download
+            class="flex items-center gap-3 px-4 py-3 text-gray-600 rounded-lg hover:bg-blue-50 hover:text-blue-700 transition-colors"
+          >
+            <UIcon name="i-lucide-download" class="w-5 h-5" />
+            <span class="font-medium">Sample Template</span>
+          </a>
+          <p class="text-xs text-gray-400 px-4 mt-1">Prepare your data before upload</p>
         </div>
       </nav>
 
