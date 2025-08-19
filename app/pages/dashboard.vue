@@ -853,6 +853,6 @@ const refreshDashboard = async () => {
 };
 
 function handleStaging() {
-  router.push("/datastaging");
+  router.push("/dataupload");
 }
 </script>

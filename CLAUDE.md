@@ -26,8 +26,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Application Structure
 
 **Core Pages:**
-- `dataupload.vue` - File upload interface for batch processing
-- `datastaging.vue` - Data validation and staging area  
+- `dataupload.vue` - Complete file upload, validation, and data commit interface (merged with staging)
 - `dashboard.vue` - Job monitoring and status tracking
 - `index.vue` - Landing/authentication page
 
@@ -65,7 +64,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Upload state centralized in `useUploadState`
 
 **Batch Processing Flow:**
-1. File upload → validation → staging → processing → completion
+1. File upload → validation → business review & commit → processing → completion
 2. Job creation and tracking throughout lifecycle
 3. Real-time progress updates and cancellation support
 4. Deduplication and error handling
@@ -82,7 +81,7 @@ The application centers around a sophisticated batch upload system:
 - CSV/Excel parsing with validation
 - Background job processing
 - Upload cancellation and recovery
-- Data staging area for review before final processing
+- Integrated business metrics review and direct commit workflow
 
 ## Development Notes
 

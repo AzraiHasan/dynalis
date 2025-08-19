@@ -289,9 +289,173 @@
             trailing-icon="i-lucide-arrow-right"
             color="primary"
             :variant="hasEmptyCells ? 'soft' : 'solid'"
-            @click="handleProceed"
+            @click="currentStep = 3"
           >
-            Continue to Analysis
+            Continue to Review
+          </UButton>
+        </div>
+      </div>
+
+      <!-- Step 3: Review & Commit (New step) -->
+      <div v-if="currentStep === 3" class="space-y-6">
+        <h3 class="text-lg font-medium mb-4">Review Data & Commit</h3>
+        
+        <!-- Key Metrics Card -->
+        <UCard>
+          <template #header>
+            <div class="flex items-center gap-2">
+              <Icon name="i-lucide-chart-bar" class="text-gray-600" />
+              <h2 class="text-lg font-semibold">Key Metrics</h2>
+            </div>
+          </template>
+
+          <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <!-- Total Sites -->
+            <div class="p-4 bg-gray-50 rounded-lg">
+              <div class="flex items-center gap-2 mb-2">
+                <Icon name="i-lucide-map-pin" class="text-gray-600" />
+                <h3 class="text-sm text-gray-600">Total Sites</h3>
+              </div>
+              <p class="text-2xl font-semibold">{{ businessMetrics.totalSites }}</p>
+              <p v-if="businessMetrics.missingSites" class="text-xs text-orange-600 mt-1">
+                {{ businessMetrics.missingSites }} missing IDs
+              </p>
+            </div>
+
+            <!-- Total Rental -->
+            <div class="p-4 bg-gray-50 rounded-lg">
+              <div class="flex items-center gap-2 mb-2">
+                <Icon name="i-lucide-wallet" class="text-gray-600" />
+                <h3 class="text-sm text-gray-600">Total Rental</h3>
+              </div>
+              <p class="text-2xl font-semibold">
+                {{ (businessMetrics.totalRental / 1000000).toFixed(2) }}M
+              </p>
+              <p class="text-xs text-gray-400 mt-1">
+                {{ formatCurrency(businessMetrics.totalRental) }}
+              </p>
+            </div>
+
+            <!-- Due Payment -->
+            <div class="p-4 bg-gray-50 rounded-lg">
+              <div class="flex items-center gap-2 mb-2">
+                <Icon name="i-lucide-credit-card" class="text-gray-600" />
+                <h3 class="text-sm text-gray-600">Due Payment</h3>
+              </div>
+              <p class="text-2xl font-semibold">
+                {{ (businessMetrics.totalPaymentToPay / 1000000).toFixed(2) }}M
+              </p>
+              <p class="text-xs text-gray-400 mt-1">
+                {{ formatCurrency(businessMetrics.totalPaymentToPay) }}
+              </p>
+            </div>
+
+            <!-- Deposit -->
+            <div class="p-4 bg-gray-50 rounded-lg">
+              <div class="flex items-center gap-2 mb-2">
+                <Icon name="i-lucide-banknote" class="text-gray-600" />
+                <h3 class="text-sm text-gray-600">Deposit</h3>
+              </div>
+              <p class="text-2xl font-semibold">
+                {{ (businessMetrics.totalDeposit / 1000000).toFixed(2) }}M
+              </p>
+              <p class="text-xs text-gray-400 mt-1">
+                {{ formatCurrency(businessMetrics.totalDeposit) }}
+              </p>
+            </div>
+          </div>
+        </UCard>
+
+        <!-- Contract Expiration Card -->
+        <UCard>
+          <template #header>
+            <div class="flex items-center gap-2">
+              <Icon name="i-lucide-alarm-clock" class="text-gray-600" />
+              <h2 class="text-lg font-semibold">Contract Expirations</h2>
+            </div>
+          </template>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <!-- Expired -->
+            <div class="p-4 bg-red-50 rounded-lg transition-all hover:bg-red-100">
+              <div class="flex items-center gap-2 mb-2">
+                <Icon name="i-lucide-alert-circle" class="text-red-600" />
+                <h3 class="text-sm text-red-600">Expired</h3>
+              </div>
+              <p class="text-2xl font-semibold text-red-600">
+                {{ expirationMetrics.expired }}
+              </p>
+              <p class="text-xs text-red-500 mt-1">Past expiration date</p>
+              <p
+                v-if="expirationMetrics.invalidDates"
+                class="text-xs text-gray-500 mt-1"
+              >
+                + {{ expirationMetrics.invalidDates }} invalid/missing dates
+              </p>
+            </div>
+
+            <!-- Within 30 Days -->
+            <div
+              class="p-4 bg-orange-50 rounded-lg transition-all hover:bg-orange-100"
+            >
+              <div class="flex items-center gap-2 mb-2">
+                <Icon name="i-lucide-clock-alert" class="text-orange-600" />
+                <h3 class="text-sm text-orange-600">Within 30 Days</h3>
+              </div>
+              <p class="text-2xl font-semibold text-orange-600">
+                {{ expirationMetrics.within30Days }}
+              </p>
+              <p class="text-xs text-orange-500 mt-1">Urgent attention needed</p>
+            </div>
+
+            <!-- Within 60 Days -->
+            <div
+              class="p-4 bg-yellow-50 rounded-lg transition-all hover:bg-yellow-100"
+            >
+              <div class="flex items-center gap-2 mb-2">
+                <Icon name="i-lucide-clock" class="text-yellow-600" />
+                <h3 class="text-sm text-yellow-600">Within 60 Days</h3>
+              </div>
+              <p class="text-2xl font-semibold text-yellow-600">
+                {{ expirationMetrics.within60Days }}
+              </p>
+              <p class="text-xs text-yellow-500 mt-1">Plan for renewal</p>
+            </div>
+
+            <!-- Within 90 Days -->
+            <div
+              class="p-4 bg-blue-50 rounded-lg transition-all hover:bg-blue-100"
+            >
+              <div class="flex items-center gap-2 mb-2">
+                <Icon name="i-lucide-calendar" class="text-blue-600" />
+                <h3 class="text-sm text-blue-600">Within 90 Days</h3>
+              </div>
+              <p class="text-2xl font-semibold text-blue-600">
+                {{ expirationMetrics.within90Days }}
+              </p>
+              <p class="text-xs text-blue-500 mt-1">Early planning</p>
+            </div>
+          </div>
+        </UCard>
+
+        <!-- Navigation Buttons -->
+        <div class="flex justify-between pt-4 border-t">
+          <UButton
+            icon="i-lucide-arrow-left"
+            color="neutral"
+            variant="soft"
+            @click="currentStep = 2"
+          >
+            Back to Validation
+          </UButton>
+
+          <UButton
+            icon="i-lucide-database"
+            color="primary"
+            @click="handleCommitData"
+            :loading="uploadState.isUploading.value"
+          >
+            Commit Data & Continue
           </UButton>
         </div>
       </div>
@@ -307,8 +471,10 @@ import * as XLSX from "xlsx";
 import { useFileUpload } from "~/composables/useFileUpload";
 import { useFileUploadStore } from "~/stores/fileUploadStore";
 import type { StepperItem } from "@nuxt/ui";
-import { parse, isValid } from "date-fns";
+import { parse, isValid, differenceInDays, format } from "date-fns";
 import { DATE_FORMATS } from "~/utils/dateUtils";
+import { useUploadState } from "~/composables/useUploadState";
+import { useSQLiteBatchUpload } from "~/composables/useSQLiteBatchUpload";
 
 // Interface definitions remain the same
 interface FileRow {
@@ -342,6 +508,8 @@ const toast = useToast();
 const dragActive = ref(false);
 const fileEstimate = ref("");
 const router = useRouter();
+const uploadState = useUploadState();
+const sqliteBatchUpload = useSQLiteBatchUpload();
 
 // Step configurations for UStepper
 const items = computed<StepperItem[]>(() => [
@@ -357,11 +525,21 @@ const items = computed<StepperItem[]>(() => [
     icon: "i-lucide-check-circle",
     color: currentStep.value === 2 ? "primary" : "neutral",
   },
+  {
+    title: "3. Review & Commit",
+    description: "Analyze metrics and commit data",
+    icon: "i-lucide-database",
+    color: currentStep.value === 3 ? "primary" : "neutral",
+  },
 ]);
 
-// Control stepper interaction - Step 2 should be disabled until file is processed
+// Control stepper interaction - Steps should be enabled progressively
 const stepperDisabled = computed(() => {
-  return fileData.value.length === 0;
+  // Allow step 1 always, step 2 only when file is processed, step 3 only when validated
+  if (currentStep.value === 1) return false;
+  if (currentStep.value === 2) return fileData.value.length === 0;
+  if (currentStep.value === 3) return fileData.value.length === 0;
+  return false;
 });
 
 // Data preview computed properties
@@ -587,27 +765,262 @@ const clearAll = () => {
   }
 };
 
-// Navigation to next page
+// Get the file upload store
 const fileUploadStore = useFileUploadStore();
 
-const handleProceed = () => {
+// Date processing utilities (from datastaging.vue)
+const parseDate = (dateStr: string): Date | null => {
+  if (!dateStr || dateStr === "-" || dateStr.trim() === "") {
+    return null;
+  }
+
+  for (const dateFormat of DATE_FORMATS) {
+    try {
+      const parsedDate = parse(dateStr, dateFormat, new Date());
+      if (isValid(parsedDate)) {
+        return parsedDate;
+      }
+    } catch (error) {
+      continue;
+    }
+  }
+
+  const fallbackDate = new Date(dateStr);
+  return isValid(fallbackDate) ? fallbackDate : null;
+};
+
+const getDaysUntilExpiration = (expDate: string): number | null => {
+  const parsedDate = parseDate(expDate);
+
+  if (!parsedDate) {
+    return null;
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  return differenceInDays(parsedDate, today);
+};
+
+// Business metrics computation (from datastaging.vue)
+const businessMetrics = computed(() => {
+  if (fileData.value.length === 0)
+    return {
+      totalSites: 0,
+      missingSites: 0,
+      totalRental: 0,
+      totalPaymentToPay: 0,
+      totalDeposit: 0,
+    };
+
+  const data = fileData.value;
+  const sitesData = data.filter(
+    (row) =>
+      row["SITE ID"] && row["SITE ID"].toString().toUpperCase() !== "NO ID"
+  );
+  const missingSites = data.filter(
+    (row) =>
+      !row["SITE ID"] || row["SITE ID"].toString().toUpperCase() === "NO ID"
+  ).length;
+
+  const parseCurrency = (value: any): number => {
+    if (!value) return 0;
+    const numStr = value.toString().replace(/[RM,\s]/g, "");
+    return parseFloat(numStr) || 0;
+  };
+
+  const totalRental = data.reduce(
+    (sum, row) => sum + parseCurrency(row["TOTAL RENTAL (RM)"]),
+    0
+  );
+  const totalPaymentToPay = data.reduce(
+    (sum, row) => sum + parseCurrency(row["TOTAL PAYMENT TO PAY (RM)"]),
+    0
+  );
+  const totalDeposit = data.reduce(
+    (sum, row) => sum + parseCurrency(row["DEPOSIT (RM)"]),
+    0
+  );
+
+  return {
+    totalSites: sitesData.length,
+    missingSites,
+    totalRental,
+    totalPaymentToPay,
+    totalDeposit,
+  };
+});
+
+// Expiration metrics computation (from datastaging.vue)
+const expirationMetrics = computed(() => {
+  if (fileData.value.length === 0)
+    return {
+      expired: 0,
+      within30Days: 0,
+      within60Days: 0,
+      within90Days: 0,
+      invalidDates: 0,
+      totalProcessed: 0,
+    };
+
+  const data = fileData.value;
+  let expired = 0;
+  let within30Days = 0;
+  let within60Days = 0;
+  let within90Days = 0;
+  let invalidDates = 0;
+  let totalProcessed = 0;
+
+  data.forEach((row) => {
+    totalProcessed++;
+    const expDate = row["EXP DATE"];
+    const daysUntil = getDaysUntilExpiration(expDate?.toString() || "");
+
+    if (daysUntil === null) {
+      invalidDates++;
+    } else if (daysUntil <= 0) {
+      expired++;
+    } else if (daysUntil <= 30) {
+      within30Days++;
+    } else if (daysUntil <= 60) {
+      within60Days++;
+    } else if (daysUntil <= 90) {
+      within90Days++;
+    }
+  });
+
+  return {
+    expired,
+    within30Days,
+    within60Days,
+    within90Days,
+    invalidDates,
+    totalProcessed,
+  };
+});
+
+// Format currency helper (from datastaging.vue)
+const formatCurrency = (value: number): string => {
+  return new Intl.NumberFormat("en-MY", {
+    style: "currency",
+    currency: "MYR",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value);
+};
+
+// Commit functionality (from datastaging.vue)
+const handleCommitData = async () => {
   try {
-    if (fileUploadStore.uploadedData.value.fileData.length === 0) {
+    // Use the file upload store instead of localStorage
+    const data = fileUploadStore.uploadedData.value;
+    
+    if (!data.fileData || data.fileData.length === 0) {
+      console.error("No data available for processing");
       toast.add({
         title: "No Data",
         description: "Please upload a file first.",
         color: "error",
+        duration: 5000,
       });
       return;
     }
 
-    // Navigate to data staging
-    router.push({
-      path: "/datastaging",
-      query: { fileName: selectedFileName.value },
+    if (
+      !Array.isArray(data.fileData) ||
+      data.fileData.length === 0
+    ) {
+      console.error("Invalid data structure:", data);
+      throw new Error("Invalid data structure");
+    }
+
+    console.log(`Starting processing of ${data.fileData.length} records`);
+
+    // Start the upload process
+    uploadState.startUpload();
+    uploadState.isUploading.value = true;
+    console.log("Upload state initialized, status:", uploadState.status.value);
+
+    // Always use SQLite backend
+    console.log("Using SQLite backend for data processing");
+    uploadState.updateProgress(15, "Processing with SQLite backend...");
+
+    const result = await sqliteBatchUpload.processBulkUpload(data.fileData);
+    console.log("SQLite processing result:", result);
+
+    // Update progress and status
+    console.log("Processing completed:", result);
+    uploadState.updateProgress(100, `Processing completed successfully.`);
+    uploadState.status.value = "complete";
+
+    // Store the job ID for reference in the dashboard
+    if (result) {
+      // Safely check if jobId exists in the result
+      const jobId = result && "jobId" in result ? result.jobId : undefined;
+      if (jobId) {
+        localStorage.setItem("background_job_id", String(jobId));
+        console.log("Job ID stored in localStorage:", jobId);
+      }
+    }
+
+    // Navigate to dashboard
+    console.log("Processing complete, navigating to dashboard");
+    await navigateToDashboard();
+  } catch (error) {
+    console.error("SQLite processing error:", error);
+    uploadState.status.value = "error";
+    uploadState.error.value = error instanceof Error ? error : new Error(String(error));
+    toast.add({
+      title: "Error",
+      description: error instanceof Error ? error.message : String(error),
+      color: "error",
+      duration: 5000,
+    });
+  }
+};
+
+const navigateToDashboard = async (): Promise<void> => {
+  try {
+    console.log("Navigating to dashboard");
+    // Clear upload-related data before navigation
+    uploadState.isUploading.value = false;
+    uploadState.status.value = "idle";
+
+    // Get job ID
+    const jobId = localStorage.getItem("background_job_id");
+    console.log("Retrieved job ID for dashboard:", jobId);
+
+    // Set a flag to indicate we're coming from processing
+    localStorage.setItem("dashboard_building", "true");
+
+    // Navigate to dashboard with job ID if available
+    console.log("Redirecting to dashboard with parameters:", {
+      job_id: jobId || undefined,
+      building: "true",
+    });
+
+    await router.push({
+      path: "/dashboard",
+      query: {
+        job_id: jobId || undefined,
+        building: "true",
+      },
+    });
+
+    toast.add({
+      title: "Success",
+      description: "Upload completed. Redirecting to dashboard.",
+      color: "success",
+      duration: 5000,
     });
   } catch (error) {
-    console.error("Error navigating:", error);
+    console.error("Error navigating to dashboard:", error);
+    toast.add({
+      title: "Error",
+      description: "Failed to navigate to dashboard. Please try again.",
+      color: "error",
+      duration: 5000,
+    });
   }
 };
 </script>
