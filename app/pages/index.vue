@@ -2,6 +2,7 @@
 <script setup lang="ts">
 definePageMeta({
   ssr: false,
+  layout: 'minimal'
 });
 
 import * as z from "zod";
@@ -66,8 +67,6 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
 
 <template>
   <ClientOnly>
-    <div class="flex items-center justify-center min-h-screen bg-gray-50">
-      <UCard class="w-full max-w-md shadow-lg">
         <!-- Header -->
         <div class="text-center mb-6">
           <div class="flex justify-center mb-4">
@@ -132,7 +131,5 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
             >
           </div>
         </UForm>
-      </UCard>
-    </div>
   </ClientOnly>
 </template>

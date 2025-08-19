@@ -464,10 +464,12 @@
 </template>
 
 <script setup lang="ts">
+definePageMeta({
+  layout: 'default'
+});
+
 import { ref, computed } from "vue";
 import { useRouter } from "vue-router";
-import Papa from "papaparse";
-import * as XLSX from "xlsx";
 import { useFileUpload } from "~/composables/useFileUpload";
 import { useFileUploadStore } from "~/stores/fileUploadStore";
 import type { StepperItem } from "@nuxt/ui";

@@ -233,6 +233,10 @@
 </template>
 
 <script setup lang="ts">
+definePageMeta({
+  layout: 'default'
+});
+
 import { ref, computed, onMounted } from "vue";
 import { useSQLiteSiteData } from '~/composables/useSQLiteSiteData'
 import { useRouter } from "vue-router";
