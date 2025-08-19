@@ -233,10 +233,6 @@
 </template>
 
 <script setup lang="ts">
-definePageMeta({
-  layout: 'default'
-});
-
 import { ref, computed, onMounted } from "vue";
 import { useSQLiteSiteData } from '~/composables/useSQLiteSiteData'
 import { useRouter } from "vue-router";
@@ -259,6 +255,10 @@ import {
 } from "chart.js";
 import { Bar, Line, Scatter } from "vue-chartjs";
 import { addMonths, format } from "date-fns";
+
+definePageMeta({
+  layout: 'default'
+});
 
 // Register ChartJS components
 ChartJS.register(

@@ -32,7 +32,7 @@
             accept=".csv,.xlsx,.xls"
             class="hidden"
             @change="handleFileChange"
-          />
+          >
 
           <div v-if="!selectedFileName" class="space-y-2">
             <Icon
@@ -83,9 +83,9 @@
             v-if="selectedFileName"
             icon="i-lucide-file-check"
             color="primary"
-            @click="processFile"
             :loading="isProcessing"
             class="ml-auto"
+            @click="processFile"
           >
             Process File
           </UButton>
@@ -452,8 +452,8 @@
           <UButton
             icon="i-lucide-database"
             color="primary"
-            @click="handleCommitData"
             :loading="uploadState.isUploading.value"
+            @click="handleCommitData"
           >
             Commit Data & Continue
           </UButton>
@@ -464,10 +464,6 @@
 </template>
 
 <script setup lang="ts">
-definePageMeta({
-  layout: 'default'
-});
-
 import { ref, computed } from "vue";
 import { useRouter } from "vue-router";
 import { useFileUpload } from "~/composables/useFileUpload";
@@ -477,6 +473,10 @@ import { parse, isValid, differenceInDays, format } from "date-fns";
 import { DATE_FORMATS } from "~/utils/dateUtils";
 import { useUploadState } from "~/composables/useUploadState";
 import { useSQLiteBatchUpload } from "~/composables/useSQLiteBatchUpload";
+
+definePageMeta({
+  layout: 'default'
+});
 
 // Interface definitions remain the same
 interface FileRow {

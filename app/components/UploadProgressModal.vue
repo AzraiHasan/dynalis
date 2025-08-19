@@ -38,8 +38,8 @@
           <UButton
             v-if="status !== 'complete' && status !== 'error'"
             color="neutral"
-            @click="$emit('cancel')"
             :disabled="status === 'uploading'"
+            @click="$emit('cancel')"
           >
             Cancel
           </UButton>

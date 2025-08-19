@@ -1,7 +1,8 @@
 // server/api/schema/fields/index.post.ts
 import { defineEventHandler, readBody } from 'h3'
 import { useSchemaFieldsRepository } from '../../../repositories/schemaFieldsRepository'
-import { CreateSystemFieldDTO, FieldDataType } from '../../../types/schema.types'
+import type { CreateSystemFieldDTO} from '../../../types/schema.types';
+import { FieldDataType } from '../../../types/schema.types'
 import { z } from 'zod'
 
 // Validation schema for field creation

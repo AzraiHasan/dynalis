@@ -11,7 +11,7 @@ export default defineNuxtRouteMiddleware(async (to) => {
   // This is a simpler alternative to the 'until' function
   if (!ready.value) {
     // For SSR, we should still allow navigation and handle auth client-side
-    if (process.server) {
+    if (import.meta.server) {
       return
     }
     
