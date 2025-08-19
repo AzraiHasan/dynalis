@@ -4,12 +4,15 @@
       <h1 class="text-2xl font-bold">Dashboard</h1>
       <div class="flex items-center gap-2">
         <UButton
-          icon="i-lucide-refresh-cw"
+          :icon="isRefreshing ? 'i-lucide-loader-2' : 'i-lucide-refresh-cw'"
+          :class="{ 'animate-spin': isRefreshing }"
           color="primary"
           variant="soft"
+          :loading="isRefreshing"
+          :disabled="isRefreshing"
           @click="refreshDashboard"
         >
-          Refresh Data
+          {{ isRefreshing ? 'Refreshing...' : 'Refresh Data' }}
         </UButton>
       </div>
     </div>
@@ -326,6 +329,7 @@ const route = useRoute();
 const uploadState = useUploadState(); */
 
 const isLoading = ref(true);
+const isRefreshing = ref(false);
 const error = ref<Error | null>(null);
 const siteData = useSiteData();
 
@@ -771,7 +775,11 @@ const _cleanUpBuildState = () => {
 
 
 const refreshDashboard = async () => {
+  if (isRefreshing.value) return; // Prevent multiple simultaneous refreshes
+  
   try {
+    isRefreshing.value = true;
+    error.value = null;
     console.log("Starting dashboard refresh...");
     
     // Clear previous data
@@ -918,6 +926,8 @@ const refreshDashboard = async () => {
   } catch (err) {
     console.error("Error refreshing dashboard:", err);
     error.value = err instanceof Error ? err : new Error(String(err));
+  } finally {
+    isRefreshing.value = false;
   }
 };
 
