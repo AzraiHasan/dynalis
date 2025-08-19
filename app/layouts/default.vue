@@ -19,25 +19,51 @@
 
         <!-- Navigation -->
         <nav class="flex-1 p-4 space-y-2">
-          <NuxtLink
-            to="/dashboard"
-            class="flex items-center gap-3 px-4 py-3 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
-            :class="{ 'bg-emerald-50 text-emerald-700 border-emerald-200': $route.path === '/dashboard' }"
-          >
-            <UIcon name="i-lucide-layout-dashboard" class="w-5 h-5" />
-            <span class="font-medium">Dashboard</span>
-          </NuxtLink>
+          <AuthState v-slot="{ loggedIn }">
+            <!-- Authenticated Navigation -->
+            <template v-if="loggedIn">
+              <NuxtLink
+                to="/dashboard"
+                class="flex items-center gap-3 px-4 py-3 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
+                :class="{ 'bg-emerald-50 text-emerald-700 border-emerald-200': $route.path === '/dashboard' }"
+              >
+                <UIcon name="i-lucide-layout-dashboard" class="w-5 h-5" />
+                <span class="font-medium">Dashboard</span>
+              </NuxtLink>
 
-          <NuxtLink
-            to="/dataupload"
-            class="flex items-center gap-3 px-4 py-3 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
-            :class="{ 'bg-emerald-50 text-emerald-700 border-emerald-200': $route.path === '/dataupload' }"
-          >
-            <UIcon name="i-lucide-upload" class="w-5 h-5" />
-            <span class="font-medium">Data Upload</span>
-          </NuxtLink>
+              <NuxtLink
+                to="/dataupload"
+                class="flex items-center gap-3 px-4 py-3 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
+                :class="{ 'bg-emerald-50 text-emerald-700 border-emerald-200': $route.path === '/dataupload' }"
+              >
+                <UIcon name="i-lucide-upload" class="w-5 h-5" />
+                <span class="font-medium">Data Upload</span>
+              </NuxtLink>
+            </template>
 
-          <!-- Template Download -->
+            <!-- Unauthenticated Navigation -->
+            <template v-else>
+              <div class="px-4 py-3 text-gray-500 text-sm">
+                <p class="font-medium mb-1">Sign in to access:</p>
+                <ul class="text-xs space-y-1 ml-2">
+                  <li>• Dashboard Analytics</li>
+                  <li>• Data Upload Tool</li>
+                  <li>• Site Management</li>
+                </ul>
+              </div>
+              
+              <NuxtLink
+                to="/"
+                class="flex items-center gap-3 px-4 py-3 text-emerald-700 bg-emerald-50 rounded-lg hover:bg-emerald-100 transition-colors"
+                :class="{ 'bg-emerald-100': $route.path === '/' }"
+              >
+                <UIcon name="i-lucide-log-in" class="w-5 h-5" />
+                <span class="font-medium">Sign In</span>
+              </NuxtLink>
+            </template>
+          </AuthState>
+
+          <!-- Template Download (Always Available) -->
           <div class="pt-4 border-t border-gray-200">
             <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Resources</p>
             <a
@@ -48,12 +74,14 @@
               <UIcon name="i-lucide-download" class="w-5 h-5" />
               <span class="font-medium">Sample Template</span>
             </a>
+            <p class="text-xs text-gray-400 px-4 mt-1">Prepare your data before upload</p>
           </div>
         </nav>
 
         <!-- User Section -->
         <div class="p-4 border-t border-gray-200">
           <AuthState v-slot="{ loggedIn, user }">
+            <!-- Authenticated User Section -->
             <div v-if="loggedIn" class="space-y-3">
               <div class="flex items-center gap-3 px-3 py-2 bg-gray-50 rounded-lg">
                 <div class="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center">
@@ -71,11 +99,22 @@
                 variant="soft" 
                 size="sm" 
                 icon="i-lucide-log-out" 
-                @click="handleLogout"
                 class="w-full justify-center"
+                @click="handleLogout"
               >
                 Logout
               </UButton>
+            </div>
+            
+            <!-- Unauthenticated User Section -->
+            <div v-else class="space-y-3">
+              <div class="text-center p-3 bg-gray-50 rounded-lg">
+                <div class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-2">
+                  <UIcon name="i-lucide-user-x" class="w-4 h-4 text-gray-500" />
+                </div>
+                <p class="text-sm text-gray-600 mb-1">Not signed in</p>
+                <p class="text-xs text-gray-400">Sign in to access all features</p>
+              </div>
             </div>
           </AuthState>
         </div>
@@ -86,7 +125,7 @@
         v-if="sidebarOpen" 
         class="fixed inset-0 bg-black bg-opacity-25 z-20 md:hidden"
         @click="sidebarOpen = false"
-      ></div>
+      />
 
       <!-- Main Content -->
       <div class="flex-1 flex flex-col min-w-0">
@@ -94,8 +133,8 @@
         <header class="md:hidden bg-white shadow-sm border-b border-gray-200 p-4">
           <div class="flex items-center justify-between">
             <button 
-              @click="sidebarOpen = !sidebarOpen"
               class="p-2 rounded-lg hover:bg-gray-100"
+              @click="sidebarOpen = !sidebarOpen"
             >
               <UIcon name="i-lucide-menu" class="w-6 h-6 text-gray-600" />
             </button>
@@ -103,7 +142,7 @@
               <UIcon name="i-lucide-building-2" class="text-emerald-500 w-6 h-6" />
               <h1 class="text-lg font-bold text-gray-800">Dynalis</h1>
             </div>
-            <div class="w-10"></div> <!-- Spacer for center alignment -->
+            <div class="w-10"/> <!-- Spacer for center alignment -->
           </div>
         </header>
 
