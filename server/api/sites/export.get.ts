@@ -6,7 +6,7 @@ export default defineEventHandler(async (event) => {
     // Require authentication
     await requireUserSession(event)
     
-    // Use SQLite repository instead of Supabase
+    // Use SQLite repository for data access
     const sitesRepo = useSitesRepository()
     const sites = await sitesRepo.findAll()
     

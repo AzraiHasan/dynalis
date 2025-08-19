@@ -233,15 +233,12 @@
 </template>
 
 <script setup lang="ts">
-import { useUploadState } from "~/composables/useUploadState";
 import { ref, computed, onMounted } from "vue";
 import { useSQLiteSiteData } from '~/composables/useSQLiteSiteData'
-import { useSiteService } from "~/utils/siteService";
 import { useRouter } from "vue-router";
 import {
   getDaysUntilExpiration,
   parseDate,
-  formatDate,
 } from "../utils/dateUtils";
 import {
   Chart as ChartJS,
@@ -254,10 +251,10 @@ import {
   ArcElement,
   PointElement,
   LineElement,
-  Filler, // Add this import
+  Filler,
 } from "chart.js";
-import { Bar, Doughnut, Line, Scatter } from "vue-chartjs";
-import { addMonths, format, differenceInDays } from "date-fns";
+import { Bar, Line, Scatter } from "vue-chartjs";
+import { addMonths, format } from "date-fns";
 
 // Register ChartJS components
 ChartJS.register(
@@ -285,7 +282,7 @@ interface FileRow {
 interface ChartDataset {
   label?: string;
   data: number[] | Array<{ x: number; y: number }>;
-  backgroundColor?: string | string[] | ((context: any) => string);
+  backgroundColor?: string | string[] | ((context: { raw: { x: number; y: number } }) => string);
   borderColor?: string | string[];
   borderWidth?: number;
   tension?: number;
@@ -305,17 +302,6 @@ interface PaymentFlowData {
   values: number[];
 }
 
-// Add this interface specifically for doughnut chart data
-interface DoughnutChartData {
-  labels?: string[];
-  datasets: {
-    data: number[];
-    backgroundColor?: string[];
-    borderColor?: string[];
-    borderWidth?: number;
-    hoverOffset?: number;
-  }[];
-}
 
 const route = useRoute();
 /* const showDashboardModal = ref(false);
@@ -323,11 +309,7 @@ const uploadState = useUploadState(); */
 
 const isLoading = ref(true);
 const error = ref<Error | null>(null);
-const siteService = useSiteService();
 const siteData = useSQLiteSiteData();
-const sqliteData = useSQLiteSiteData()
-const useNewBackend = ref(true) // This can be toggled via UI if needed
-const dataComparison = ref<{matching: boolean, differences?: any} | null>(null)
 
 const shouldAutoBuild = computed(() => {
   return route.query.building === "true";
@@ -344,20 +326,10 @@ onMounted(async () => {
       console.log(`Initializing from job: ${jobId}`)
     }
     
-    // Fetch data from both sources for validation during transition
-    console.log("Fetching data from multiple sources for validation...")
-    const dbsql = await siteData.fetchData() || []
-    const sqliteResult = await sqliteData.fetchData() || []
-    
-    // Compare datasets (temporary validation code)
-    if (dbsql.length !== sqliteResult.length) {
-      console.warn(`Data source count mismatch: Supabase (${dbsql.length}) vs SQLite (${sqliteResult.length})`)
-      dataComparison.value = { matching: false, differences: { countDiff: true } }
-    }
-    
-    // Choose data source based on toggle with null safety
-    const sourceData = useNewBackend.value ? sqliteResult : dbsql
-    console.log(`Using ${useNewBackend.value ? 'SQLite' : 'Supabase'} as data source (${sourceData.length} records)`)
+    // Fetch data from SQLite database
+    console.log("Fetching data from SQLite database...")
+    const sourceData = await siteData.fetchData() || []
+    console.log(`Using SQLite as data source (${sourceData.length} records)`)
     
     // Continue with existing transformation code
     console.log("Transforming data...")
@@ -522,7 +494,6 @@ const totalDeposit = ref<string>("0");
 
 // Chart data refs
 const rentalChartData = ref<ChartData | null>(null);
-const expirationChartData = ref<DoughnutChartData | null>(null);
 const expirationTimelineData = ref<ChartData | null>(null);
 const renewalRiskData = ref<ChartData | null>(null);
 const paymentFlowData = ref<ChartData | null>(null);
@@ -591,7 +562,7 @@ const chartOptions = {
 };
 
 // Helper functions
-const parseCurrency = (value: any): number => {
+const parseCurrency = (value: string | number | null | undefined): number => {
   if (!value) return 0;
   return parseFloat(value.toString().replace(/[RM,\s]/g, "")) || 0;
 };
@@ -623,36 +594,6 @@ const calculateRentalRanges = (data: FileRow[]): Record<string, number> => {
   return ranges;
 };
 
-const calculateExpirationStatus = (data: FileRow[]): Record<string, number> => {
-  const status: Record<string, number> = {
-    "Within 30 Days": 0,
-    "Within 60 Days": 0,
-    "Within 90 Days": 0,
-    "Valid > 90 Days": 0,
-  };
-
-  data.forEach((row) => {
-    const daysUntil = getDaysUntilExpiration(row["EXP DATE"]?.toString() || "");
-
-    if (daysUntil === null) {
-      // Skip invalid dates
-      return;
-    } else if (daysUntil <= 0) {
-      // Skip expired contracts as they're shown in the separate card
-      return;
-    } else if (daysUntil <= 30) {
-      status["Within 30 Days"] = (status["Within 30 Days"] || 0) + 1;
-    } else if (daysUntil <= 60) {
-      status["Within 60 Days"] = (status["Within 60 Days"] || 0) + 1;
-    } else if (daysUntil <= 90) {
-      status["Within 90 Days"] = (status["Within 90 Days"] || 0) + 1;
-    } else {
-      status["Valid > 90 Days"] = (status["Valid > 90 Days"] || 0) + 1;
-    }
-  });
-
-  return status;
-};
 
 const calculateExpirationTimeline = (
   data: FileRow[]
@@ -757,20 +698,6 @@ const expirationStatus = computed(() => {
   return status;
 });
 
-const cleanUpBuildState = () => {
-  // Remove the build flag from localStorage
-  localStorage.removeItem("dashboard_building");
-
-  // Clear the query parameters without page reload
-  if (shouldAutoBuild.value) {
-    router.replace({
-      path: "/dashboard",
-      query: {
-        ...(route.query.job_id ? { job_id: route.query.job_id } : {}),
-      },
-    });
-  }
-};
 
 
 

@@ -1,7 +1,7 @@
 // composables/useSiteData.ts (UPDATED)
 import type { Site } from '~/types/dbsql'
 
-// This composable now uses SQLite instead of Supabase
+// This composable uses SQLite for data management
 export const useSiteData = () => {
   const cachedData = useState<Site[] | null>('site-data', () => null)
   const isLoading = useState<boolean>('site-data-loading', () => false)

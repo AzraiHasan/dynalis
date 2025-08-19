@@ -14,7 +14,7 @@ interface MigrationResult {
 
 /**
  * Checks if migration is needed by verifying if SQLite database has data
- * This function doesn't depend on Supabase, so it's safe to use
+ * This function works with the SQLite database
  */
 export const checkMigrationNeeded = async (): Promise<boolean> => {
   try {
@@ -31,7 +31,7 @@ export const checkMigrationNeeded = async (): Promise<boolean> => {
 
 /**
  * Implementation of the migration utility using direct HTTP fetch
- * instead of the Supabase client to avoid import issues
+ * using direct repository access for better reliability
  */
 export const migrateSitesToSQLite = async (): Promise<MigrationResult> => {
   const startTime = Date.now();
@@ -103,6 +103,6 @@ export const migrateSitesToSQLite = async (): Promise<MigrationResult> => {
 
 /**
  * Create a new API endpoint that will provide the site data for migration
- * This allows us to decouple the migration logic from direct Supabase dependencies
+ * This allows us to decouple the migration logic from external dependencies
  */
 // server/api/sites/export.get.ts (implement separately)

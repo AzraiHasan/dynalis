@@ -263,15 +263,6 @@ const route = useRoute();
 
 const uploadState = useUploadState();
 const sqliteBatchUpload = useSQLiteBatchUpload();
-const uploadComparisonData = ref<{
-  supabase?: any;
-  sqlite?: any;
-  error?: Error | null;
-} | null>(null);
-const siteData = useSQLiteSiteData();
-const fileData = ref<FileRow[]>([]);
-const totalSites = ref<number>(0);
-const error = ref<Error | null>(null);
 
 // Properly typed interfaces
 interface FileRow {
@@ -317,11 +308,6 @@ const scrollToBottom = () => {
   });
 };
 
-const showBackgroundOption = computed(() => {
-  if (!storedData.value?.fileData) return false;
-  // Only show for larger datasets (more than 500 rows)
-  return storedData.value.fileData.length > 500;
-});
 
 const handleCommitData = async () => {
   try {
@@ -520,35 +506,6 @@ const getDaysUntilExpiration = (expDate: string): number | null => {
   return differenceInDays(parsedDate, today);
 };
 
-const formatDate = (date: Date): string => {
-  return format(date, "dd/MM/yyyy");
-};
-
-const cancelUpload = async (): Promise<void> => {
-  try {
-    console.log("Cancelling upload");
-    const batchUploadService = useBatchUploadService();
-    await batchUploadService.cancelUpload();
-
-    // Clear any stored data
-    localStorage.removeItem("uploadedFileData");
-    localStorage.removeItem("background_job_id");
-
-    // Reset the upload state
-    uploadState.isUploading.value = false;
-    uploadState.status.value = "idle";
-    uploadState.progress.value = 0;
-    console.log("Upload cancelled successfully");
-  } catch (error) {
-    console.error("Error cancelling upload:", error);
-    toast.add({
-      title: "Error",
-      description: "Failed to cancel upload. Please try again.",
-      color: "error",
-      duration: 5000,
-    });
-  }
-};
 
 // Data processing
 const metrics = computed(() => {
@@ -618,7 +575,7 @@ const expirationMetrics = computed(() => {
   let within90Days = 0;
   let invalidDates = 0;
   let totalProcessed = 0;
-  let invalidDatesList: string[] = [];
+  const invalidDatesList: string[] = [];
 
   data.forEach((row) => {
     totalProcessed++;
