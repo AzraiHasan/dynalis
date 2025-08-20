@@ -352,11 +352,14 @@ onMounted(async () => {
     const jobId = route.query.job_id;
     if (jobId) {
       console.log(`Initializing from job: ${jobId}`);
+      // Add delay to allow Supabase transaction to fully commit
+      console.log("Waiting for database transaction to complete...");
+      await new Promise(resolve => setTimeout(resolve, 2000)); // 2 second delay
     }
     
-    // Fetch data from Supabase
+    // Fetch data from Supabase (force refresh to get latest data)
     console.log("Fetching initial data from database...");
-    const supabaseData = await siteData.fetchData();
+    const supabaseData = await siteData.fetchData(true);
     console.log(`Data fetched successfully. ${supabaseData.length} rows retrieved.`);
 
     console.log("Transforming data...");
@@ -451,7 +454,11 @@ onMounted(async () => {
           label: "Sites",
           data: riskPoints,
           backgroundColor: (context) => {
-            const value = context.raw.x;
+            const dataPoint = context.dataset.data[context.dataIndex] as { x: number; y: number };
+            if (!dataPoint || typeof dataPoint.x === 'undefined') {
+              return "rgba(107, 114, 128, 0.7)"; // Default color
+            }
+            const value = dataPoint.x;
             if (value <= 0) return "rgba(239, 68, 68, 0.7)";
             if (value <= 30) return "rgba(245, 158, 11, 0.7)";
             if (value <= 60) return "rgba(252, 211, 77, 0.7)";
@@ -886,7 +893,11 @@ const refreshDashboard = async () => {
           label: "Sites",
           data: riskPoints,
           backgroundColor: (context) => {
-            const value = context.raw.x;
+            const dataPoint = context.dataset.data[context.dataIndex] as { x: number; y: number };
+            if (!dataPoint || typeof dataPoint.x === 'undefined') {
+              return "rgba(107, 114, 128, 0.7)"; // Default color
+            }
+            const value = dataPoint.x;
             if (value <= 0) return "rgba(239, 68, 68, 0.7)";
             if (value <= 30) return "rgba(245, 158, 11, 0.7)";
             if (value <= 60) return "rgba(252, 211, 77, 0.7)";
