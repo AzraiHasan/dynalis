@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useAuth } from '~/composables/useAuth'
 import { useUploadState } from '~/composables/useUploadState'
+import { useResetDemo } from '~/composables/useResetDemo'
 
 interface SidebarState {
   isCollapsed: boolean
@@ -16,6 +17,10 @@ interface SidebarState {
 const route = useRoute()
 const auth = useAuth()
 const uploadState = useUploadState()
+const resetDemo = useResetDemo()
+
+// Modal state for reset confirmation
+const showResetModal = ref(false)
 
 // Inject layout functions (removed unused layoutToggleSidebar)
 
@@ -95,6 +100,26 @@ async function handleLogout() {
   }
 }
 
+// Reset demo functions
+function openResetModal() {
+  showResetModal.value = true
+}
+
+function closeResetModal() {
+  showResetModal.value = false
+}
+
+async function confirmResetDemo() {
+  try {
+    await resetDemo.resetDemo()
+    closeResetModal()
+    // No need to navigate - the composable will refresh the page
+  } catch (error) {
+    console.error('Reset demo failed:', error)
+    // Modal will stay open to show error status
+  }
+}
+
 // Expose mobile toggle for layout
 defineExpose({
   toggleMobile,
@@ -158,6 +183,17 @@ defineExpose({
             <span class="font-medium">Sample Template</span>
           </a>
           <p class="text-xs text-gray-400 px-4 mt-1">Prepare your data before upload</p>
+
+          <!-- Reset Demo Button -->
+          <button
+            :disabled="resetDemo.isResetting.value"
+            class="flex items-center gap-3 px-4 py-3 w-full text-red-600 rounded-lg hover:bg-red-50 hover:text-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-2"
+            @click="openResetModal"
+          >
+            <UIcon name="i-lucide-trash-2" class="w-5 h-5" />
+            <span class="font-medium">Reset Demo</span>
+          </button>
+          <p class="text-xs text-red-400 px-4 mt-1">Clear all data and reset demo</p>
         </div>
       </nav>
 
@@ -248,6 +284,17 @@ defineExpose({
             <span class="font-medium">Sample Template</span>
           </a>
           <p class="text-xs text-gray-400 px-4 mt-1">Prepare your data before upload</p>
+
+          <!-- Mobile Reset Demo Button -->
+          <button
+            :disabled="resetDemo.isResetting.value"
+            class="flex items-center gap-3 px-4 py-3 w-full text-red-600 rounded-lg hover:bg-red-50 hover:text-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-2"
+            @click="openResetModal"
+          >
+            <UIcon name="i-lucide-trash-2" class="w-5 h-5" />
+            <span class="font-medium">Reset Demo</span>
+          </button>
+          <p class="text-xs text-red-400 px-4 mt-1">Clear all data and reset demo</p>
         </div>
       </nav>
 
@@ -269,4 +316,74 @@ defineExpose({
       </div>
     </div>
   </USlideover>
+
+  <!-- Reset Demo Confirmation Modal -->
+  <UModal v-model:open="showResetModal" :prevent-close="resetDemo.isResetting.value">
+    <template #content>
+      <UCard>
+        <template #header>
+          <div class="flex items-center gap-3">
+            <UIcon name="i-lucide-alert-triangle" class="text-red-500 w-6 h-6" />
+            <h3 class="text-lg font-semibold text-gray-900">Reset Demo Data</h3>
+          </div>
+        </template>
+
+        <div class="space-y-4">
+          <div class="p-4 bg-red-50 border border-red-200 rounded-lg">
+            <p class="text-red-800 font-medium">⚠️ This action cannot be undone!</p>
+            <p class="text-red-700 text-sm mt-1">
+              This will permanently delete all data including:
+            </p>
+            <ul class="text-red-700 text-sm mt-2 space-y-1 ml-4">
+              <li>• All site data</li>
+              <li>• Upload jobs and history</li>
+              <li>• Conflict resolution data</li>
+              <li>• Local storage cache</li>
+            </ul>
+          </div>
+
+          <!-- Progress indicator when resetting -->
+          <div v-if="resetDemo.isResetting.value" class="space-y-3">
+            <div class="flex items-center justify-between text-sm">
+              <span class="text-gray-700 font-medium">{{ resetDemo.resetStatus.value }}</span>
+              <span class="text-gray-600">{{ resetDemo.resetProgress.value }}%</span>
+            </div>
+            <UProgress 
+              :value="resetDemo.resetProgress.value" 
+              color="error"
+              size="sm"
+            />
+          </div>
+
+          <!-- Error message if reset failed -->
+          <div v-if="resetDemo.resetStatus.value.includes('failed')" class="p-3 bg-red-100 border border-red-300 rounded-lg">
+            <p class="text-red-800 text-sm">{{ resetDemo.resetStatus.value }}</p>
+          </div>
+
+          <!-- Success message -->
+          <div v-if="resetDemo.resetStatus.value.includes('completed')" class="p-3 bg-green-100 border border-green-300 rounded-lg">
+            <p class="text-green-800 text-sm">{{ resetDemo.resetStatus.value }}</p>
+          </div>
+        </div>
+
+        <template #footer>
+          <div class="flex justify-end gap-3">
+            <UButton
+              variant="outline"
+              label="Cancel"
+              :disabled="resetDemo.isResetting.value"
+              @click="closeResetModal"
+            />
+            <UButton
+              color="error"
+              :label="resetDemo.isResetting.value ? 'Resetting...' : 'Reset Demo'"
+              :loading="resetDemo.isResetting.value"
+              :disabled="resetDemo.isResetting.value"
+              @click="confirmResetDemo"
+            />
+          </div>
+        </template>
+      </UCard>
+    </template>
+  </UModal>
 </template>

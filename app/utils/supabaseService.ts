@@ -256,6 +256,111 @@ export const useSiteService = () => {
     }, 'fetch site data')
   }
   
+  // Clear all data from a specific table
+  const clearTable = async (tableName: string) => {
+    return await executeWithConnection(async () => {
+      try {
+        // Try using RPC function for TRUNCATE (faster and more reliable)
+        const { error: truncateError } = await supabase.rpc('truncate_table', { table_name: tableName })
+        
+        if (!truncateError) {
+          console.log(`Successfully truncated ${tableName} table`)
+          return true
+        }
+        
+        console.warn(`Truncate failed for ${tableName}, falling back to DELETE:`, truncateError.message)
+      } catch (e) {
+        console.warn(`Truncate not available for ${tableName}, using DELETE method`)
+      }
+      
+      // Fallback: First check if table exists by trying to count records
+      const { count, error: countError } = await supabase
+        .from(tableName as keyof Database['public']['Tables'])
+        .select('*', { count: 'exact', head: true })
+      
+      if (countError) {
+        // If we can't even check the table, it might not exist
+        if (countError.code === '42P01' || 
+            countError.message?.includes('does not exist') ||
+            countError.message?.includes('relation') ||
+            countError.details?.includes('does not exist')) {
+          console.log(`Table ${tableName} does not exist, skipping...`)
+          return true
+        }
+        console.error(`Error checking ${tableName} table:`, countError)
+        throw new Error(`Failed to access ${tableName}: ${countError.message || JSON.stringify(countError)}`)
+      }
+      
+      if (count === 0) {
+        console.log(`Table ${tableName} is already empty`)
+        return true
+      }
+      
+      // Delete all records in batches if table has data
+      let deletedCount = 0
+      while (true) {
+        const { data, error: fetchError } = await supabase
+          .from(tableName as keyof Database['public']['Tables'])
+          .select('id')
+          .limit(1000) // Process in batches
+        
+        if (fetchError) {
+          // Check if table doesn't exist
+          if (fetchError.code === '42P01' || 
+              fetchError.message?.includes('does not exist') ||
+              fetchError.message?.includes('relation') ||
+              fetchError.details?.includes('does not exist')) {
+            console.log(`Table ${tableName} does not exist during fetch, skipping...`)
+            return true
+          }
+          throw new Error(`Failed to fetch ${tableName} records: ${fetchError.message || JSON.stringify(fetchError)}`)
+        }
+        
+        if (!data || data.length === 0) break
+        
+        const { error: deleteError } = await supabase
+          .from(tableName as keyof Database['public']['Tables'])
+          .delete()
+          .in('id', data.map(record => record.id))
+        
+        if (deleteError) {
+          throw new Error(`Failed to delete from ${tableName}: ${deleteError.message || JSON.stringify(deleteError)}`)
+        }
+        
+        deletedCount += data.length
+        console.log(`Deleted ${data.length} records from ${tableName} (total: ${deletedCount})`)
+        
+        // Break if we deleted less than the batch size (means we're done)
+        if (data.length < 1000) break
+      }
+      
+      console.log(`Successfully cleared ${tableName} table (${deletedCount} records total)`)
+      return true
+    }, `clear ${tableName} table`)
+  }
+
+  // Clear all demo data in the correct order
+  const clearAllDemoData = async () => {
+    const tablesToClear = [
+      'sites',  // Start with the main table we know exists
+      'upload_jobs'  // Only include tables that exist
+    ]
+
+    const results = []
+    for (const table of tablesToClear) {
+      try {
+        await clearTable(table)
+        results.push(`${table}: cleared`)
+      } catch (error) {
+        console.warn(`Failed to clear ${table}, skipping:`, error.message)
+        results.push(`${table}: skipped (${error.message})`)
+      }
+    }
+    
+    console.log('Demo data clearing completed:', results)
+    return true
+  }
+
   // Get connection pool statistics
   const getConnectionStats = () => {
     return connectionManager.getStats()
@@ -269,6 +374,8 @@ export const useSiteService = () => {
   return {
     uploadSiteDataBatch,
     fetchSiteData,
+    clearTable,
+    clearAllDemoData,
     getConnectionStats,
     connectionConfig, // Export config for debugging
   }

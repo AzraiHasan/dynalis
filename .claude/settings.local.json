@@ -4,7 +4,20 @@
       "WebFetch(domain:ui.nuxt.com)",
       "Bash(bun run lint:*)",
       "Bash(mv:*)",
-      "Bash(bun run:*)"
+      "Bash(bun run:*)",
+      "Bash(node:*)",
+      "Bash(npx nuxt dev:*)",
+      "Bash(NUXT_DEBUG=1 bun run dev)",
+      "Bash(pkill:*)",
+      "Bash(true)",
+      "Bash(npx nuxt typecheck)",
+      "Bash(timeout 30 npx nuxt typecheck)",
+      "Bash(bun:*)",
+      "Bash(npx:*)",
+      "Bash(git add:*)",
+      "Bash(git push:*)",
+      "Bash(timeout 30 bun run dev)",
+      "Bash(timeout:*)"
     ],
     "deny": []
   }
