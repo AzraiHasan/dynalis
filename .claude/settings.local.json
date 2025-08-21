@@ -17,7 +17,9 @@
       "Bash(git add:*)",
       "Bash(git push:*)",
       "Bash(timeout 30 bun run dev)",
-      "Bash(timeout:*)"
+      "Bash(timeout:*)",
+      "Bash(chmod:*)",
+      "Bash(find:*)"
     ],
     "deny": []
   }
