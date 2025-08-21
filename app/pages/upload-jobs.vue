@@ -1,7 +1,6 @@
 <!-- pages/upload-jobs.vue -->
 <script setup lang="ts">
 import { useBatchUploadService } from '~/composables/useBatchUploadService'
-import { useOptimizedRealTimeUpdates } from '~/composables/useOptimizedRealTimeUpdates'
 import type { Database } from '~/types/supabase'
 
 // definePageMeta({
@@ -10,7 +9,6 @@ import type { Database } from '~/types/supabase'
 
 const supabase = useSupabaseClient<Database>()
 const batchUploadService = useBatchUploadService()
-const realTimeUpdates = useOptimizedRealTimeUpdates()
 const toast = useToast()
 
 interface Job {
@@ -29,6 +27,8 @@ interface Job {
   errorMessage?: string | null;
   processingDuration?: number | null;
   secondsSinceHeartbeat?: number | null;
+  createdByUsername?: string | null;
+  createdByUserId?: string | null;
 }
 
 const jobs = ref<Job[]>([])
@@ -76,7 +76,7 @@ const statusIcons: Record<string, string> = {
 };
 
 function getStatusColor(status: string): UIColor {
-  return (statusColors as any)[status] || 'neutral';
+  return (statusColors as Record<string, UIColor>)[status] || 'neutral';
 }
 
 // Fetch jobs from database
@@ -108,7 +108,9 @@ async function fetchJobs() {
       priority: job.priority,
       errorMessage: null, // Job queue status view doesn't include error_message
       processingDuration: job.processing_duration_seconds,
-      secondsSinceHeartbeat: job.seconds_since_heartbeat
+      secondsSinceHeartbeat: job.seconds_since_heartbeat,
+      createdByUsername: (job as unknown as { created_by_username?: string }).created_by_username || null,
+      createdByUserId: (job as unknown as { created_by_user_id?: string }).created_by_user_id || null
     }))
 
   } catch (err) {
@@ -214,7 +216,7 @@ async function retryJob(jobId: string) {
 // Job details modal state
 const showJobDetails = ref(false)
 const selectedJob = ref<Job | null>(null)
-const jobDetails = ref<any>(null)
+const jobDetails = ref<Record<string, unknown> | null>(null)
 
 // View job details
 async function viewJobDetails(jobId: string) {
@@ -316,9 +318,9 @@ const jobStats = computed(() => {
         <p class="text-gray-600 mt-1">Monitor and manage your data upload jobs</p>
       </div>
       <UButton 
+        :loading="isLoading"
         icon="i-lucide-refresh-cw"
         variant="outline"
-        :loading="isLoading"
         @click="refreshJobs"
       >
         Refresh
@@ -336,7 +338,7 @@ const jobStats = computed(() => {
       <UIcon name="i-lucide-alert-circle" class="w-8 h-8 text-red-400 mx-auto mb-4" />
       <h3 class="text-lg font-medium text-gray-900 mb-2">Error Loading Jobs</h3>
       <p class="text-gray-600 mb-4">{{ error }}</p>
-      <UButton @click="refreshJobs" :loading="isLoading">Try Again</UButton>
+      <UButton :loading="isLoading" @click="refreshJobs">Try Again</UButton>
     </div>
 
     <template v-else>
@@ -408,6 +410,7 @@ const jobStats = computed(() => {
               <div>
                 <h3 class="font-medium text-gray-900">{{ job.name }}</h3>
                 <p class="text-sm text-gray-500">
+                  Uploaded by {{ job.createdByUsername || 'Unknown User' }} • 
                   Started {{ formatDuration(job.startedAt, job.completedAt || new Date()) }} ago
                 </p>
               </div>
@@ -526,6 +529,10 @@ const jobStats = computed(() => {
             <div>
               <p class="text-sm text-gray-600">Priority</p>
               <p class="font-semibold">{{ selectedJob.priority || 5 }}</p>
+            </div>
+            <div>
+              <p class="text-sm text-gray-600">Uploaded By</p>
+              <p class="font-semibold">{{ selectedJob.createdByUsername || 'Unknown User' }}</p>
             </div>
             <div>
               <p class="text-sm text-gray-600">Retry Count</p>

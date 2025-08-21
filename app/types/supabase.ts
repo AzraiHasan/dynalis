@@ -40,6 +40,8 @@ export interface UploadJob {
   concurrent_job_lock?: boolean;
   lock_acquired_at?: string | null;
   lock_holder_session?: string | null;
+  created_by_user_id?: string | null;
+  created_by_username?: string | null;
 }
 
 export interface UploadConflict {
@@ -138,6 +140,8 @@ export interface Database {
           seconds_since_heartbeat?: number | null;
           processing_duration_seconds?: number | null;
           progress_percentage?: number;
+          created_by_user_id?: string | null;
+          created_by_username?: string | null;
         };
       };
     };

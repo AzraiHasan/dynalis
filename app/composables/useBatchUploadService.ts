@@ -1,6 +1,6 @@
 // composables/useBatchUploadService.ts
 import { ref, computed } from "vue";
-import { useSupabaseClient } from "#imports";
+import { useSupabaseClient, useSupabaseUser } from "#imports";
 import { parseDate } from "~/utils/dateUtils";
 import type { Database, Site, UploadJob } from "~/types/supabase";
 import { useUploadState } from "~/composables/useUploadState";
@@ -482,18 +482,48 @@ export const useBatchUploadService = () => {
     totalChunks: number
   ): Promise<string> => {
     try {
-      const { data, error } = await supabase
-        .from("upload_jobs")
-        .insert({
-          filename,
-          total_chunks: totalChunks,
-          status: "created",
-        })
-        .select("id")
-        .single();
+      const user = useSupabaseUser();
+      
+      // First try to insert with user tracking fields
+      try {
+        const { data, error } = await supabase
+          .from("upload_jobs")
+          .insert({
+            filename,
+            total_chunks: totalChunks,
+            status: "created",
+            created_by_user_id: user.value?.id || null,
+            created_by_username: user.value?.user_metadata?.full_name || user.value?.email || 'Unknown User',
+          })
+          .select("id")
+          .single();
 
-      if (error) throw error;
-      return data.id;
+        if (error) throw error;
+        return data.id;
+      } catch (userTrackingError: unknown) {
+        // Check if error is related to missing user tracking columns
+        const errorMessage = userTrackingError instanceof Error ? userTrackingError.message : String(userTrackingError);
+        if (errorMessage.includes('created_by_user_id') || errorMessage.includes('created_by_username')) {
+          console.log('User tracking columns not available, falling back to basic insert');
+          
+          // Fallback to basic insert without user tracking
+          const { data, error } = await supabase
+            .from("upload_jobs")
+            .insert({
+              filename,
+              total_chunks: totalChunks,
+              status: "created",
+            })
+            .select("id")
+            .single();
+
+          if (error) throw error;
+          return data.id;
+        } else {
+          // Re-throw if it's a different error
+          throw userTrackingError;
+        }
+      }
     } catch (error) {
       console.error("Failed to create upload job:", error);
       throw error;
@@ -1143,17 +1173,55 @@ export const useBatchUploadService = () => {
       const batches = Math.ceil(transformedData.length / batchSize);
 
       // Create job
-      const { data: job, error } = await supabase
-        .from("upload_jobs")
-        .insert({
-          filename: fileName,
-          total_chunks: batches,
-          status: "queued",
-          chunks_received: 0,
-          processed_records: 0,
-        })
-        .select("id")
-        .single();
+      const user = useSupabaseUser();
+      
+      // First try to insert with user tracking fields
+      let job;
+      let error;
+      
+      try {
+        const result = await supabase
+          .from("upload_jobs")
+          .insert({
+            filename: fileName,
+            total_chunks: batches,
+            status: "queued",
+            chunks_received: 0,
+            processed_records: 0,
+            created_by_user_id: user.value?.id || null,
+            created_by_username: user.value?.user_metadata?.full_name || user.value?.email || 'Unknown User',
+          })
+          .select("id")
+          .single();
+          
+        job = result.data;
+        error = result.error;
+      } catch (userTrackingError: unknown) {
+        // Check if error is related to missing user tracking columns
+        const errorMessage = userTrackingError instanceof Error ? userTrackingError.message : String(userTrackingError);
+        if (errorMessage.includes('created_by_user_id') || errorMessage.includes('created_by_username')) {
+          console.log('User tracking columns not available, falling back to basic insert');
+          
+          // Fallback to basic insert without user tracking
+          const result = await supabase
+            .from("upload_jobs")
+            .insert({
+              filename: fileName,
+              total_chunks: batches,
+              status: "queued",
+              chunks_received: 0,
+              processed_records: 0,
+            })
+            .select("id")
+            .single();
+            
+          job = result.data;
+          error = result.error;
+        } else {
+          // Re-throw if it's a different error
+          throw userTrackingError;
+        }
+      }
 
       if (error) throw error;
       if (!job?.id) throw new Error("Failed to create job");
