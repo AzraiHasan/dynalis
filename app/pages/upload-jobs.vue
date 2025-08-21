@@ -85,6 +85,10 @@ async function fetchJobs() {
     isLoading.value = true
     error.value = null
 
+    // Debug: Log Supabase configuration
+    console.log('Supabase URL:', supabase.supabaseUrl)
+    console.log('Supabase Key present:', !!supabase.supabaseKey)
+
     const { data, error: fetchError } = await supabase
       .from('job_queue_status')
       .select('*')
@@ -258,12 +262,16 @@ async function viewJobDetails(jobId: string) {
   }
 }
 
+// Auto-refresh interval
+let refreshInterval: NodeJS.Timeout | null = null
+let jobsChannel: any = null
+
 // Set up real-time updates and fetch data on mount
 onMounted(async () => {
   await fetchJobs()
   
   // Subscribe to real-time updates for upload_jobs table
-  const jobsChannel = supabase
+  jobsChannel = supabase
     .channel('upload_jobs_changes')
     .on(
       'postgres_changes',
@@ -276,21 +284,22 @@ onMounted(async () => {
     )
     .subscribe()
 
-  // Cleanup subscription on unmount
-  onUnmounted(() => {
-    jobsChannel.unsubscribe()
-  })
+  // Auto-refresh every 30 minutes
+  refreshInterval = setInterval(() => {
+    if (!isLoading.value) {
+      fetchJobs()
+    }
+  }, 1800000)
 })
 
-// Auto-refresh every 30 seconds
-const refreshInterval = setInterval(() => {
-  if (!isLoading.value) {
-    fetchJobs()
-  }
-}, 30000)
-
+// Cleanup on unmount
 onUnmounted(() => {
-  clearInterval(refreshInterval)
+  if (jobsChannel) {
+    jobsChannel.unsubscribe()
+  }
+  if (refreshInterval) {
+    clearInterval(refreshInterval)
+  }
 })
 
 // Manual refresh function
@@ -343,17 +352,7 @@ const jobStats = computed(() => {
 
     <template v-else>
       <!-- Stats Cards -->
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <UCard>
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-sm text-gray-600">Total Jobs</p>
-              <p class="text-2xl font-bold text-gray-900">{{ jobStats.total }}</p>
-            </div>
-            <UIcon name="i-lucide-database" class="w-8 h-8 text-gray-400" />
-          </div>
-        </UCard>
-        
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <UCard>
           <div class="flex items-center justify-between">
             <div>
@@ -361,16 +360,6 @@ const jobStats = computed(() => {
               <p class="text-2xl font-bold text-green-600">{{ jobStats.completed }}</p>
             </div>
             <UIcon name="i-lucide-check-circle" class="w-8 h-8 text-green-400" />
-          </div>
-        </UCard>
-        
-        <UCard>
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-sm text-gray-600">Processing</p>
-              <p class="text-2xl font-bold text-blue-600">{{ jobStats.processing }}</p>
-            </div>
-            <UIcon name="i-lucide-loader-2" class="w-8 h-8 text-blue-400 animate-spin" />
           </div>
         </UCard>
         
@@ -400,11 +389,11 @@ const jobStats = computed(() => {
           <div class="flex items-center justify-between mb-3">
             <div class="flex items-center space-x-3">
               <UIcon 
-                :name="statusIcons[job.status]" 
+                :name="statusIcons[job.status] || 'i-lucide-circle'" 
                 :class="[
                   'w-5 h-5',
                   job.status === 'processing' ? 'animate-spin' : '',
-                  statusTextColors[job.status]
+                  statusTextColors[job.status] || 'text-gray-500'
                 ]"
               />
               <div>
@@ -458,11 +447,20 @@ const jobStats = computed(() => {
               <span>Progress</span>
               <span>{{ job.recordsProcessed }}/{{ job.totalRecords }} records</span>
             </div>
-            <UProgress 
-              :value="job.progress" 
-              :color="getStatusColor(job.status as JobStatus)"
-              size="sm"
-            />
+            <div class="w-full bg-gray-200 rounded-full h-2">
+              <div 
+                class="h-2 rounded-full transition-none"
+                :class="{
+                  'bg-blue-500': getStatusColor(job.status as JobStatus) === 'info',
+                  'bg-green-500': getStatusColor(job.status as JobStatus) === 'success',
+                  'bg-red-500': getStatusColor(job.status as JobStatus) === 'error',
+                  'bg-yellow-500': getStatusColor(job.status as JobStatus) === 'warning',
+                  'bg-gray-500': getStatusColor(job.status as JobStatus) === 'neutral',
+                  'bg-blue-500': getStatusColor(job.status as JobStatus) === 'primary'
+                }"
+                :style="{ width: job.progress + '%' }"
+              ></div>
+            </div>
           </div>
           
           <!-- Job Stats -->
@@ -557,25 +555,25 @@ const jobStats = computed(() => {
           </div>
 
           <!-- Memory Usage Chart -->
-          <div v-if="jobDetails.memory_usage_mb && jobDetails.memory_usage_mb.length > 0" class="space-y-2">
+          <div v-if="Array.isArray(jobDetails.memory_usage_mb) && jobDetails.memory_usage_mb.length > 0" class="space-y-2">
             <p class="text-sm text-gray-600">Memory Usage (MB)</p>
             <div class="p-4 bg-gray-50 rounded-lg">
-              <p class="text-xs text-gray-600">Peak: {{ Math.max(...jobDetails.memory_usage_mb) }}MB</p>
-              <p class="text-xs text-gray-600">Average: {{ Math.round(jobDetails.memory_usage_mb.reduce((a: number, b: number) => a + b, 0) / jobDetails.memory_usage_mb.length) }}MB</p>
+              <p class="text-xs text-gray-600">Peak: {{ Math.max(...(jobDetails.memory_usage_mb as number[])) }}MB</p>
+              <p class="text-xs text-gray-600">Average: {{ Math.round((jobDetails.memory_usage_mb as number[]).reduce((a: number, b: number) => a + b, 0) / (jobDetails.memory_usage_mb as number[]).length) }}MB</p>
             </div>
           </div>
 
           <!-- Conflicts -->
-          <div v-if="jobDetails.upload_conflicts && jobDetails.upload_conflicts.length > 0" class="space-y-2">
+          <div v-if="Array.isArray(jobDetails.upload_conflicts) && jobDetails.upload_conflicts.length > 0" class="space-y-2">
             <p class="text-sm text-gray-600">Upload Conflicts ({{ jobDetails.upload_conflicts.length }})</p>
             <div class="max-h-48 overflow-y-auto space-y-2">
               <div 
-                v-for="conflict in jobDetails.upload_conflicts" 
+                v-for="conflict in (jobDetails.upload_conflicts as any[])" 
                 :key="conflict.id"
                 class="p-3 border rounded-lg text-sm"
               >
                 <div class="flex items-center justify-between mb-2">
-                  <span class="font-medium">{{ conflict.conflict_type.replace('_', ' ') }}</span>
+                  <span class="font-medium">{{ conflict.conflict_type?.replace('_', ' ') || 'Unknown Conflict' }}</span>
                   <UBadge :color="conflict.resolved ? 'success' : 'warning'" variant="subtle">
                     {{ conflict.resolved ? 'Resolved' : 'Pending' }}
                   </UBadge>
@@ -600,11 +598,11 @@ const jobStats = computed(() => {
             </div>
             <div v-if="jobDetails.processing_started_at">
               <p class="text-gray-600">Processing Started</p>
-              <p class="font-semibold">{{ new Date(jobDetails.processing_started_at).toLocaleString() }}</p>
+              <p class="font-semibold">{{ new Date(jobDetails.processing_started_at as string).toLocaleString() }}</p>
             </div>
             <div v-if="jobDetails.last_heartbeat">
               <p class="text-gray-600">Last Heartbeat</p>
-              <p class="font-semibold">{{ new Date(jobDetails.last_heartbeat).toLocaleString() }}</p>
+              <p class="font-semibold">{{ new Date(jobDetails.last_heartbeat as string).toLocaleString() }}</p>
               <p v-if="selectedJob.secondsSinceHeartbeat" class="text-xs text-gray-500">
                 {{ selectedJob.secondsSinceHeartbeat }}s ago
               </p>
