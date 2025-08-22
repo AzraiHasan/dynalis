@@ -16,6 +16,11 @@ export default defineNuxtConfig({
       login: '/',
       callback: '/confirm',
       exclude: ['/'], // Only exclude the login page from redirect
+    },
+    clientOptions: {
+      auth: {
+        storage: typeof window !== 'undefined' ? window.sessionStorage : undefined
+      }
     }
   },
 

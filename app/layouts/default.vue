@@ -13,6 +13,7 @@ onMounted(() => {
     // Clear any bad localStorage state for now
     localStorage.removeItem('sidebar-collapsed')
     sidebarCollapsed.value = false
+    
   }
 })
 
