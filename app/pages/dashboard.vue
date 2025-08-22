@@ -4,14 +4,17 @@
       <h1 class="text-2xl font-bold">Dashboard</h1>
       <div class="flex items-center gap-2">
         <UButton
-          :icon="isRefreshing ? 'i-lucide-loader-2' : 'i-lucide-refresh-cw'"
-          :class="{ 'animate-spin': isRefreshing }"
           color="primary"
           variant="soft"
-          :loading="isRefreshing"
           :disabled="isRefreshing"
           @click="refreshDashboard"
         >
+          <template #leading>
+            <UIcon
+              :name="isRefreshing ? 'i-lucide-loader-2' : 'i-lucide-refresh-cw'"
+              :class="{ 'animate-spin': isRefreshing }"
+            />
+          </template>
           {{ isRefreshing ? 'Refreshing...' : 'Refresh Data' }}
         </UButton>
       </div>
