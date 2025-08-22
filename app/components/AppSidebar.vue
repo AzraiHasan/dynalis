@@ -110,12 +110,15 @@ function closeResetModal() {
 }
 
 async function confirmResetDemo() {
+  console.log('📢 [RESET] User clicked Reset Demo button - confirmResetDemo() called')
   try {
+    console.log('📢 [RESET] About to call resetDemo.resetDemo()')
     await resetDemo.resetDemo()
+    console.log('📢 [RESET] resetDemo.resetDemo() completed successfully')
     closeResetModal()
     // No need to navigate - the composable will refresh the page
   } catch (error) {
-    console.error('Reset demo failed:', error)
+    console.error('🚨 [RESET] Reset demo failed in confirmResetDemo():', error)
     // Modal will stay open to show error status
   }
 }

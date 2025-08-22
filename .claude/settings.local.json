@@ -19,7 +19,8 @@
       "Bash(timeout 30 bun run dev)",
       "Bash(timeout:*)",
       "Bash(chmod:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(git commit:*)"
     ],
     "deny": []
   }

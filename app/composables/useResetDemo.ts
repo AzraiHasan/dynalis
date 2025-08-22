@@ -18,20 +18,28 @@ export const useResetDemo = (): ResetDemoService => {
 
   const clearSupabaseData = async () => {
     resetStatus.value = 'Clearing database tables...'
+    console.log('🚀 [RESET] Starting database clearing process')
     
     try {
+      console.log('🔄 [RESET] Calling siteService.clearAllDemoData()')
       await siteService.clearAllDemoData()
       resetProgress.value = 40 // 40% for database clearing
       resetStatus.value = 'Database cleared successfully'
-      console.log('Successfully cleared all available database tables')
+      console.log('✅ [RESET] Successfully cleared all available database tables')
+      console.log('🎯 [RESET] Sites table clearing should be complete at this point')
     } catch (error) {
-      console.error('Failed to clear database:', error)
+      console.error('❌ [RESET] Failed to clear database:', error)
+      console.error('🚨 [RESET] Database clearing error details:', {
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : 'No stack trace available'
+      })
       resetStatus.value = 'Database clearing failed'
       throw error
     }
   }
 
   const clearLocalStorage = () => {
+    console.log('🔄 [RESET] Starting local storage clearing')
     resetStatus.value = 'Clearing local storage...'
     
     const keysToRemove = [
@@ -41,24 +49,28 @@ export const useResetDemo = (): ResetDemoService => {
       'sidebar-collapsed'
     ]
 
+    console.log('📋 [RESET] Keys to remove from localStorage:', keysToRemove)
     // Clear specific keys
     keysToRemove.forEach(key => {
       localStorage.removeItem(key)
-      console.log(`Removed localStorage key: ${key}`)
+      console.log(`✅ [RESET] Removed localStorage key: ${key}`)
     })
 
     // Clear pattern-based keys (bg_upload_*)
     const allKeys = Object.keys(localStorage)
     const bgUploadKeys = allKeys.filter(key => key.startsWith('bg_upload_'))
+    console.log('🔍 [RESET] Found bg_upload_* keys:', bgUploadKeys)
     bgUploadKeys.forEach(key => {
       localStorage.removeItem(key)
-      console.log(`Removed localStorage key: ${key}`)
+      console.log(`✅ [RESET] Removed localStorage key: ${key}`)
     })
 
     resetProgress.value = 60 // 60% after local storage
+    console.log('✅ [RESET] Local storage clearing completed')
   }
 
   const clearApplicationState = () => {
+    console.log('🔄 [RESET] Starting application state clearing')
     resetStatus.value = 'Resetting application state...'
     
     try {
@@ -72,6 +84,7 @@ export const useResetDemo = (): ResetDemoService => {
         'file-upload-state'
       ]
 
+      console.log('📋 [RESET] Application state keys to reset:', stateKeys)
       stateKeys.forEach(key => {
         const state = useState(key, () => null)
         if (key.includes('loading')) {
@@ -83,37 +96,49 @@ export const useResetDemo = (): ResetDemoService => {
         } else {
           state.value = null
         }
-        console.log(`Reset state: ${key}`)
+        console.log(`✅ [RESET] Reset state: ${key}`)
       })
 
       resetProgress.value = 80 // 80% after state clearing
+      console.log('✅ [RESET] Application state clearing completed')
     } catch (error) {
-      console.error('Error clearing application state:', error)
+      console.error('❌ [RESET] Error clearing application state:', error)
       throw error
     }
   }
 
   const resetDemo = async () => {
     if (isResetting.value) {
-      console.warn('Reset already in progress')
+      console.warn('⚠️ [RESET] Reset already in progress')
       return
     }
 
     try {
+      console.log('🚀 [RESET] ===================================================')
+      console.log('🚀 [RESET] STARTING COMPLETE DEMO RESET OPERATION')
+      console.log('🚀 [RESET] ===================================================')
+      
       isResetting.value = true
       resetProgress.value = 0
       resetStatus.value = 'Starting reset...'
 
       // Step 1: Clear Supabase data (40% of progress)
+      console.log('🔄 [RESET] STEP 1: Clearing Supabase database data')
       await clearSupabaseData()
+      console.log('✅ [RESET] STEP 1 COMPLETED: Database clearing finished')
 
       // Step 2: Clear local storage (20% of progress) 
+      console.log('🔄 [RESET] STEP 2: Clearing local storage')
       clearLocalStorage()
+      console.log('✅ [RESET] STEP 2 COMPLETED: Local storage cleared')
 
       // Step 3: Clear application state (20% of progress)
+      console.log('🔄 [RESET] STEP 3: Clearing application state')
       clearApplicationState()
+      console.log('✅ [RESET] STEP 3 COMPLETED: Application state cleared')
 
       // Step 4: Final cleanup (20% of progress)
+      console.log('🔄 [RESET] STEP 4: Finalizing reset')
       resetStatus.value = 'Finalizing reset...'
       resetProgress.value = 90
 
@@ -123,7 +148,9 @@ export const useResetDemo = (): ResetDemoService => {
       resetProgress.value = 100
       resetStatus.value = 'Reset completed successfully!'
 
-      console.log('Demo reset completed successfully')
+      console.log('✅ [RESET] Demo reset completed successfully')
+      console.log('🎯 [RESET] ALL STEPS COMPLETED - Sites table should be empty now')
+      console.log('🚀 [RESET] ===================================================')
 
       // Auto-clear status after success and force refresh
       setTimeout(() => {
@@ -131,13 +158,18 @@ export const useResetDemo = (): ResetDemoService => {
         resetProgress.value = 0
         
         // Force a complete page refresh to ensure UI updates
-        if (process.client) {
+        if (import.meta.client) {
           window.location.reload()
         }
       }, 1500)
 
     } catch (error) {
-      console.error('Reset demo failed:', error)
+      console.error('❌ [RESET] Reset demo failed:', error)
+      console.error('🚨 [RESET] RESET FAILURE - Full error details:', {
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : 'No stack trace available'
+      })
+      console.error('🚨 [RESET] ===================================================')
       resetStatus.value = `Reset failed: ${error instanceof Error ? error.message : 'Unknown error'}`
       
       // Keep error visible longer
@@ -149,6 +181,7 @@ export const useResetDemo = (): ResetDemoService => {
       throw error
     } finally {
       isResetting.value = false
+      console.log('🏁 [RESET] Reset operation finished (cleanup phase)')
     }
   }
 

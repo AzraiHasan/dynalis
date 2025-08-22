@@ -258,22 +258,29 @@ export const useSiteService = () => {
   
   // Clear all data from a specific table
   const clearTable = async (tableName: string) => {
+    console.log(`🔄 [RESET] Starting clearTable operation for: ${tableName}`)
     return await executeWithConnection(async () => {
       try {
-        // Try using RPC function for TRUNCATE (faster and more reliable)
+        console.log(`🔄 [RESET] Attempting TRUNCATE via RPC for table: ${tableName}`)
+        // Try using RPC function for TRUNCATE (faster and more reliable, bypasses RLS)
         const { error: truncateError } = await supabase.rpc('truncate_table', { table_name: tableName })
         
         if (!truncateError) {
-          console.log(`Successfully truncated ${tableName} table`)
+          console.log(`✅ [RESET] Successfully truncated ${tableName} table via RPC`)
+          if (tableName === 'sites') {
+            console.log('🎯 [RESET] *** SITES TABLE TRUNCATED VIA RPC ***')
+          }
           return true
         }
         
-        console.warn(`Truncate failed for ${tableName}, falling back to DELETE:`, truncateError.message)
-      } catch (e) {
-        console.warn(`Truncate not available for ${tableName}, using DELETE method`)
+        console.warn(`⚠️ [RESET] Truncate RPC failed for ${tableName}, falling back to DELETE:`, truncateError.message)
+      } catch (truncateErr) {
+        console.warn(`⚠️ [RESET] Truncate RPC not available for ${tableName}, using DELETE method:`, truncateErr)
       }
       
+      console.log(`🔄 [RESET] Using DELETE fallback method for table: ${tableName}`)
       // Fallback: First check if table exists by trying to count records
+      console.log(`🔍 [RESET] Checking if table ${tableName} exists and counting records`)
       const { count, error: countError } = await supabase
         .from(tableName as keyof Database['public']['Tables'])
         .select('*', { count: 'exact', head: true })
@@ -284,21 +291,28 @@ export const useSiteService = () => {
             countError.message?.includes('does not exist') ||
             countError.message?.includes('relation') ||
             countError.details?.includes('does not exist')) {
-          console.log(`Table ${tableName} does not exist, skipping...`)
+          console.log(`ℹ️ [RESET] Table ${tableName} does not exist, skipping...`)
           return true
         }
-        console.error(`Error checking ${tableName} table:`, countError)
+        console.error(`❌ [RESET] Error checking ${tableName} table:`, countError)
         throw new Error(`Failed to access ${tableName}: ${countError.message || JSON.stringify(countError)}`)
       }
       
+      console.log(`📊 [RESET] Table ${tableName} contains ${count} records`)
       if (count === 0) {
-        console.log(`Table ${tableName} is already empty`)
+        console.log(`ℹ️ [RESET] Table ${tableName} is already empty`)
+        if (tableName === 'sites') {
+          console.log('🎯 [RESET] *** SITES TABLE WAS ALREADY EMPTY ***')
+        }
         return true
       }
       
+      console.log(`🗑️ [RESET] Starting batch deletion for table ${tableName} with ${count} records`)
       // Delete all records in batches if table has data
       let deletedCount = 0
+      let batchNumber = 1
       while (true) {
+        console.log(`🔄 [RESET] Processing batch ${batchNumber} for table ${tableName}`)
         const { data, error: fetchError } = await supabase
           .from(tableName as keyof Database['public']['Tables'])
           .select('id')
@@ -310,14 +324,18 @@ export const useSiteService = () => {
               fetchError.message?.includes('does not exist') ||
               fetchError.message?.includes('relation') ||
               fetchError.details?.includes('does not exist')) {
-            console.log(`Table ${tableName} does not exist during fetch, skipping...`)
+            console.log(`ℹ️ [RESET] Table ${tableName} does not exist during fetch, skipping...`)
             return true
           }
           throw new Error(`Failed to fetch ${tableName} records: ${fetchError.message || JSON.stringify(fetchError)}`)
         }
         
-        if (!data || data.length === 0) break
+        if (!data || data.length === 0) {
+          console.log(`✅ [RESET] No more records to delete from ${tableName}`)
+          break
+        }
         
+        console.log(`🗑️ [RESET] Deleting ${data.length} records from ${tableName} (batch ${batchNumber})`)
         const { error: deleteError } = await supabase
           .from(tableName as keyof Database['public']['Tables'])
           .delete()
@@ -328,37 +346,131 @@ export const useSiteService = () => {
         }
         
         deletedCount += data.length
-        console.log(`Deleted ${data.length} records from ${tableName} (total: ${deletedCount})`)
+        console.log(`✅ [RESET] Deleted ${data.length} records from ${tableName} (total deleted: ${deletedCount})`)
         
+        if (tableName === 'sites') {
+          console.log(`🎯 [RESET] *** SITES TABLE: ${data.length} records deleted in batch ${batchNumber}, total: ${deletedCount} ***`)
+        }
+        
+        batchNumber++
         // Break if we deleted less than the batch size (means we're done)
         if (data.length < 1000) break
       }
       
-      console.log(`Successfully cleared ${tableName} table (${deletedCount} records total)`)
+      console.log(`✅ [RESET] Successfully cleared ${tableName} table (${deletedCount} records total)`)
+      if (tableName === 'sites') {
+        console.log(`🎯 [RESET] *** SITES TABLE FULLY CLEARED: ${deletedCount} total records deleted ***`)
+      }
       return true
     }, `clear ${tableName} table`)
   }
 
-  // Clear all demo data in the correct order
+  // Clear all demo data using the database function that bypasses RLS
   const clearAllDemoData = async () => {
-    const tablesToClear = [
-      'sites',  // Start with the main table we know exists
-      'upload_jobs'  // Only include tables that exist
-    ]
-
-    const results = []
-    for (const table of tablesToClear) {
+    console.log('🚀 [RESET] Starting clearAllDemoData operation')
+    return await executeWithConnection(async () => {
       try {
-        await clearTable(table)
-        results.push(`${table}: cleared`)
+        console.log('🔄 [RESET] Attempting to clear data via RPC function: clear_demo_data')
+        console.log('🔍 [RESET] Testing RPC function availability first...')
+        
+        // Use the dedicated RPC function that bypasses RLS
+        const { data, error } = await supabase.rpc('clear_demo_data')
+        
+        if (error) {
+          console.error('❌ [RESET] RPC clear_demo_data failed:')
+          console.error('❌ [RESET] Error code:', error.code)
+          console.error('❌ [RESET] Error message:', error.message)
+          console.error('❌ [RESET] Error details:', error.details)
+          console.error('❌ [RESET] Error hint:', error.hint)
+          console.error('❌ [RESET] Full error object:', JSON.stringify(error, null, 2))
+          throw error
+        }
+        
+        console.log('✅ [RESET] Demo data clearing completed via RPC:', data)
+        console.log('🎯 [RESET] Sites table should be cleared by RPC function')
+        
+        // Verify the clearing worked by checking sites table count
+        try {
+          const { count, error: countError } = await supabase
+            .from('sites')
+            .select('*', { count: 'exact', head: true })
+          
+          if (countError) {
+            console.error('❌ [RESET] Error checking sites table after RPC:', countError)
+          } else {
+            console.log(`📊 [RESET] Sites table count after RPC clearing: ${count} records`)
+            if (count === 0) {
+              console.log('✅ [RESET] *** SITES TABLE SUCCESSFULLY CLEARED BY RPC ***')
+            } else {
+              console.error(`🚨 [RESET] *** SITES TABLE NOT CLEARED - STILL HAS ${count} RECORDS ***`)
+            }
+          }
+        } catch (verifyError) {
+          console.error('❌ [RESET] Failed to verify clearing:', verifyError)
+        }
+        
+        return true
       } catch (error) {
-        console.warn(`Failed to clear ${table}, skipping:`, error.message)
-        results.push(`${table}: skipped (${error.message})`)
+        console.warn('⚠️ [RESET] RPC method failed, falling back to individual table clearing:')
+        console.warn('⚠️ [RESET] RPC error details:', error instanceof Error ? error.message : String(error))
+        
+        // Fallback to individual table clearing
+        console.log('🔄 [RESET] Using fallback method - clearing tables individually')
+        const tablesToClear = [
+          'upload_job_records',  // Child table - links jobs to sites
+          'upload_conflicts',    // Child table - conflicts for jobs
+          'upload_jobs',         // Parent table for job tracking
+          'sites'               // Main table with site data
+        ]
+
+        console.log('📋 [RESET] Tables to clear:', tablesToClear)
+        const results = []
+        for (const table of tablesToClear) {
+          try {
+            console.log(`🔄 [RESET] Attempting to clear table: ${table}`)
+            const tableResult = await clearTable(table)
+            console.log(`✅ [RESET] Successfully cleared table: ${table}, result:`, tableResult)
+            results.push(`${table}: cleared`)
+            
+            if (table === 'sites') {
+              console.log('🎯 [RESET] *** SITES TABLE CLEARED SUCCESSFULLY ***')
+            }
+          } catch (tableError) {
+            const errorMessage = tableError instanceof Error ? tableError.message : String(tableError)
+            console.error(`❌ [RESET] Failed to clear ${table}:`, errorMessage)
+            results.push(`${table}: skipped (${errorMessage})`)
+            
+            if (table === 'sites') {
+              console.error('🚨 [RESET] *** SITES TABLE CLEARING FAILED ***', errorMessage)
+            }
+          }
+        }
+        
+        console.log('✅ [RESET] Demo data clearing completed via fallback:', results)
+        
+        // Final verification of sites table after fallback
+        try {
+          const { count, error: countError } = await supabase
+            .from('sites')
+            .select('*', { count: 'exact', head: true })
+          
+          if (countError) {
+            console.error('❌ [RESET] Error checking sites table after fallback:', countError)
+          } else {
+            console.log(`📊 [RESET] Sites table count after fallback clearing: ${count} records`)
+            if (count === 0) {
+              console.log('✅ [RESET] *** SITES TABLE SUCCESSFULLY CLEARED BY FALLBACK ***')
+            } else {
+              console.error(`🚨 [RESET] *** SITES TABLE NOT CLEARED - STILL HAS ${count} RECORDS ***`)
+            }
+          }
+        } catch (verifyError) {
+          console.error('❌ [RESET] Failed to verify fallback clearing:', verifyError)
+        }
+        
+        return true
       }
-    }
-    
-    console.log('Demo data clearing completed:', results)
-    return true
+    }, 'clear all demo data')
   }
 
   // Get connection pool statistics
@@ -366,17 +478,82 @@ export const useSiteService = () => {
     return connectionManager.getStats()
   }
   
+  // Test function to directly check RPC availability and table clearing
+  const testRPCFunctions = async () => {
+    console.log('🧪 [TEST] Testing RPC functions availability')
+    
+    try {
+      // Test clear_demo_data RPC
+      console.log('🧪 [TEST] Testing clear_demo_data RPC function...')
+      const { data: rpcData, error: rpcError } = await supabase.rpc('clear_demo_data')
+      
+      if (rpcError) {
+        console.error('❌ [TEST] clear_demo_data RPC failed:', rpcError)
+        return { rpcAvailable: false, error: rpcError }
+      } else {
+        console.log('✅ [TEST] clear_demo_data RPC succeeded:', rpcData)
+        return { rpcAvailable: true, data: rpcData }
+      }
+    } catch (error) {
+      console.error('❌ [TEST] Exception testing RPC:', error)
+      return { rpcAvailable: false, error }
+    }
+  }
+  
+  // Test function to check current table counts
+  const getTableCounts = async () => {
+    console.log('📊 [TEST] Getting current table counts')
+    const tables = ['sites', 'upload_jobs', 'upload_conflicts', 'upload_job_records']
+    const counts: Record<string, number> = {}
+    
+    for (const table of tables) {
+      try {
+        const { count, error } = await supabase
+          .from(table as keyof Database['public']['Tables'])
+          .select('*', { count: 'exact', head: true })
+        
+        if (error) {
+          console.error(`❌ [TEST] Error counting ${table}:`, error)
+          counts[table] = -1 // -1 indicates error
+        } else {
+          counts[table] = count || 0
+          console.log(`📊 [TEST] ${table}: ${count} records`)
+        }
+      } catch (err) {
+        console.error(`❌ [TEST] Exception counting ${table}:`, err)
+        counts[table] = -1
+      }
+    }
+    
+    return counts
+  }
+  
   // Initialize the database when the service is first used
   initializeDatabase().catch(err => {
     console.error('Database initialization failed:', err)
   })
   
-  return {
+  // Expose debugging functions to window in development
+  if (typeof window !== 'undefined' && import.meta.dev) {
+    (window as typeof window & { debugReset?: typeof service }).debugReset = {
+      testRPCFunctions,
+      getTableCounts,
+      clearAllDemoData,
+      clearTable
+    }
+    console.log('🧪 [DEBUG] Reset debugging functions available at window.debugReset')
+  }
+  
+  const service = {
     uploadSiteDataBatch,
     fetchSiteData,
     clearTable,
     clearAllDemoData,
     getConnectionStats,
     connectionConfig, // Export config for debugging
+    testRPCFunctions, // For debugging
+    getTableCounts, // For debugging
   }
+  
+  return service
 }
