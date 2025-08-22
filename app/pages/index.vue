@@ -1,30 +1,39 @@
 <!-- pages/index.vue -->
 <script setup lang="ts">
-import { useAuth } from "~/composables/useAuth";
-
 definePageMeta({
   layout: 'auth',
   ssr: false,
 });
 
 const router = useRouter();
-const auth = useAuth();
+const route = useRoute();
+const toast = useToast();
 
-// Redirect authenticated users to dashboard
-watch(auth.user, (user) => {
-  if (user) {
-    router.push("/dashboard");
+// Handle demo completion/expiration messages
+onMounted(() => {
+  if (route.query.demo_completed === 'true') {
+    toast.add({
+      title: 'Demo Completed!',
+      description: 'Ready to unlock the full power of Dynalis? Create your account now.',
+      color: 'green',
+      timeout: 5000
+    })
+  } else if (route.query.demo_expired === 'true') {
+    toast.add({
+      title: 'Demo Session Expired',
+      description: 'Your demo session has ended. Sign up now to continue with unlimited access.',
+      color: 'orange',
+      timeout: 5000
+    })
   }
-}, { immediate: true });
+})
 
 // Functions for navigation
-function goToLogin() {
-  router.push("/login");
+function startDemo() {
+  router.push("/demo-sandbox");
 }
 
-function goToSignup() {
-  router.push("/signup");
-}
+// Removed login/signup functions for demo-only version
 </script>
 
 <template>
@@ -37,11 +46,11 @@ function goToSignup() {
           <div class="flex justify-center mb-6">
             <UIcon name="i-lucide-building-2" class="text-emerald-500 w-20 h-20" />
           </div>
-          <h1 class="text-4xl font-bold text-gray-800 mb-4">Welcome to Dynalis</h1>
-          <p class="text-xl text-gray-600 mb-6">Your Data Analytics Assistant for Property Management</p>
+          <h1 class="text-4xl font-bold text-gray-800 mb-4">See Dynalis in Action in 60 Seconds</h1>
+          <p class="text-xl text-gray-600 mb-6">Experience powerful property data management without any setup</p>
           <p class="text-gray-500 max-w-2xl mx-auto">
-            Streamline your property rental data processing with our batch upload system. 
-            Upload, validate, and process large datasets efficiently with real-time tracking and comprehensive analytics.
+            Try our interactive demo with real Malaysian property data. Upload files, track progress, 
+            and explore analytics - all without creating an account.
           </p>
         </div>
 
@@ -77,22 +86,27 @@ function goToSignup() {
             <div class="mt-8 flex flex-col sm:flex-row gap-4">
               <UButton 
                 color="primary" 
-                size="lg"
-                icon="i-lucide-log-in"
-                class="flex-1 sm:flex-none"
-                @click="goToLogin"
+                size="xl"
+                icon="i-heroicons-play"
+                class="flex-1 sm:flex-none shadow-lg"
+                @click="startDemo"
               >
-                Sign In
+                🚀 Try Interactive Demo
               </UButton>
-              <UButton 
-                variant="outline" 
-                size="lg"
-                icon="i-lucide-user-plus"
-                class="flex-1 sm:flex-none"
-                @click="goToSignup"
-              >
-                Create Account
-              </UButton>
+            </div>
+            
+            <!-- Demo Benefits -->
+            <div class="mt-6 p-4 bg-blue-50 rounded-lg">
+              <div class="flex items-center space-x-2 mb-2">
+                <UIcon name="i-heroicons-sparkles" class="text-blue-600 w-5 h-5" />
+                <span class="text-sm font-medium text-blue-900">Demo includes:</span>
+              </div>
+              <ul class="text-sm text-blue-700 space-y-1">
+                <li>• Pre-loaded Malaysian property data</li>
+                <li>• File upload simulation</li>
+                <li>• Real-time progress tracking</li>
+                <li>• 30-minute session</li>
+              </ul>
             </div>
           </UCard>
 
@@ -124,19 +138,26 @@ function goToSignup() {
           </div>
         </div>
 
-        <!-- Template Download Call-to-Action -->
+        <!-- Demo Call-to-Action -->
         <div class="mt-12 text-center">
-          <UCard class="p-6 bg-gradient-to-r from-emerald-500 to-blue-600 text-white">
-            <h3 class="text-xl font-semibold mb-3">Ready to get started?</h3>
-            <p class="mb-4">Download our sample template to see the expected data format</p>
-            <a
-              href="/templates/dynalis-sample-data.xlsx"
-              download
-              class="inline-flex items-center gap-2 bg-white text-emerald-600 font-medium px-6 py-3 rounded-lg hover:bg-gray-100 transition-colors"
-            >
-              <UIcon name="i-lucide-download" class="w-5 h-5" />
-              Download Sample Template
-            </a>
+          <UCard class="p-8 bg-gradient-to-r from-emerald-500 to-blue-600 text-white">
+            <h3 class="text-2xl font-bold mb-4">Experience the Power of Dynalis</h3>
+            <p class="text-lg mb-6 opacity-90">
+              Join thousands of property managers who trust Dynalis for their data processing needs
+            </p>
+            <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
+              <UButton 
+                size="xl"
+                variant="solid"
+                class="bg-white text-blue-600 font-semibold px-8 py-4 hover:bg-gray-50"
+                @click="startDemo"
+              >
+                🚀 Start Your Demo Now
+              </UButton>
+              <div class="text-sm opacity-75">
+                No signup required • 30-minute demo
+              </div>
+            </div>
           </UCard>
         </div>
       </div>
