@@ -77,14 +77,6 @@
                 <UIcon name="i-lucide-upload" class="w-5 h-5" />
                 <span class="font-medium">Data Upload</span>
               </NuxtLink>
-
-              <NuxtLink
-                to="/"
-                class="flex items-center gap-3 px-4 py-3 text-emerald-700 bg-emerald-50 rounded-lg hover:bg-emerald-100 transition-colors mt-4"
-              >
-                <UIcon name="i-lucide-home" class="w-5 h-5" />
-                <span class="font-medium">Back to Home</span>
-              </NuxtLink>
             </template>
           </AuthState>
 
@@ -115,7 +107,7 @@
             </div>
             
             <UButton 
-              color="red" 
+              color="error" 
               variant="soft" 
               size="sm" 
               icon="i-lucide-x-circle" 
