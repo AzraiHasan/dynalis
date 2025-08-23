@@ -19,49 +19,24 @@
 
         <!-- Navigation -->
         <nav class="flex-1 p-4 space-y-2">
-          <AuthState v-slot="{ loggedIn }">
-            <!-- Authenticated Navigation -->
-            <template v-if="loggedIn">
-              <NuxtLink
-                to="/dashboard"
-                class="flex items-center gap-3 px-4 py-3 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
-                :class="{ 'bg-emerald-50 text-emerald-700 border-emerald-200': $route.path === '/dashboard' }"
-              >
-                <UIcon name="i-lucide-layout-dashboard" class="w-5 h-5" />
-                <span class="font-medium">Dashboard</span>
-              </NuxtLink>
+          <!-- Demo Navigation -->
+          <NuxtLink
+            to="/"
+            class="flex items-center gap-3 px-4 py-3 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
+            :class="{ 'bg-emerald-50 text-emerald-700 border-emerald-200': $route.path === '/' }"
+          >
+            <UIcon name="i-lucide-home" class="w-5 h-5" />
+            <span class="font-medium">Home</span>
+          </NuxtLink>
 
-              <NuxtLink
-                to="/dataupload"
-                class="flex items-center gap-3 px-4 py-3 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
-                :class="{ 'bg-emerald-50 text-emerald-700 border-emerald-200': $route.path === '/dataupload' }"
-              >
-                <UIcon name="i-lucide-upload" class="w-5 h-5" />
-                <span class="font-medium">Data Upload</span>
-              </NuxtLink>
-            </template>
-
-            <!-- Unauthenticated Navigation -->
-            <template v-else>
-              <div class="px-4 py-3 text-gray-500 text-sm">
-                <p class="font-medium mb-1">Sign in to access:</p>
-                <ul class="text-xs space-y-1 ml-2">
-                  <li>• Dashboard Analytics</li>
-                  <li>• Data Upload Tool</li>
-                  <li>• Site Management</li>
-                </ul>
-              </div>
-              
-              <NuxtLink
-                to="/"
-                class="flex items-center gap-3 px-4 py-3 text-emerald-700 bg-emerald-50 rounded-lg hover:bg-emerald-100 transition-colors"
-                :class="{ 'bg-emerald-100': $route.path === '/' }"
-              >
-                <UIcon name="i-lucide-log-in" class="w-5 h-5" />
-                <span class="font-medium">Sign In</span>
-              </NuxtLink>
-            </template>
-          </AuthState>
+          <NuxtLink
+            to="/demo-sandbox"
+            class="flex items-center gap-3 px-4 py-3 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
+            :class="{ 'bg-emerald-50 text-emerald-700 border-emerald-200': $route.path === '/demo-sandbox' }"
+          >
+            <UIcon name="i-lucide-play-circle" class="w-5 h-5" />
+            <span class="font-medium">Interactive Demo</span>
+          </NuxtLink>
 
           <!-- Template Download (Always Available) -->
           <div class="pt-4 border-t border-gray-200">
@@ -78,45 +53,15 @@
           </div>
         </nav>
 
-        <!-- User Section -->
+        <!-- Demo Info Section -->
         <div class="p-4 border-t border-gray-200">
-          <AuthState v-slot="{ loggedIn, user }">
-            <!-- Authenticated User Section -->
-            <div v-if="loggedIn" class="space-y-3">
-              <div class="flex items-center gap-3 px-3 py-2 bg-gray-50 rounded-lg">
-                <div class="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center">
-                  <UIcon name="i-lucide-user" class="w-4 h-4 text-emerald-600" />
-                </div>
-                <div class="flex-1 min-w-0">
-                  <p class="text-sm font-medium text-gray-800 truncate">
-                    {{ user?.email || user?.id }}
-                  </p>
-                  <p class="text-xs text-gray-500">Logged in</p>
-                </div>
-              </div>
-              <UButton 
-                color="gray" 
-                variant="soft" 
-                size="sm" 
-                icon="i-lucide-log-out" 
-                class="w-full justify-center"
-                @click="handleLogout"
-              >
-                Logout
-              </UButton>
+          <div class="text-center p-3 bg-emerald-50 rounded-lg">
+            <div class="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-2">
+              <UIcon name="i-lucide-play-circle" class="w-4 h-4 text-emerald-600" />
             </div>
-            
-            <!-- Unauthenticated User Section -->
-            <div v-else class="space-y-3">
-              <div class="text-center p-3 bg-gray-50 rounded-lg">
-                <div class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-2">
-                  <UIcon name="i-lucide-user-x" class="w-4 h-4 text-gray-500" />
-                </div>
-                <p class="text-sm text-gray-600 mb-1">Not signed in</p>
-                <p class="text-xs text-gray-400">Sign in to access all features</p>
-              </div>
-            </div>
-          </AuthState>
+            <p class="text-sm text-gray-800 mb-1 font-medium">Demo Mode</p>
+            <p class="text-xs text-gray-500">Experience Dynalis features</p>
+          </div>
         </div>
       </aside>
 
@@ -158,37 +103,12 @@
 </template>
 
 <script setup lang="ts">
-const router = useRouter()
-const toast = useToast()
-const { clear: clearUserSession } = useUserSession()
 const sidebarOpen = ref(false)
 
 // Close sidebar on route change (mobile)
-watch(() => router.currentRoute.value.path, () => {
+watch(() => useRouter().currentRoute.value.path, () => {
   sidebarOpen.value = false
 })
-
-async function handleLogout() {
-  try {
-    await $fetch('/api/auth/logout', { method: 'POST' })
-    await clearUserSession()
-    
-    toast.add({
-      title: "Success",
-      description: "You have been logged out successfully.",
-      color: "success",
-    })
-    
-    router.push('/')
-  } catch (error) {
-    console.error('Logout error:', error)
-    toast.add({
-      title: "Error",
-      description: "Failed to logout. Please try again.",
-      color: "error",
-    })
-  }
-}
 
 // Make sidebar responsive
 onMounted(() => {

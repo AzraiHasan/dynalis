@@ -1,5 +1,5 @@
 {
-  "name": "Dynalis Local Demo",
+  "name": "Dynalis Demo Minimal",
   "private": true,
   "type": "module",
   "scripts": {
@@ -12,22 +12,18 @@
     "lint:fix": "eslint --fix ."
   },
   "dependencies": {
+    "@iconify-json/heroicons": "^1.2.1",
     "@iconify-json/lucide": "^1.2.31",
-    "@iconify-json/simple-icons": "^1.2.29",
     "@nuxt/ui": "^3.0.0",
-    "better-sqlite3": "^11.9.1",
-    "chart.js": "^4.4.8",
     "date-fns": "^2.30.0",
     "nuxt": "^3.16.0",
     "papaparse": "^5.5.2",
-    "vue-chartjs": "^5.3.2",
     "xlsx": "^0.18.5",
     "zod": "^3.24.2"
   },
   "devDependencies": {
     "@nuxt/eslint": "^1.2.0",
     "eslint": "^9.22.0",
-    "nuxt-auth-utils": "^0.5.19",
     "typescript": "^5.8.2"
   }
 }

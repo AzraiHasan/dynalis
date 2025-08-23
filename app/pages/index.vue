@@ -9,7 +9,6 @@ definePageMeta({
 });
 
 const router = useRouter();
-const { fetch: fetchUserSession } = useUserSession();
 
 const schema = z.object({
   email: z.string().email("Invalid email"),
@@ -33,35 +32,20 @@ if (typeof window !== 'undefined') {
 async function onSubmit(event: FormSubmitEvent<Schema>) {
   isLoading.value = true;
 
-  try {
-    // Call our new authentication endpoint
-    const response = await $fetch('/api/auth/login', {
-      method: 'POST',
-      body: event.data
-    });
-
-    // Fetch the user session after successful login
-    await fetchUserSession();
-
+  // Demo version - no real authentication
+  setTimeout(() => {
     toast.add({
-      title: "Success",
-      description: "You have been logged in successfully.",
-      color: "success",
+      title: "Demo Version",
+      description: "Login disabled in demo. Try the interactive demo instead!",
+      color: "info",
     });
-
-    // Add a small delay to show the toast before redirecting
-    setTimeout(() => {
-      router.push("/dataupload");
-    }, 500);
-  } catch (error: any) {
-    toast.add({
-      title: "Error",
-      description: error.message || "Login failed. Please check your credentials.",
-      color: "error",
-    });
-  } finally {
     isLoading.value = false;
-  }
+  }, 1000);
+}
+
+// Start demo function
+const startDemo = async () => {
+  await router.push('/demo-sandbox');
 }
 </script>
 
@@ -77,63 +61,36 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
           />
         </div>
         <h1 class="text-3xl font-bold text-gray-800">Welcome to Dynalis</h1>
-        <p class="text-gray-600 mt-2">Sign in to access your data analytics dashboard</p>
+        <p class="text-gray-600 mt-2">Property data management and analytics platform</p>
       </div>
 
-      <!-- Login Card -->
-      <UCard class="shadow-lg">
-        <UForm
-          :schema="schema"
-          :state="state"
-          class="space-y-4"
-          @submit="onSubmit"
-        >
-          <UFormField label="Email" name="email">
-            <UInput
-              v-model="state.email"
-              icon="i-lucide-mail"
-              placeholder="you@example.com"
-              autocomplete="email"
-              class="w-full"
-            />
-          </UFormField>
-
-          <UFormField label="Password" name="password">
-            <UInput
-              v-model="state.password"
-              type="password"
-              icon="i-lucide-lock"
-              placeholder="••••••••"
-              autocomplete="current-password"
-              class="w-full"
-            />
-          </UFormField>
-
-          <div class="flex items-center justify-between mt-2">
-            <UCheckbox label="Remember me" name="remember" />
-            <UButton variant="link" color="primary" size="xs">
-              Forgot password?
-            </UButton>
+      <!-- Demo CTA Card -->
+      <UCard class="mb-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
+        <div class="text-center p-4">
+          <div class="flex justify-center mb-3">
+            <UIcon name="i-heroicons-play-circle" class="text-blue-600 w-12 h-12" />
           </div>
-
-          <UButton
-            type="submit"
-            color="primary"
+          <h2 class="text-xl font-bold text-gray-800 mb-2">Try Interactive Demo</h2>
+          <p class="text-sm text-gray-600 mb-4">
+            Experience Dynalis with pre-loaded Malaysian property data. 
+            Upload files, track progress, and see analytics in action.
+          </p>
+          <UButton 
+            color="primary" 
+            size="lg" 
             block
-            :loading="isLoading"
-            class="mt-6"
+            class="mb-3"
+            @click="startDemo"
           >
-            Sign in
+            <UIcon name="i-heroicons-rocket-launch" class="mr-2" />
+            Start 30-Minute Demo
           </UButton>
-
-          <div class="text-center mt-4 text-sm text-gray-600">
-            Don't have an account?
-            <UButton variant="link" color="primary" size="xs">
-              Contact admin
-            </UButton>
-          </div>
-        </UForm>
+          <p class="text-xs text-gray-500">
+            No signup required • Full feature access • Sample Malaysian data included
+          </p>
+        </div>
       </UCard>
+
 
       <!-- Getting Started Tips -->
       <UCard class="mt-6 bg-blue-50 border-blue-200">
