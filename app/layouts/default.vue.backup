@@ -1,18 +1,11 @@
 <template>
   <UApp>
-    <!-- Landing page (no sidebar) -->
-    <div v-if="route.path === '/'" class="min-h-screen bg-gray-50">
-      <div class="p-6 max-w-4xl mx-auto">
-        <slot />
-      </div>
-    </div>
-
-    <!-- All other pages (with sidebar) -->
-    <div v-else class="flex h-screen bg-gray-50">
+    <div class="flex h-screen bg-gray-50">
       <!-- Sidebar -->
       <aside 
-        class="w-64 bg-white shadow-lg border-r border-gray-200 flex flex-col fixed md:relative h-full z-30"
-        :class="{ '-translate-x-full md:translate-x-0': !sidebarOpen, 'translate-x-0': sidebarOpen }"
+        v-show="route.path !== '/'"
+        class="w-64 bg-white shadow-lg border-r border-gray-200 flex flex-col"
+        :class="{ '-translate-x-full': !sidebarOpen, 'translate-x-0': sidebarOpen }"
       >
         <!-- Brand Header -->
         <div class="p-6 border-b border-gray-200">
@@ -49,10 +42,10 @@
               </NuxtLink>
             </template>
 
-            <!-- Unauthenticated Navigation (Demo Mode) -->
+            <!-- Unauthenticated Navigation -->
             <template v-else>
               <div class="px-4 py-3 text-gray-500 text-sm">
-                <p class="font-medium mb-1">Demo Mode Active:</p>
+                <p class="font-medium mb-1">Sign in to access:</p>
                 <ul class="text-xs space-y-1 ml-2">
                   <li>• Dashboard Analytics</li>
                   <li>• Data Upload Tool</li>
@@ -61,29 +54,12 @@
               </div>
               
               <NuxtLink
-                to="/dashboard"
-                class="flex items-center gap-3 px-4 py-3 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
-                :class="{ 'bg-emerald-50 text-emerald-700 border-emerald-200': $route.path === '/dashboard' }"
-              >
-                <UIcon name="i-lucide-layout-dashboard" class="w-5 h-5" />
-                <span class="font-medium">Dashboard</span>
-              </NuxtLink>
-
-              <NuxtLink
-                to="/dataupload"
-                class="flex items-center gap-3 px-4 py-3 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
-                :class="{ 'bg-emerald-50 text-emerald-700 border-emerald-200': $route.path === '/dataupload' }"
-              >
-                <UIcon name="i-lucide-upload" class="w-5 h-5" />
-                <span class="font-medium">Data Upload</span>
-              </NuxtLink>
-
-              <NuxtLink
                 to="/"
-                class="flex items-center gap-3 px-4 py-3 text-emerald-700 bg-emerald-50 rounded-lg hover:bg-emerald-100 transition-colors mt-4"
+                class="flex items-center gap-3 px-4 py-3 text-emerald-700 bg-emerald-50 rounded-lg hover:bg-emerald-100 transition-colors"
+                :class="{ 'bg-emerald-100': $route.path === '/' }"
               >
-                <UIcon name="i-lucide-home" class="w-5 h-5" />
-                <span class="font-medium">Back to Home</span>
+                <UIcon name="i-lucide-log-in" class="w-5 h-5" />
+                <span class="font-medium">Sign In</span>
               </NuxtLink>
             </template>
           </AuthState>
@@ -131,14 +107,14 @@
               </UButton>
             </div>
             
-            <!-- Demo Mode User Section -->
+            <!-- Unauthenticated User Section -->
             <div v-else class="space-y-3">
-              <div class="text-center p-3 bg-blue-50 rounded-lg border border-blue-200">
-                <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2">
-                  <UIcon name="i-lucide-zap" class="w-4 h-4 text-blue-500" />
+              <div class="text-center p-3 bg-gray-50 rounded-lg">
+                <div class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-2">
+                  <UIcon name="i-lucide-user-x" class="w-4 h-4 text-gray-500" />
                 </div>
-                <p class="text-sm font-medium text-blue-800 mb-1">Demo Mode</p>
-                <p class="text-xs text-blue-600">All data stays local</p>
+                <p class="text-sm text-gray-600 mb-1">Not signed in</p>
+                <p class="text-xs text-gray-400">Sign in to access all features</p>
               </div>
             </div>
           </AuthState>
@@ -147,15 +123,15 @@
 
       <!-- Mobile Overlay -->
       <div 
-        v-if="sidebarOpen" 
+        v-if="sidebarOpen && route.path !== '/'" 
         class="fixed inset-0 bg-black bg-opacity-25 z-20 md:hidden"
         @click="sidebarOpen = false"
       />
 
-      <!-- Main Content Area -->
-      <div class="flex-1 flex flex-col min-w-0 md:ml-0">
+      <!-- Main Content -->
+      <div class="flex-1 flex flex-col min-w-0">
         <!-- Mobile Header -->
-        <header class="md:hidden bg-white shadow-sm border-b border-gray-200 p-4">
+        <header v-if="route.path !== '/'" class="md:hidden bg-white shadow-sm border-b border-gray-200 p-4">
           <div class="flex items-center justify-between">
             <button 
               class="p-2 rounded-lg hover:bg-gray-100"
@@ -167,13 +143,15 @@
               <UIcon name="i-lucide-building-2" class="text-emerald-500 w-6 h-6" />
               <h1 class="text-lg font-bold text-gray-800">Dynalis</h1>
             </div>
-            <div class="w-10"/>
+            <div class="w-10"/> <!-- Spacer for center alignment -->
           </div>
         </header>
 
         <!-- Page Content -->
-        <main class="flex-1 overflow-auto p-6">
-          <slot />
+        <main class="flex-1 overflow-auto">
+          <div :class="route.path === '/' ? 'p-6 max-w-4xl mx-auto' : 'p-6'">
+            <slot />
+          </div>
         </main>
       </div>
     </div>
@@ -184,14 +162,12 @@
 const router = useRouter()
 const toast = useToast()
 const { clear: clearUserSession } = useUserSession()
-const sidebarOpen = ref(true)
+const sidebarOpen = ref(false)
 const route = useRoute()
 
 // Close sidebar on route change (mobile)
 watch(() => router.currentRoute.value.path, () => {
-  if (window.innerWidth < 768) {
-    sidebarOpen.value = false
-  }
+  sidebarOpen.value = false
 })
 
 async function handleLogout() {
@@ -216,7 +192,7 @@ async function handleLogout() {
   }
 }
 
-// Handle responsive behavior
+// Make sidebar responsive
 onMounted(() => {
   const handleResize = () => {
     if (window.innerWidth >= 768) {

@@ -1,6 +1,9 @@
 export default defineNuxtConfig({
   devtools: { enabled: true },
 
+  // Enable static generation for demo deployment
+  ssr: process.env.DEMO_MODE === 'true' ? false : true,
+
   nitro: {
     experimental: {
       database: true
@@ -14,6 +17,10 @@ export default defineNuxtConfig({
         },
       },
     },
+    // For demo deployment with static hosting
+    prerender: process.env.DEMO_MODE === 'true' ? {
+      routes: ['/']
+    } : undefined,
   },
 
   modules: ["@nuxt/ui", "@nuxt/eslint", "nuxt-auth-utils"],

@@ -2,8 +2,8 @@
 import { ref, computed } from 'vue'
 import Papa from 'papaparse'
 import * as XLSX from 'xlsx'
-import { parseDate } from '~/utils/dateUtils'
 import { useFileUploadStore, type FileDataRow } from '~/stores/fileUploadStore'
+import { useDemoMode } from './useDemoMode'
 
 // Define interfaces
 interface UploadState {
@@ -30,6 +30,8 @@ export const useFileUpload = () => {
   })
   
   const fileUploadStore = useFileUploadStore()
+  const { isDemoMode, simulateApiCall } = useDemoMode()
+  const MAX_DEMO_SIZE = 5 * 1024 * 1024 // 5MB
   
   const isUploading = computed(() => 
     ['preparing', 'uploading', 'processing'].includes(uploadState.value.status)
@@ -37,6 +39,13 @@ export const useFileUpload = () => {
   
   const processAndUpload = async (file: File): Promise<FileDataRow[]> => {
     try {
+      // Demo file size validation
+      if (isDemoMode.value && file.size > MAX_DEMO_SIZE) {
+        throw new Error(
+          'Demo is limited to files under 5MB. Please download our sample data to try the full experience!'
+        )
+      }
+
       // Reset state
       uploadState.value = {
         uploadId: crypto.randomUUID(),
@@ -71,6 +80,16 @@ export const useFileUpload = () => {
         
         uploadState.value.chunksUploaded++
         uploadState.value.progress = 5 + Math.floor((i + 1) / batches * 90)
+      }
+
+      // Simulate API call for batch upload in demo mode
+      if (isDemoMode.value) {
+        uploadState.value.status = 'processing'
+        await simulateApiCall('batch-upload', { sites: data })
+        await simulateApiCall('create-job', { 
+          filename: file.name, 
+          recordCount: data.length 
+        })
       }
       
       uploadState.value.status = 'complete'

@@ -235,6 +235,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
 import { useSQLiteSiteData } from '~/composables/useSQLiteSiteData'
+import { useDemoMode } from '~/composables/useDemoMode'
 import { useRouter } from "vue-router";
 import {
   getDaysUntilExpiration,
@@ -314,6 +315,7 @@ const uploadState = useUploadState(); */
 const isLoading = ref(true);
 const error = ref<Error | null>(null);
 const siteData = useSQLiteSiteData();
+const { isDemoMode, getFromDemoStorage, loadSampleData } = useDemoMode();
 
 const shouldAutoBuild = computed(() => {
   return route.query.building === "true";
@@ -330,20 +332,40 @@ onMounted(async () => {
       console.log(`Initializing from job: ${jobId}`)
     }
     
-    // Fetch data from SQLite database
-    console.log("Fetching data from SQLite database...")
-    const sourceData = await siteData.fetchData() || []
-    console.log(`Using SQLite as data source (${sourceData.length} records)`)
+    // Fetch data from appropriate source
+    let sourceData = []
+    if (isDemoMode.value) {
+      console.log("Demo mode: Loading data from localStorage...")
+      sourceData = getFromDemoStorage('sites') || []
+      
+      // If no data exists in demo mode, load sample data
+      if (sourceData.length === 0) {
+        console.log("No demo data found, loading sample data...")
+        sourceData = loadSampleData()
+      }
+      
+      console.log(`Using localStorage as data source (${sourceData.length} records)`)
+    } else {
+      console.log("Fetching data from SQLite database...")
+      sourceData = await siteData.fetchData() || []
+      console.log(`Using SQLite as data source (${sourceData.length} records)`)
+    }
     
-    // Continue with existing transformation code
+    // Transform data based on source
     console.log("Transforming data...")
-    fileData.value = sourceData.map((item) => ({
-      "SITE ID": item.site_id,
-      "EXP DATE": item.exp_date,
-      "TOTAL RENTAL (RM)": item.total_rental,
-      "TOTAL PAYMENT TO PAY (RM)": item.total_payment_to_pay,
-      "DEPOSIT (RM)": item.deposit,
-    }));
+    if (isDemoMode.value) {
+      // Demo mode data is already in the correct format (FileDataRow)
+      fileData.value = sourceData as FileRow[]
+    } else {
+      // Transform SQLite data to FileRow format
+      fileData.value = sourceData.map((item) => ({
+        "SITE ID": item.site_id,
+        "EXP DATE": item.exp_date,
+        "TOTAL RENTAL (RM)": item.total_rental,
+        "TOTAL PAYMENT TO PAY (RM)": item.total_payment_to_pay,
+        "DEPOSIT (RM)": item.deposit,
+      }));
+    }
 
     console.log("Calculating metrics...");
     // Calculate metrics 
@@ -714,23 +736,43 @@ const refreshDashboard = async () => {
     totalSites.value = 0;
     invalidDates.value = 0;
 
-    // Force refresh from database
-    console.log("Fetching data from database...");
-    await siteData.fetchData(true);
+    // Force refresh from appropriate source
+    let sourceData = []
+    if (isDemoMode.value) {
+      console.log("Demo mode: Refreshing data from localStorage...")
+      sourceData = getFromDemoStorage('sites') || []
+      
+      // If no data exists in demo mode, load sample data
+      if (sourceData.length === 0) {
+        console.log("No demo data found during refresh, loading sample data...")
+        sourceData = loadSampleData()
+      }
+      
+      console.log(`Data refreshed successfully. Rows: ${sourceData.length}`)
+    } else {
+      console.log("Fetching data from database...");
+      await siteData.fetchData(true);
 
-    // Re-run the same data loading
-    const dbsql = await siteData.fetchData();
-    console.log("Data fetched successfully. Rows:", dbsql?.length ?? 0);
+      // Re-run the same data loading
+      sourceData = await siteData.fetchData();
+      console.log("Data fetched successfully. Rows:", sourceData?.length ?? 0);
+    }
 
     console.log("Transforming data...");
-    // Transform and process data
-    fileData.value = (dbsql ?? []).map((item) => ({
-      "SITE ID": item.site_id,
-      "EXP DATE": item.exp_date,
-      "TOTAL RENTAL (RM)": item.total_rental,
-      "TOTAL PAYMENT TO PAY (RM)": item.total_payment_to_pay,
-      "DEPOSIT (RM)": item.deposit,
-    }));
+    // Transform data based on source
+    if (isDemoMode.value) {
+      // Demo mode data is already in the correct format
+      fileData.value = sourceData as FileRow[]
+    } else {
+      // Transform SQLite data to FileRow format
+      fileData.value = (sourceData ?? []).map((item) => ({
+        "SITE ID": item.site_id,
+        "EXP DATE": item.exp_date,
+        "TOTAL RENTAL (RM)": item.total_rental,
+        "TOTAL PAYMENT TO PAY (RM)": item.total_payment_to_pay,
+        "DEPOSIT (RM)": item.deposit,
+      }));
+    }
 
     console.log("Calculating metrics...");
     // Recalculate metrics

@@ -1,7 +1,6 @@
 <!-- pages/index.vue -->
 <script setup lang="ts">
-import * as z from "zod";
-import type { FormSubmitEvent } from "@nuxt/ui";
+import { useDemoMode } from '~/composables/useDemoMode';
 
 definePageMeta({
   ssr: false,
@@ -9,59 +8,28 @@ definePageMeta({
 });
 
 const router = useRouter();
-const { fetch: fetchUserSession } = useUserSession();
+const { loadSampleData } = useDemoMode();
 
-const schema = z.object({
-  email: z.string().email("Invalid email"),
-  password: z.string().min(8, "Must be at least 8 characters"),
-});
+const startDemo = () => {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('dynalis-demo-mode', 'true')
+    // Pre-load sample data for immediate demo experience
+    loadSampleData()
+  }
+  router.push('/dataupload')
+}
 
-type Schema = z.output<typeof schema>;
-
-const state = reactive<Partial<Schema>>({
-  email: "",
-  password: "",
-});
-
-const toast = useToast();
-const isLoading = ref(false);
+const downloadSample = () => {
+  const link = document.createElement('a')
+  link.href = '/templates/dynalis-sample-data.xlsx'
+  link.download = 'dynalis-sample-data.xlsx'
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+}
 
 if (typeof window !== 'undefined') {
   localStorage.removeItem("uploadedFileData");
-}
-
-async function onSubmit(event: FormSubmitEvent<Schema>) {
-  isLoading.value = true;
-
-  try {
-    // Call our new authentication endpoint
-    const response = await $fetch('/api/auth/login', {
-      method: 'POST',
-      body: event.data
-    });
-
-    // Fetch the user session after successful login
-    await fetchUserSession();
-
-    toast.add({
-      title: "Success",
-      description: "You have been logged in successfully.",
-      color: "success",
-    });
-
-    // Add a small delay to show the toast before redirecting
-    setTimeout(() => {
-      router.push("/dataupload");
-    }, 500);
-  } catch (error: any) {
-    toast.add({
-      title: "Error",
-      description: error.message || "Login failed. Please check your credentials.",
-      color: "error",
-    });
-  } finally {
-    isLoading.value = false;
-  }
 }
 </script>
 
@@ -77,63 +45,45 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
           />
         </div>
         <h1 class="text-3xl font-bold text-gray-800">Welcome to Dynalis</h1>
-        <p class="text-gray-600 mt-2">Sign in to access your data analytics dashboard</p>
+        <p class="text-gray-600 mt-2">Try our data analytics platform</p>
       </div>
 
-      <!-- Login Card -->
-      <UCard class="shadow-lg">
-        <UForm
-          :schema="schema"
-          :state="state"
-          class="space-y-4"
-          @submit="onSubmit"
-        >
-          <UFormField label="Email" name="email">
-            <UInput
-              v-model="state.email"
-              icon="i-lucide-mail"
-              placeholder="you@example.com"
-              autocomplete="email"
-              class="w-full"
-            />
-          </UFormField>
-
-          <UFormField label="Password" name="password">
-            <UInput
-              v-model="state.password"
-              type="password"
-              icon="i-lucide-lock"
-              placeholder="••••••••"
-              autocomplete="current-password"
-              class="w-full"
-            />
-          </UFormField>
-
-          <div class="flex items-center justify-between mt-2">
-            <UCheckbox label="Remember me" name="remember" />
-            <UButton variant="link" color="primary" size="xs">
-              Forgot password?
-            </UButton>
-          </div>
-
+      <!-- Demo Actions -->
+      <UCard class="shadow-lg mb-6">
+        <div class="space-y-4">
           <UButton
-            type="submit"
+            size="lg"
             color="primary"
             block
-            :loading="isLoading"
-            class="mt-6"
+            class="text-lg py-4"
+            @click="startDemo"
           >
-            Sign in
+            🚀 Try Demo (No Signup Required)
           </UButton>
-
-          <div class="text-center mt-4 text-sm text-gray-600">
-            Don't have an account?
-            <UButton variant="link" color="primary" size="xs">
-              Contact admin
-            </UButton>
-          </div>
-        </UForm>
+          
+          <UButton
+            variant="outline"
+            block
+            @click="downloadSample"
+          >
+            📥 Download Sample Data
+          </UButton>
+        </div>
       </UCard>
+
+      <!-- Demo Instructions -->
+      <UCard class="mb-6 bg-blue-50 border-blue-200">
+        <div class="text-sm text-blue-800">
+          <p class="font-medium mb-2">💡 Demo Instructions</p>
+          <ul class="space-y-1 text-xs text-blue-700">
+            <li>• Download the sample template below</li>
+            <li>• Or upload your own CSV/Excel file (max 5MB)</li>
+            <li>• Experience the full data processing workflow</li>
+            <li>• All data stays in your browser (localStorage)</li>
+          </ul>
+        </div>
+      </UCard>
+
 
       <!-- Getting Started Tips -->
       <UCard class="mt-6 bg-blue-50 border-blue-200">

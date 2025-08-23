@@ -4,8 +4,13 @@
       "Bash(bun run lint:*)",
       "Bash(git add:*)",
       "Bash(git push:*)",
-      "Bash(mkdir:*)"
+      "Bash(mkdir:*)",
+      "Bash(bun run:*)",
+      "Read(//home/azraihasan/**)"
     ],
-    "deny": []
+    "deny": [],
+    "additionalDirectories": [
+      "/home/azraihasan/screenshots"
+    ]
   }
 }
