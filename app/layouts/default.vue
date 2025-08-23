@@ -103,45 +103,28 @@
           </div>
         </nav>
 
-        <!-- User Section -->
+        <!-- Demo Mode User Section -->
         <div class="p-4 border-t border-gray-200">
-          <AuthState v-slot="{ loggedIn, user }">
-            <!-- Authenticated User Section -->
-            <div v-if="loggedIn" class="space-y-3">
-              <div class="flex items-center gap-3 px-3 py-2 bg-gray-50 rounded-lg">
-                <div class="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center">
-                  <UIcon name="i-lucide-user" class="w-4 h-4 text-emerald-600" />
-                </div>
-                <div class="flex-1 min-w-0">
-                  <p class="text-sm font-medium text-gray-800 truncate">
-                    {{ user?.email || user?.id }}
-                  </p>
-                  <p class="text-xs text-gray-500">Logged in</p>
-                </div>
+          <div class="space-y-3">
+            <div class="text-center p-3 bg-blue-50 rounded-lg border border-blue-200 mb-3">
+              <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                <UIcon name="i-lucide-zap" class="w-4 h-4 text-blue-500" />
               </div>
-              <UButton 
-                color="gray" 
-                variant="soft" 
-                size="sm" 
-                icon="i-lucide-log-out" 
-                class="w-full justify-center"
-                @click="handleLogout"
-              >
-                Logout
-              </UButton>
+              <p class="text-sm font-medium text-blue-800 mb-1">Demo Mode</p>
+              <p class="text-xs text-blue-600">All data stays local</p>
             </div>
             
-            <!-- Demo Mode User Section -->
-            <div v-else class="space-y-3">
-              <div class="text-center p-3 bg-blue-50 rounded-lg border border-blue-200">
-                <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2">
-                  <UIcon name="i-lucide-zap" class="w-4 h-4 text-blue-500" />
-                </div>
-                <p class="text-sm font-medium text-blue-800 mb-1">Demo Mode</p>
-                <p class="text-xs text-blue-600">All data stays local</p>
-              </div>
-            </div>
-          </AuthState>
+            <UButton 
+              color="red" 
+              variant="soft" 
+              size="sm" 
+              icon="i-lucide-x-circle" 
+              class="w-full justify-center"
+              @click="quitDemo"
+            >
+              Quit Demo
+            </UButton>
+          </div>
         </div>
       </aside>
 
@@ -183,7 +166,6 @@
 <script setup lang="ts">
 const router = useRouter()
 const toast = useToast()
-const { clear: clearUserSession } = useUserSession()
 const sidebarOpen = ref(true)
 const route = useRoute()
 
@@ -194,26 +176,28 @@ watch(() => router.currentRoute.value.path, () => {
   }
 })
 
-async function handleLogout() {
-  try {
-    await $fetch('/api/auth/logout', { method: 'POST' })
-    await clearUserSession()
+function quitDemo() {
+  if (typeof window !== 'undefined') {
+    // Clear demo mode flag
+    localStorage.removeItem('dynalis-demo-mode')
     
-    toast.add({
-      title: "Success",
-      description: "You have been logged out successfully.",
-      color: "success",
-    })
+    // Clear all demo data
+    const keys = Object.keys(localStorage).filter(key => 
+      key.startsWith('dynalis-demo-')
+    )
+    keys.forEach(key => localStorage.removeItem(key))
     
-    router.push('/')
-  } catch (error) {
-    console.error('Logout error:', error)
-    toast.add({
-      title: "Error",
-      description: "Failed to logout. Please try again.",
-      color: "error",
-    })
+    // Clear any uploaded file data
+    localStorage.removeItem('uploadedFileData')
   }
+  
+  toast.add({
+    title: "Demo Ended",
+    description: "Demo session cleared. Welcome back!",
+    color: "info",
+  })
+  
+  router.push('/')
 }
 
 // Handle responsive behavior

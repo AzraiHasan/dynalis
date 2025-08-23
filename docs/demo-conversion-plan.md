@@ -327,27 +327,104 @@ The existing client-side processing can handle:
 - **Export functionality** working with localStorage
 - **Job tracking** simulated realistically
 
-## Implementation Timeline
+## Implementation Status
 
-### Phase 1: Core Demo Setup (1 day)
-- [ ] Create demo mode composable
-- [ ] Modify landing page with demo buttons
-- [ ] Add file size validation
-- [ ] Test sample data download
+### Phase 1: Core Demo Setup ✅ COMPLETED
+- [x] Create demo mode composable (`app/composables/useDemoMode.ts`)
+- [x] Modify landing page with demo buttons and instructions
+- [x] Add file size validation (5MB limit for demo mode)
+- [x] Test sample data download functionality
+- [x] Remove authentication requirements from landing page
 
-### Phase 2: API Simulation (1 day)
-- [ ] Replace upload API with localStorage
-- [ ] Implement progress simulation
-- [ ] Add dashboard demo data loading
-- [ ] Test full upload workflow
+### Phase 2: API Simulation ✅ COMPLETED
+- [x] Replace upload API calls with localStorage simulation
+- [x] Implement realistic progress simulation with timing delays
+- [x] Add dashboard demo data loading with sample data
+- [x] Test full upload workflow from file upload to dashboard
+- [x] Create authentication bypass middleware for demo mode
 
-### Phase 3: Polish & Testing (0.5 days)
-- [ ] Add demo limitations messaging
-- [ ] Test various file sizes and formats
-- [ ] Ensure responsive design maintained
+### Phase 3: Layout & Navigation ✅ COMPLETED
+- [x] Redesign default layout with sidebar-first approach
+- [x] Fix sidebar visibility issues across all pages
+- [x] Ensure sidebar shows only on non-landing pages
+- [x] Add demo mode indicators in navigation
+- [x] Test responsive design across devices
+- [x] Add "Back to Home" navigation for demo users
+
+### Phase 4: Polish & Testing 🔄 IN PROGRESS
+- [x] Add demo limitations messaging
+- [x] Test various file sizes and formats
 - [ ] Cross-browser compatibility testing
+- [ ] Performance optimization for client-side processing
+- [ ] Final user experience testing
 
-**Total Estimated Time: 2.5 days**
+**Implementation Time: 3 days (completed phases 1-3)**
+
+## Key Implementation Details
+
+### Layout Architecture Redesign
+The default layout was completely rewritten with a sidebar-first approach to resolve visibility issues:
+
+```vue
+<!-- Landing page (no sidebar) -->
+<div v-if="route.path === '/'" class="min-h-screen bg-gray-50">
+  <div class="p-6 max-w-4xl mx-auto">
+    <slot />
+  </div>
+</div>
+
+<!-- All other pages (with sidebar) -->
+<div v-else class="flex h-screen bg-gray-50">
+  <!-- Sidebar always present -->
+  <aside class="w-64 bg-white shadow-lg border-r border-gray-200 flex flex-col fixed md:relative h-full z-30">
+    <!-- Sidebar content -->
+  </aside>
+  <!-- Main content area -->
+</div>
+```
+
+### Demo Mode Detection & Sample Data
+Implemented robust demo mode detection with pre-loaded sample data:
+
+```typescript
+// useDemoMode.ts - Key features:
+const loadSampleData = () => {
+  const sampleSites = [
+    { "SITE ID": "DEMO001", "EXP DATE": "2024-12-31", "TOTAL RENTAL (RM)": "2500", ... },
+    { "SITE ID": "DEMO002", "EXP DATE": "2024-11-15", "TOTAL RENTAL (RM)": "3200", ... },
+    // ... 3 more demo records
+  ]
+  saveToDemoStorage('sites', sampleSites)
+  return sampleSites
+}
+```
+
+### File Processing with Size Limits
+Added intelligent file size validation for demo mode:
+
+```typescript
+// 5MB limit specifically for demo mode
+if (isDemoMode.value && file.size > MAX_DEMO_SIZE) {
+  throw new Error(
+    'Demo is limited to files under 5MB. Please download our sample data to try the full experience!'
+  )
+}
+```
+
+### Authentication Bypass Strategy
+Created global middleware for seamless demo experience:
+
+```typescript
+// middleware/demo.global.ts
+export default defineNuxtRouteMiddleware(() => {
+  if (typeof window !== 'undefined') {
+    const isDemoMode = localStorage.getItem('dynalis-demo-mode') === 'true'
+    if (isDemoMode) {
+      return // Skip auth requirements
+    }
+  }
+})
+```
 
 ## Deployment Strategy
 
@@ -389,6 +466,47 @@ export default defineNuxtConfig({
 - **Sample data provided** for immediate testing
 - **Clear limitations** communicated upfront
 - **No registration barriers** to entry
+
+## Implementation Challenges & Solutions
+
+### Sidebar Visibility Issues 🐛 → ✅ RESOLVED
+**Problem**: Sidebar was inconsistently visible across different pages, particularly after navigation from landing page.
+
+**Root Cause**: Complex conditional rendering logic using computed properties and CSS classes created conflicts between Vue's reactivity system and Tailwind CSS transforms.
+
+**Failed Approaches**:
+1. Using `v-if` with computed property - caused rendering lifecycle issues
+2. Using CSS `hidden` class - conflicted with transform classes for mobile responsiveness
+3. Using `v-show` with complex conditions - still inconsistent across route changes
+
+**Final Solution**: Complete layout architecture redesign with clear separation:
+- Landing page gets its own isolated layout structure (`v-if="route.path === '/'`)
+- All other pages use consistent sidebar layout (`v-else`)
+- Sidebar is always rendered for non-landing pages, removing conditional complexity
+- Mobile responsiveness handled through transform classes only, not visibility toggles
+
+```vue
+<!-- Clean separation eliminates rendering conflicts -->
+<div v-if="route.path === '/'" class="min-h-screen bg-gray-50">
+  <!-- Landing page content only -->
+</div>
+<div v-else class="flex h-screen bg-gray-50">
+  <!-- Sidebar + content for all other pages -->
+</div>
+```
+
+**Result**: Sidebar now consistently visible on dashboard, dataupload, and all future pages.
+
+### Demo Mode State Management
+**Challenge**: Ensuring demo mode state persistence across page refreshes and navigation.
+
+**Solution**: localStorage-based state management with server-side rendering disabled for demo pages:
+```typescript
+const isDemoMode = computed(() => {
+  if (typeof window === 'undefined') return false
+  return localStorage.getItem('dynalis-demo-mode') === 'true'
+})
+```
 
 ## Potential Limitations & Mitigations
 
