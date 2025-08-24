@@ -68,6 +68,18 @@
               <span class="font-medium">Sample Template</span>
             </a>
             <p class="text-xs text-gray-400 px-4 mt-1">Prepare your data before upload</p>
+            
+            <!-- Reset Demo Button -->
+            <div class="mt-3 pt-3 border-t border-gray-100">
+              <button
+                class="flex items-center gap-3 px-4 py-3 text-gray-600 rounded-lg hover:bg-red-50 hover:text-red-700 transition-colors w-full"
+                @click="resetDemo"
+              >
+                <UIcon name="i-lucide-trash-2" class="w-5 h-5" />
+                <span class="font-medium">Reset Demo</span>
+              </button>
+              <p class="text-xs text-gray-400 px-4 mt-1">Clear all data to start fresh</p>
+            </div>
           </div>
         </nav>
 
@@ -166,6 +178,52 @@ function quitDemo() {
   })
   
   router.push('/')
+}
+
+function resetDemo() {
+  console.log('Reset Demo: Starting demo reset process...')
+  
+  if (typeof window !== 'undefined') {
+    // Clear all demo data but keep demo mode active
+    const keys = Object.keys(localStorage).filter(key => 
+      key.startsWith('dynalis-demo-')
+    )
+    console.log('Reset Demo: Found demo keys to clear:', keys)
+    keys.forEach(key => {
+      console.log(`Reset Demo: Removing localStorage key: ${key}`)
+      localStorage.removeItem(key)
+    })
+    
+    // Clear any uploaded file data and job tracking
+    const otherKeys = ['uploadedFileData', 'background_job_id', 'dashboard_building']
+    otherKeys.forEach(key => {
+      if (localStorage.getItem(key)) {
+        console.log(`Reset Demo: Removing localStorage key: ${key}`)
+        localStorage.removeItem(key)
+      }
+    })
+    
+    console.log('Reset Demo: All localStorage data cleared')
+  } else {
+    console.warn('Reset Demo: Window is not available, skipping localStorage operations')
+  }
+  
+  toast.add({
+    title: "Demo Reset",
+    description: "Demo data cleared. Dashboard reset to empty state.",
+    color: "orange",
+  })
+  console.log('Reset Demo: Toast notification displayed')
+  
+  // Refresh current page if on dashboard to show empty state
+  if (route.path === '/dashboard') {
+    console.log('Reset Demo: User is on dashboard, refreshing page...')
+    router.go(0)
+  } else {
+    console.log(`Reset Demo: User is on ${route.path}, no page refresh needed`)
+  }
+  
+  console.log('Reset Demo: Reset process completed')
 }
 
 // Handle responsive behavior

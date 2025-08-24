@@ -196,11 +196,6 @@
         />
       </UCard>
 
-      <UButton
-        label="Back to staging"
-        icon="i-lucide-arrow-left"
-        @click="handleStaging"
-      />
     </div>
     <!-- <UploadProgressModal
       v-if="showDashboardModal"
@@ -874,7 +869,4 @@ const refreshDashboard = async () => {
   }
 };
 
-function handleStaging() {
-  router.push("/dataupload");
-}
 </script>
