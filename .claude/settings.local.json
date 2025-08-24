@@ -7,7 +7,10 @@
       "Bash(mkdir:*)",
       "Bash(bun run:*)",
       "Read(//home/azraihasan/**)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(npx eslint:*)",
+      "Bash(bun eslint:*)",
+      "Bash(bun add:*)"
     ],
     "deny": [],
     "additionalDirectories": [

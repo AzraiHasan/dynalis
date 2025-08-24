@@ -10,6 +10,12 @@ export default defineAppConfig({
         // Set default button color to neutral
         // color: 'neutral'
       }
+    },
+    // Force light mode for entire app
+    colorMode: {
+      preference: 'light',
+      fallback: 'light',
+      storageKey: 'nuxt-color-mode'
     }
   }
 })

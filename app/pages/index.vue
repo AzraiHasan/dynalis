@@ -13,10 +13,12 @@ const { loadSampleData } = useDemoMode();
 const startDemo = () => {
   if (typeof window !== 'undefined') {
     localStorage.setItem('dynalis-demo-mode', 'true')
+    // Clear any previous reset flag so sample data loads
+    localStorage.removeItem('demo-was-reset')
     // Pre-load sample data for immediate demo experience
     loadSampleData()
   }
-  router.push('/dataupload')
+  router.push('/dashboard')
 }
 
 const downloadSample = () => {

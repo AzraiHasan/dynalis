@@ -181,36 +181,29 @@ function quitDemo() {
 }
 
 function resetDemo() {
-  console.log('Reset Demo: Starting demo reset process...')
+  console.log('Reset Demo: Starting complete localStorage clear...')
   
   if (typeof window !== 'undefined') {
-    // Clear all demo data but keep demo mode active
-    const keys = Object.keys(localStorage).filter(key => 
-      key.startsWith('dynalis-demo-')
-    )
-    console.log('Reset Demo: Found demo keys to clear:', keys)
-    keys.forEach(key => {
-      console.log(`Reset Demo: Removing localStorage key: ${key}`)
-      localStorage.removeItem(key)
-    })
+    // Get all localStorage keys before clearing
+    const allKeys = Object.keys(localStorage)
+    console.log('Reset Demo: All localStorage keys before clearing:', allKeys)
     
-    // Clear any uploaded file data and job tracking
-    const otherKeys = ['uploadedFileData', 'background_job_id', 'dashboard_building']
-    otherKeys.forEach(key => {
-      if (localStorage.getItem(key)) {
-        console.log(`Reset Demo: Removing localStorage key: ${key}`)
-        localStorage.removeItem(key)
-      }
-    })
-    
+    // Clear ALL localStorage data (no theme preservation needed since we force light mode)
+    localStorage.clear()
     console.log('Reset Demo: All localStorage data cleared')
+    
+    // Re-establish only the essential demo flags
+    localStorage.setItem('dynalis-demo-mode', 'true')
+    localStorage.setItem('demo-was-reset', 'true')
+    
+    console.log('Reset Demo: Demo flags re-established')
   } else {
     console.warn('Reset Demo: Window is not available, skipping localStorage operations')
   }
   
   toast.add({
     title: "Demo Reset",
-    description: "Demo data cleared. Dashboard reset to empty state.",
+    description: "All data cleared. Dashboard reset to empty state.",
     color: "orange",
   })
   console.log('Reset Demo: Toast notification displayed')
@@ -223,7 +216,7 @@ function resetDemo() {
     console.log(`Reset Demo: User is on ${route.path}, no page refresh needed`)
   }
   
-  console.log('Reset Demo: Reset process completed')
+  console.log('Reset Demo: Complete reset process completed')
 }
 
 // Handle responsive behavior

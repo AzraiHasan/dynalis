@@ -308,11 +308,7 @@ const uploadState = useUploadState(); */
 
 const isLoading = ref(true);
 const error = ref<Error | null>(null);
-const { isDemoMode, getFromDemoStorage, loadSampleData } = useDemoMode();
-
-const shouldAutoBuild = computed(() => {
-  return route.query.building === "true";
-});
+const { getFromDemoStorage, loadSampleData } = useDemoMode();
 
 onMounted(async () => {
   try {
@@ -328,10 +324,13 @@ onMounted(async () => {
     // Load data from localStorage (demo mode only)
     let sourceData = getFromDemoStorage('sites') || []
     
-    // If no data exists, load sample data
-    if (sourceData.length === 0) {
+    // Only auto-load sample data if we're coming from the Try Demo button
+    // (not after a Reset Demo action)
+    if (sourceData.length === 0 && !localStorage.getItem('demo-was-reset')) {
       console.log("No demo data found, loading sample data...")
       sourceData = loadSampleData()
+    } else if (sourceData.length === 0) {
+      console.log("Demo was reset, showing empty state...")
     }
     
     console.log(`Using localStorage as data source (${sourceData.length} records)`)
@@ -420,8 +419,9 @@ onMounted(async () => {
         {
           label: "Sites",
           data: riskPoints,
-          backgroundColor: (context) => {
-            const value = context.raw.x;
+          backgroundColor: (context: any) => {
+            const value = context.raw?.x;
+            if (value === undefined || value === null) return "rgba(107, 114, 128, 0.7)";
             if (value <= 0) return "rgba(239, 68, 68, 0.7)";
             if (value <= 30) return "rgba(245, 158, 11, 0.7)";
             if (value <= 60) return "rgba(252, 211, 77, 0.7)";
@@ -708,42 +708,23 @@ const refreshDashboard = async () => {
     totalSites.value = 0;
     invalidDates.value = 0;
 
-    // Force refresh from appropriate source
-    let sourceData = []
-    if (isDemoMode.value) {
-      console.log("Demo mode: Refreshing data from localStorage...")
-      sourceData = getFromDemoStorage('sites') || []
-      
-      // If no data exists in demo mode, load sample data
-      if (sourceData.length === 0) {
-        console.log("No demo data found during refresh, loading sample data...")
-        sourceData = loadSampleData()
-      }
-      
-      console.log(`Data refreshed successfully. Rows: ${sourceData.length}`)
-    } else {
-      console.log("Fetching data from database...");
-      await siteData.fetchData(true);
-
-      // Re-run the same data loading
-      sourceData = await siteData.fetchData();
-      console.log("Data fetched successfully. Rows:", sourceData?.length ?? 0);
+    // Force refresh from localStorage (demo mode only)
+    console.log("Demo mode: Refreshing data from localStorage...")
+    let sourceData = getFromDemoStorage('sites') || []
+    
+    // Only auto-load sample data during refresh if demo wasn't reset
+    if (sourceData.length === 0 && !localStorage.getItem('demo-was-reset')) {
+      console.log("No demo data found during refresh, loading sample data...")
+      sourceData = loadSampleData()
+    } else if (sourceData.length === 0) {
+      console.log("Demo was reset during refresh, showing empty state...")
     }
+    
+    console.log(`Data refreshed successfully. Rows: ${sourceData.length}`)
 
     console.log("Transforming data...");
-    // Transform data based on source
-    if (isDemoMode.value) {
-      // Demo mode data is already in the correct format
-      fileData.value = sourceData as FileRow[]
-    } else {
-      fileData.value = (sourceData ?? []).map((item) => ({
-        "SITE ID": item.site_id,
-        "EXP DATE": item.exp_date,
-        "TOTAL RENTAL (RM)": item.total_rental,
-        "TOTAL PAYMENT TO PAY (RM)": item.total_payment_to_pay,
-        "DEPOSIT (RM)": item.deposit,
-      }));
-    }
+    // Demo mode data is already in the correct format
+    fileData.value = sourceData as FileRow[]
 
     console.log("Calculating metrics...");
     // Recalculate metrics
@@ -825,8 +806,9 @@ const refreshDashboard = async () => {
         {
           label: "Sites",
           data: riskPoints,
-          backgroundColor: (context) => {
-            const value = context.raw.x;
+          backgroundColor: (context: any) => {
+            const value = context.raw?.x;
+            if (value === undefined || value === null) return "rgba(107, 114, 128, 0.7)";
             if (value <= 0) return "rgba(239, 68, 68, 0.7)";
             if (value <= 30) return "rgba(245, 158, 11, 0.7)";
             if (value <= 60) return "rgba(252, 211, 77, 0.7)";
