@@ -234,7 +234,6 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
-import { useSQLiteSiteData } from '~/composables/useSQLiteSiteData'
 import { useDemoMode } from '~/composables/useDemoMode'
 import { useRouter } from "vue-router";
 import {
@@ -314,7 +313,6 @@ const uploadState = useUploadState(); */
 
 const isLoading = ref(true);
 const error = ref<Error | null>(null);
-const siteData = useSQLiteSiteData();
 const { isDemoMode, getFromDemoStorage, loadSampleData } = useDemoMode();
 
 const shouldAutoBuild = computed(() => {
@@ -332,40 +330,19 @@ onMounted(async () => {
       console.log(`Initializing from job: ${jobId}`)
     }
     
-    // Fetch data from appropriate source
-    let sourceData = []
-    if (isDemoMode.value) {
-      console.log("Demo mode: Loading data from localStorage...")
-      sourceData = getFromDemoStorage('sites') || []
-      
-      // If no data exists in demo mode, load sample data
-      if (sourceData.length === 0) {
-        console.log("No demo data found, loading sample data...")
-        sourceData = loadSampleData()
-      }
-      
-      console.log(`Using localStorage as data source (${sourceData.length} records)`)
-    } else {
-      console.log("Fetching data from SQLite database...")
-      sourceData = await siteData.fetchData() || []
-      console.log(`Using SQLite as data source (${sourceData.length} records)`)
+    // Load data from localStorage (demo mode only)
+    let sourceData = getFromDemoStorage('sites') || []
+    
+    // If no data exists, load sample data
+    if (sourceData.length === 0) {
+      console.log("No demo data found, loading sample data...")
+      sourceData = loadSampleData()
     }
     
-    // Transform data based on source
-    console.log("Transforming data...")
-    if (isDemoMode.value) {
-      // Demo mode data is already in the correct format (FileDataRow)
-      fileData.value = sourceData as FileRow[]
-    } else {
-      // Transform SQLite data to FileRow format
-      fileData.value = sourceData.map((item) => ({
-        "SITE ID": item.site_id,
-        "EXP DATE": item.exp_date,
-        "TOTAL RENTAL (RM)": item.total_rental,
-        "TOTAL PAYMENT TO PAY (RM)": item.total_payment_to_pay,
-        "DEPOSIT (RM)": item.deposit,
-      }));
-    }
+    console.log(`Using localStorage as data source (${sourceData.length} records)`)
+    
+    // Demo mode data is already in the correct format (FileDataRow)
+    fileData.value = sourceData as FileRow[]
 
     console.log("Calculating metrics...");
     // Calculate metrics 
@@ -764,7 +741,6 @@ const refreshDashboard = async () => {
       // Demo mode data is already in the correct format
       fileData.value = sourceData as FileRow[]
     } else {
-      // Transform SQLite data to FileRow format
       fileData.value = (sourceData ?? []).map((item) => ({
         "SITE ID": item.site_id,
         "EXP DATE": item.exp_date,

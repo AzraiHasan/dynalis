@@ -472,7 +472,7 @@ import type { StepperItem } from "@nuxt/ui";
 import { parse, isValid, differenceInDays, format } from "date-fns";
 import { DATE_FORMATS } from "~/utils/dateUtils";
 import { useUploadState } from "~/composables/useUploadState";
-import { useSQLiteBatchUpload } from "~/composables/useSQLiteBatchUpload";
+import { useDemoMode } from "~/composables/useDemoMode";
 
 definePageMeta({
   layout: 'default'
@@ -511,7 +511,6 @@ const dragActive = ref(false);
 const fileEstimate = ref("");
 const router = useRouter();
 const uploadState = useUploadState();
-const sqliteBatchUpload = useSQLiteBatchUpload();
 
 // Step configurations for UStepper
 const items = computed<StepperItem[]>(() => [
@@ -943,12 +942,14 @@ const handleCommitData = async () => {
     uploadState.isUploading.value = true;
     console.log("Upload state initialized, status:", uploadState.status.value);
 
-    // Always use SQLite backend
-    console.log("Using SQLite backend for data processing");
-    uploadState.updateProgress(15, "Processing with SQLite backend...");
+    // Use demo mode processing
+    console.log("Using demo mode for data processing");
+    uploadState.updateProgress(15, "Processing data...");
 
-    const result = await sqliteBatchUpload.processBulkUpload(data.fileData);
-    console.log("SQLite processing result:", result);
+    // Simulate processing with demo data
+    const { simulateApiCall } = useDemoMode();
+    const result = await simulateApiCall('batch-upload', { sites: data.fileData });
+    console.log("Demo processing result:", result);
 
     // Update progress and status
     console.log("Processing completed:", result);
@@ -969,7 +970,7 @@ const handleCommitData = async () => {
     console.log("Processing complete, navigating to dashboard");
     await navigateToDashboard();
   } catch (error) {
-    console.error("SQLite processing error:", error);
+    console.error("Demo processing error:", error);
     uploadState.status.value = "error";
     uploadState.error.value = error instanceof Error ? error : new Error(String(error));
     toast.add({

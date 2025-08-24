@@ -1,30 +1,16 @@
 export default defineNuxtConfig({
   devtools: { enabled: true },
 
-  // Enable static generation for demo deployment
-  ssr: process.env.DEMO_MODE === 'true' ? false : true,
+  // Static generation for demo deployment
+  ssr: false,
 
   nitro: {
-    experimental: {
-      database: true
-    },
-    database: {
-      default: {
-        connector: "sqlite",
-        options: {
-          name: "dynalis_db",
-          file: ".data/dynalis.sqlite3",
-        },
-      },
-    },
-    // For demo deployment with static hosting
-    prerender: process.env.DEMO_MODE === 'true' ? {
+    prerender: {
       routes: ['/']
-    } : undefined,
+    },
   },
 
-  modules: ["@nuxt/ui", "@nuxt/eslint", "nuxt-auth-utils"],
-
+  modules: ["@nuxt/ui", "@nuxt/eslint"],
 
   css: ["~/assets/css/main.css"],
 

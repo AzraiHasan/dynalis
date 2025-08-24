@@ -27,58 +27,34 @@
 
         <!-- Navigation -->
         <nav class="flex-1 p-4 space-y-2">
-          <AuthState v-slot="{ loggedIn }">
-            <!-- Authenticated Navigation -->
-            <template v-if="loggedIn">
-              <NuxtLink
-                to="/dashboard"
-                class="flex items-center gap-3 px-4 py-3 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
-                :class="{ 'bg-emerald-50 text-emerald-700 border-emerald-200': $route.path === '/dashboard' }"
-              >
-                <UIcon name="i-lucide-layout-dashboard" class="w-5 h-5" />
-                <span class="font-medium">Dashboard</span>
-              </NuxtLink>
+          <!-- Demo Mode Information -->
+          <div class="px-4 py-3 text-gray-500 text-sm">
+            <p class="font-medium mb-1">Demo Mode Active:</p>
+            <ul class="text-xs space-y-1 ml-2">
+              <li>• Dashboard Analytics</li>
+              <li>• Data Upload Tool</li>
+              <li>• Site Management</li>
+            </ul>
+          </div>
+          
+          <!-- Main Navigation -->
+          <NuxtLink
+            to="/dashboard"
+            class="flex items-center gap-3 px-4 py-3 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
+            :class="{ 'bg-emerald-50 text-emerald-700 border-emerald-200': $route.path === '/dashboard' }"
+          >
+            <UIcon name="i-lucide-layout-dashboard" class="w-5 h-5" />
+            <span class="font-medium">Dashboard</span>
+          </NuxtLink>
 
-              <NuxtLink
-                to="/dataupload"
-                class="flex items-center gap-3 px-4 py-3 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
-                :class="{ 'bg-emerald-50 text-emerald-700 border-emerald-200': $route.path === '/dataupload' }"
-              >
-                <UIcon name="i-lucide-upload" class="w-5 h-5" />
-                <span class="font-medium">Data Upload</span>
-              </NuxtLink>
-            </template>
-
-            <!-- Unauthenticated Navigation (Demo Mode) -->
-            <template v-else>
-              <div class="px-4 py-3 text-gray-500 text-sm">
-                <p class="font-medium mb-1">Demo Mode Active:</p>
-                <ul class="text-xs space-y-1 ml-2">
-                  <li>• Dashboard Analytics</li>
-                  <li>• Data Upload Tool</li>
-                  <li>• Site Management</li>
-                </ul>
-              </div>
-              
-              <NuxtLink
-                to="/dashboard"
-                class="flex items-center gap-3 px-4 py-3 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
-                :class="{ 'bg-emerald-50 text-emerald-700 border-emerald-200': $route.path === '/dashboard' }"
-              >
-                <UIcon name="i-lucide-layout-dashboard" class="w-5 h-5" />
-                <span class="font-medium">Dashboard</span>
-              </NuxtLink>
-
-              <NuxtLink
-                to="/dataupload"
-                class="flex items-center gap-3 px-4 py-3 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
-                :class="{ 'bg-emerald-50 text-emerald-700 border-emerald-200': $route.path === '/dataupload' }"
-              >
-                <UIcon name="i-lucide-upload" class="w-5 h-5" />
-                <span class="font-medium">Data Upload</span>
-              </NuxtLink>
-            </template>
-          </AuthState>
+          <NuxtLink
+            to="/dataupload"
+            class="flex items-center gap-3 px-4 py-3 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
+            :class="{ 'bg-emerald-50 text-emerald-700 border-emerald-200': $route.path === '/dataupload' }"
+          >
+            <UIcon name="i-lucide-upload" class="w-5 h-5" />
+            <span class="font-medium">Data Upload</span>
+          </NuxtLink>
 
           <!-- Template Download (Always Available) -->
           <div class="pt-4 border-t border-gray-200">

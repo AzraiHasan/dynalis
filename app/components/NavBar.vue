@@ -8,14 +8,13 @@
         <h1 class="text-xl font-bold">Dynalis Interpreter</h1>
       </div>
       
-      <AuthState v-slot="{ loggedIn, user }">
-        <div v-if="loggedIn" class="flex items-center gap-4">
-          <span class="text-sm text-gray-600">{{ user?.email || user?.id }}</span>
-          <UButton color="error" variant="soft" size="sm" icon="i-lucide-log-out" @click="handleLogout">
-            Logout
-          </UButton>
-        </div>
-      </AuthState>
+      <!-- Demo Mode User Info -->
+      <div class="flex items-center gap-4">
+        <span class="text-sm text-gray-600">Demo User</span>
+        <UButton color="error" variant="soft" size="sm" icon="i-lucide-x-circle" @click="handleQuitDemo">
+          Quit Demo
+        </UButton>
+      </div>
     </nav>
   </UContainer>
 </template>
@@ -23,31 +22,28 @@
 <script setup lang="ts">
 const router = useRouter()
 const toast = useToast()
-const { clear: clearUserSession } = useUserSession()
 
-async function handleLogout() {
-  try {
-    // Call our logout endpoint
-    await $fetch('/api/auth/logout', { method: 'POST' })
+function handleQuitDemo() {
+  if (typeof window !== 'undefined') {
+    // Clear demo mode flag
+    localStorage.removeItem('dynalis-demo-mode')
     
-    // Clear the local session state
-    await clearUserSession()
+    // Clear all demo data
+    const keys = Object.keys(localStorage).filter(key => 
+      key.startsWith('dynalis-demo-')
+    )
+    keys.forEach(key => localStorage.removeItem(key))
     
-    toast.add({
-      title: "Success",
-      description: "You have been logged out successfully.",
-      color: "success",
-    })
-    
-    // Redirect to login page
-    router.push('/')
-  } catch (error) {
-    console.error('Logout error:', error)
-    toast.add({
-      title: "Error",
-      description: "Failed to logout. Please try again.",
-      color: "error",
-    })
+    // Clear any uploaded file data
+    localStorage.removeItem('uploadedFileData')
   }
+  
+  toast.add({
+    title: "Demo Ended",
+    description: "Demo session cleared. Welcome back!",
+    color: "info",
+  })
+  
+  router.push('/')
 }
 </script>
