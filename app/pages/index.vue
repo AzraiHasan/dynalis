@@ -84,19 +84,6 @@ if (typeof window !== 'undefined') {
           </ul>
         </div>
       </UCard>
-
-
-      <!-- Getting Started Tips -->
-      <UCard class="mt-6 bg-blue-50 border-blue-200">
-        <div class="text-sm text-blue-800">
-          <p class="font-medium mb-2">💡 Getting Started</p>
-          <ul class="space-y-1 text-xs text-blue-700">
-            <li>• Download the sample template from the sidebar</li>
-            <li>• Fill in your property data</li>
-            <li>• Upload and analyze your data</li>
-          </ul>
-        </div>
-      </UCard>
     </div>
   </ClientOnly>
 </template>
