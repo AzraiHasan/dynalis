@@ -162,8 +162,8 @@ export const useFileUpload = () => {
   }
   
   const processBatch = async (batch: FileDataRow[]): Promise<FileDataRow[]> => {
-    // Use the store instead of localStorage
-    fileUploadStore.addBatchData(batch)
+    // Data is already stored via setUploadedData in parseFile
+    // No need to add batch data again as it would cause duplication
     return batch
   }
   
