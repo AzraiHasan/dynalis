@@ -78,10 +78,9 @@ if (typeof window !== 'undefined') {
         <div class="text-sm text-blue-800">
           <p class="font-medium mb-2">💡 Demo Instructions</p>
           <ul class="space-y-1 text-xs text-blue-700">
-            <li>• Download the sample template below</li>
-            <li>• Or upload your own CSV/Excel file (max 5MB)</li>
+            <li>• Download the sample template</li>
+            <li>• Add more data rows (optional)</li>
             <li>• Experience the full data processing workflow</li>
-            <li>• All data stays in your browser (localStorage)</li>
           </ul>
         </div>
       </UCard>

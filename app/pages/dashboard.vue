@@ -1,7 +1,7 @@
 <template>
   <div class="space-y-4">
     <div class="flex justify-between items-center mb-4">
-      <h1 class="text-2xl font-bold">Dashboard</h1>
+    <h1 class="text-2xl font-bold">Dashboard</h1>
       <UButton
         icon="i-lucide-refresh-cw"
         color="primary"
@@ -10,6 +10,10 @@
       >
         Refresh Data
       </UButton>
+    </div>
+    <!-- Dashboard info -->
+    <div class="bg-blue-50 rounded-lg border border-blue-200 text-blue-700 p-3">
+      <p>These data visualization components can be customized to your requirements</p>
     </div>
     <div v-if="!isLoading && !error" class="space-y-4">
       <!-- Summary Cards -->

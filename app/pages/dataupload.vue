@@ -90,6 +90,39 @@
             Process File
           </UButton>
         </div>
+          <!-- Data Type Information Section -->
+  <div class="mt-8">
+    <UCard class="bg-blue-50 border-blue-200 border">
+      <div class="flex items-start ">
+        <div class="flex-shrink-0">
+        </div>
+        
+        <div class="flex-1">
+          <h3 class="text-lg font-semibold text-blue-700 mb-3">Data Type Information</h3>
+          
+          <div class="space-y-1">
+            <div class="flex items-center space-x-1">
+              <div class="flex items-center justify-center w-8 h-8 ">
+                <Icon name="i-lucide-home" class="w-4 h-4 text-blue-700" />
+              </div>
+              <p class="text-blue-700">
+                This example is made for <span class="font-semibold">'Property'</span> type data
+              </p>
+            </div>
+            
+            <div class="flex items-center space-x-1">
+              <div class="flex items-center justify-center w-8 h-8 ">
+                <Icon name="i-lucide-plus-circle" class="w-4 h-4 text-blue-700" />
+              </div>
+              <p class="text-blue-700">
+                More components for other data types can be added here as required
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </UCard>
+  </div>
       </div>
 
       <!-- Step 2: Data Preview and Validation (Only shown when currentStep is 2) -->
@@ -461,6 +494,7 @@
       </div>
     </UCard>
   </div>
+  
 </template>
 
 <script setup lang="ts">

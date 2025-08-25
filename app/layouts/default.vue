@@ -28,14 +28,14 @@
         <!-- Navigation -->
         <nav class="flex-1 p-4 space-y-2">
           <!-- Demo Mode Information -->
-          <div class="px-4 py-3 text-gray-500 text-sm">
-            <p class="font-medium mb-1">Demo Mode Active:</p>
-            <ul class="text-xs space-y-1 ml-2">
-              <li>• Dashboard Analytics</li>
-              <li>• Data Upload Tool</li>
-              <li>• Site Management</li>
+          <div class=" p-4 bg-blue-50 rounded-lg border border-blue-200 mb-4">
+            <p class="font-medium mb-2">💡 Getting Started</p>
+            <ul class="space-y-1 text-xs text-blue-700">
+              <li>• Download the sample template from the sidebar</li>
+              <li>• Fill in your property data</li>
+              <li>• Upload and analyze your data</li>
             </ul>
-          </div>
+            </div>
           
           <!-- Main Navigation -->
           <NuxtLink
@@ -86,18 +86,11 @@
         <!-- Demo Mode User Section -->
         <div class="p-4 border-t border-gray-200">
           <div class="space-y-3">
-            <div class="text-center p-3 bg-blue-50 rounded-lg border border-blue-200 mb-3">
-              <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2">
-                <UIcon name="i-lucide-zap" class="w-4 h-4 text-blue-500" />
-              </div>
-              <p class="text-sm font-medium text-blue-800 mb-1">Demo Mode</p>
-              <p class="text-xs text-blue-600">All data stays local</p>
-            </div>
             
             <UButton 
               color="error" 
               variant="soft" 
-              size="sm" 
+              size="lg" 
               icon="i-lucide-x-circle" 
               class="w-full justify-center"
               @click="quitDemo"
@@ -204,7 +197,7 @@ function resetDemo() {
   toast.add({
     title: "Demo Reset",
     description: "All data cleared. Dashboard reset to empty state.",
-    color: "orange",
+    color: "warning",
   })
   console.log('Reset Demo: Toast notification displayed')
   

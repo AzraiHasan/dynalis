@@ -10,7 +10,8 @@
       "Bash(grep:*)",
       "Bash(npx eslint:*)",
       "Bash(bun eslint:*)",
-      "Bash(bun add:*)"
+      "Bash(bun add:*)",
+      "Bash(gh pr create:*)"
     ],
     "deny": [],
     "additionalDirectories": [
