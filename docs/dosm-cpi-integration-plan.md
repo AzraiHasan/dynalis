@@ -2,8 +2,8 @@
 
 **Branch:** `dosm_demo`
 **Target Data Source:** https://storage.dosm.gov.my/cpi/cpi_2d_annual_inflation.csv
-**Implementation Approach:** Option B - Separate Module
-**Estimated Effort:** 4-6 hours
+**Implementation Approach:** Option B - Separate Module with File Upload
+**Estimated Effort:** 3-4 hours
 
 ---
 
@@ -37,6 +37,7 @@ Integrate Malaysia's Consumer Price Index (CPI) annual inflation data from DOSM 
 - **Data Type:** CPI annual inflation (time-series economic data)
 - **File Size:** ~50 KB (~355 rows)
 - **Format:** CSV with 3 columns (date, division, inflation)
+- **Upload Method:** File upload (user downloads CSV from DOSM, then uploads)
 - **Update Frequency:** Annual (government data)
 
 ---
@@ -86,19 +87,22 @@ date,division,inflation
 - Overkill for current demo mode
 - Can be added later without major refactor
 
-### Decision 2: Fetch Method
-**Choice:** Direct URL fetch from client-side
+### Decision 2: Data Input Method
+**Choice:** File upload (user downloads CSV from DOSM, then uploads via file input)
 
 **Rationale:**
-- ✅ Simple implementation
-- ✅ No CORS issues (DOSM server allows cross-origin)
-- ✅ Can cache in localStorage after first fetch
-- ✅ No server-side proxy needed
+- ✅ Reuses existing file upload infrastructure (`useFileUpload.ts`)
+- ✅ Consistent with existing site data workflow
+- ✅ User has full control over data source/version
+- ✅ Works offline after initial download
+- ✅ No CORS or network issues
+- ✅ Minimal new code required
 
-**Alternative Considered:** Server-side fetch/proxy
-- Adds unnecessary complexity for demo
-- Would require Nitro API endpoint
-- Not needed for public data source
+**Alternative Considered:** Direct URL fetch
+- Would require new URL fetching composable
+- Network dependency for every refresh
+- CORS potential issues
+- More complex error handling for network failures
 
 ### Decision 3: Module Structure
 **Choice:** Separate standalone module (Option B)
@@ -147,23 +151,23 @@ export interface CPIDataset {
 }
 ```
 
-#### 1.2 Create Composable for Data Fetching
+#### 1.2 Create Composable for CPI Data Management
 **File:** `app/composables/useCPIData.ts`
 
 **Responsibilities:**
-- Fetch CSV from DOSM URL
-- Parse using PapaParse
+- Adapt uploaded file data to CPI format
+- Validate CPI CSV structure (date, division, inflation columns)
 - Cache in localStorage
 - Provide data access methods
-- Handle refresh/update logic
+- Handle data queries and filtering
 
 **Key Functions:**
-- `fetchCPIData()` - Fetch and parse from URL
+- `processCPIFile(file: File)` - Leverage existing `useFileUpload` for parsing
+- `validateCPIStructure(data)` - Ensure required columns exist
 - `getCachedData()` - Retrieve from localStorage
 - `getOverallInflation()` - Filter for overall category
 - `getDivisionInflation(division)` - Filter by division
 - `getYearRange(startYear, endYear)` - Date range filter
-- `isDataStale()` - Check if cache needs refresh
 
 #### 1.3 Create Store for CPI Data
 **File:** `app/stores/cpiStore.ts`
@@ -175,27 +179,13 @@ export interface CPIDataset {
 - `lastFetchedAt: Date | null`
 
 **Actions:**
-- `loadData()` - Load from cache or fetch
-- `refreshData()` - Force refresh from URL
+- `loadData()` - Load from cache or uploaded file
+- `setUploadedData(data)` - Store uploaded CPI data
 - `clearData()` - Clear cache
 
-### Phase 2: API/Service Layer (1 hour)
+### Phase 2: Storage & Validation Layer (0.5 hour)
 
-#### 2.1 URL Fetch Service
-**File:** `app/composables/useUrlDataFetch.ts`
-
-**Responsibilities:**
-- Generic URL fetching with error handling
-- Response validation
-- Retry logic (3 attempts)
-- Timeout handling (30 seconds)
-
-**Functions:**
-- `fetchCSVFromUrl(url)` - Fetch and parse CSV
-- `validateCSVStructure(data)` - Validate required columns
-- `handleFetchError(error)` - Error mapping
-
-#### 2.2 localStorage Management
+#### 2.1 localStorage Management
 **File:** `app/utils/cpiStorage.ts`
 
 **Functions:**
@@ -214,23 +204,29 @@ export interface CPIDataset {
 **Sections:**
 1. **Header**
    - Title: "CPI Inflation Analytics"
-   - Data source info
-   - Last updated timestamp
-   - Refresh button
+   - Data source info (link to DOSM)
+   - Instructions: "Download CSV from DOSM and upload below"
+   - Last uploaded timestamp
 
-2. **Data Status Card**
+2. **File Upload Section**
+   - File input (accepts .csv files)
+   - Upload button with loading state
+   - Reuse existing `useFileUpload` composable
+   - Validation: Check for required columns (date, division, inflation)
+
+3. **Data Status Card**
    - Record count
    - Date range
-   - Cache status
-   - Fetch/Refresh actions
+   - Upload timestamp
+   - Clear data button
 
-3. **Data Table**
+4. **Data Table**
    - Sortable columns (date, division, inflation)
    - Filterable by division
    - Search by year
    - Export to CSV option
 
-4. **Visualizations** (Optional - Nice to have)
+5. **Visualizations** (Optional - Nice to have)
    - Line chart: Overall inflation trend over time
    - Bar chart: Latest inflation by division
    - Summary statistics
@@ -245,7 +241,7 @@ export interface CPIDataset {
 
 **File:** `app/components/CPI/StatusCard.vue`
 - Show data status
-- Fetch/refresh controls
+- Upload timestamp
 - Loading states
 - Error display
 
@@ -267,23 +263,23 @@ Add menu item:
 ### Phase 4: Error Handling & Edge Cases (0.5 hour)
 
 #### Error Scenarios
-1. **Network Failure**
-   - Retry with exponential backoff
-   - Show cached data with warning
-   - Provide manual retry button
+1. **Invalid File Type**
+   - Only accept .csv files
+   - Show clear error message
+   - Provide link to correct file format
 
 2. **Invalid CSV Structure**
-   - Validate column names
+   - Validate column names (date, division, inflation)
    - Check data types
-   - Show validation errors
+   - Show validation errors with examples
 
-3. **Empty Response**
+3. **Empty File**
    - Handle gracefully
-   - Show "No data available" message
+   - Show "File contains no data" message
 
-4. **CORS Issues** (Unlikely but possible)
-   - Fallback to server-side proxy if needed
-   - Document for future reference
+4. **File Too Large**
+   - Check file size (should be < 5MB for demo)
+   - Show size limit error
 
 5. **localStorage Full**
    - Clear old data
@@ -319,7 +315,7 @@ dynalis/
 │   │
 │   ├── composables/
 │   │   ├── useCPIData.ts              # Main CPI data composable
-│   │   └── useUrlDataFetch.ts         # Generic URL fetching
+│   │   └── (reuses useFileUpload.ts)  # Existing file upload
 │   │
 │   ├── pages/
 │   │   └── cpi-analytics.vue          # Main CPI analytics page
@@ -360,8 +356,8 @@ export interface CPIRecord {
  */
 export interface CPIDataset {
   records: CPIRecord[];
-  lastUpdated: string;   // ISO timestamp of last fetch
-  source: string;        // Source URL
+  lastUpdated: string;   // ISO timestamp of last upload
+  fileName: string;      // Uploaded file name
   metadata: {
     dateRange: {
       start: string;     // Earliest date in dataset
@@ -373,13 +369,13 @@ export interface CPIDataset {
 }
 
 /**
- * Fetch status tracking
+ * Upload status tracking
  */
-export interface CPIFetchStatus {
+export interface CPIUploadStatus {
   isLoading: boolean;
   error: Error | null;
-  lastAttempt: Date | null;
-  retryCount: number;
+  lastUpload: Date | null;
+  fileName: string | null;
 }
 
 /**
@@ -402,7 +398,7 @@ export interface CPIFilters {
   "dynalis-cpi-data": {
     "records": CPIRecord[],
     "lastUpdated": "2024-10-24T15:30:00Z",
-    "source": "https://storage.dosm.gov.my/cpi/cpi_2d_annual_inflation.csv",
+    "fileName": "cpi_2d_annual_inflation.csv",
     "metadata": {
       "dateRange": {
         "start": "1961-01-01",
@@ -431,10 +427,11 @@ If backend is implemented later:
 - Returns cached CPI data
 - Query params: `?division=overall&startYear=2020&endYear=2024`
 
-#### `POST /api/cpi/refresh`
-- Triggers server-side fetch from DOSM
-- Updates database
-- Returns updated data
+#### `POST /api/cpi/upload`
+- Accepts file upload from client
+- Validates and processes CPI data
+- Stores in database
+- Returns processed data summary
 
 #### `GET /api/cpi/metadata`
 - Returns dataset metadata only
@@ -455,19 +452,40 @@ If backend is implemented later:
       <p class="text-gray-600">
         Malaysia Consumer Price Index - Annual Inflation Data
       </p>
+      <UAlert class="mt-4" color="blue" variant="soft">
+        Download CSV from <a href="https://storage.dosm.gov.my/cpi/cpi_2d_annual_inflation.csv"
+        target="_blank" class="underline">DOSM</a> and upload below
+      </UAlert>
     </header>
 
-    <!-- Status Card -->
+    <!-- File Upload Section -->
+    <div v-if="!hasData" class="mb-8">
+      <input
+        type="file"
+        accept=".csv"
+        @change="handleFileUpload"
+        ref="fileInput"
+      />
+      <UButton
+        :loading="isUploading"
+        @click="processFile"
+        :disabled="!selectedFile"
+      >
+        Upload CPI Data
+      </UButton>
+    </div>
+
+    <!-- Status Card (shown after upload) -->
     <CPIStatusCard
-      :is-loading="isLoading"
-      :error="error"
+      v-if="hasData"
       :last-updated="lastUpdated"
       :record-count="recordCount"
-      @refresh="refreshData"
+      :file-name="fileName"
+      @clear="clearData"
     />
 
     <!-- Filters -->
-    <div class="my-6">
+    <div v-if="hasData" class="my-6">
       <USelect
         v-model="selectedDivision"
         :options="divisions"
@@ -477,6 +495,7 @@ If backend is implemented later:
 
     <!-- Data Table -->
     <CPIDataTable
+      v-if="hasData"
       :data="filteredData"
       :loading="isLoading"
       @export="exportData"
@@ -484,7 +503,7 @@ If backend is implemented later:
 
     <!-- Chart (Optional) -->
     <CPIInflationChart
-      v-if="chartData"
+      v-if="hasData && chartData"
       :data="chartData"
       class="mt-8"
     />
@@ -495,11 +514,12 @@ If backend is implemented later:
 ### Component: Status Card
 
 **Features:**
-- Data freshness indicator (green if < 24h, yellow if < 7 days, red if older)
+- Upload timestamp display
+- File name display
 - Record count badge
 - Date range display
-- Refresh button with loading state
-- Error display with retry action
+- Clear data button
+- Error display
 
 ### Component: Data Table
 
@@ -524,13 +544,13 @@ If backend is implemented later:
 
 ### Manual Testing Checklist
 
-#### Data Fetching
-- [ ] Fresh fetch from URL works
+#### File Upload & Processing
+- [ ] File upload works for .csv files
 - [ ] Data is correctly parsed
 - [ ] Data is cached in localStorage
 - [ ] Cache is loaded on page refresh
-- [ ] Refresh button updates data
-- [ ] Network errors handled gracefully
+- [ ] Re-upload replaces existing data
+- [ ] Invalid file types rejected
 - [ ] Invalid CSV structure detected
 
 #### Data Display
@@ -542,8 +562,8 @@ If backend is implemented later:
 - [ ] Empty state displays when no data
 
 #### Edge Cases
-- [ ] Works with slow network
-- [ ] Handles network timeout
+- [ ] Large file handling (within 5MB limit)
+- [ ] Empty CSV file
 - [ ] localStorage full scenario
 - [ ] Corrupted cache data
 - [ ] Browser with localStorage disabled
@@ -563,10 +583,11 @@ If backend is implemented later:
 ```typescript
 // Example test structure
 describe('useCPIData', () => {
-  it('fetches and parses CPI data from URL', async () => {})
+  it('uploads and parses CPI file', async () => {})
+  it('validates CSV structure', async () => {})
   it('caches data in localStorage', async () => {})
   it('filters by division', () => {})
-  it('handles network errors', async () => {})
+  it('handles invalid file types', async () => {})
 })
 ```
 
@@ -574,39 +595,38 @@ describe('useCPIData', () => {
 
 ## Timeline
 
-### Day 1: Core Implementation (4 hours)
+### Day 1: Core Implementation (3-4 hours)
 
 **Hour 1: Data Layer**
 - ✅ Create type definitions (`app/types/cpi.ts`)
-- ✅ Implement URL fetch utility (`app/composables/useUrlDataFetch.ts`)
 - ✅ Create localStorage utilities (`app/utils/cpiStorage.ts`)
+- ✅ Create CPI store (`app/stores/cpiStore.ts`)
 
 **Hour 2: Business Logic**
-- ✅ Implement main composable (`app/composables/useCPIData.ts`)
-- ✅ Create store (`app/stores/cpiStore.ts`)
+- ✅ Implement CPI data composable (`app/composables/useCPIData.ts`)
+- ✅ Integrate with existing `useFileUpload` composable
+- ✅ Add CSV validation for CPI structure
 - ✅ Add error handling
 
 **Hour 3: Basic UI**
 - ✅ Create main page (`app/pages/cpi-analytics.vue`)
+- ✅ Add file upload interface
 - ✅ Implement status card component
 - ✅ Add basic data table
 
-**Hour 4: Testing & Polish**
+**Hour 4: Testing & Polish** (Optional)
 - ✅ Manual testing
 - ✅ Fix bugs
 - ✅ Add loading states
 - ✅ Error messages
+- ✅ Add filtering and sorting
 
-### Day 2: Enhancement (2 hours) - Optional
+### Enhancement Phase (1-2 hours) - Optional
 
-**Hour 1: Advanced Features**
-- Add filtering
-- Add sorting
-- Add export functionality
-
-**Hour 2: Visualization**
+**Hour 1: Visualization**
 - Integrate Chart.js
-- Create line chart for trends
+- Create line chart for overall inflation trends
+- Add bar chart for division comparison
 - Add interactivity
 
 ---
@@ -645,12 +665,12 @@ describe('useCPIData', () => {
 ## Success Criteria
 
 ### Minimum Viable Product (MVP)
-- ✅ Fetch CPI data from DOSM URL
+- ✅ Upload CPI CSV file
 - ✅ Parse and validate CSV structure
 - ✅ Cache in localStorage
 - ✅ Display in sortable table
-- ✅ Show data status and freshness
-- ✅ Manual refresh functionality
+- ✅ Show upload status and metadata
+- ✅ Clear/re-upload functionality
 - ✅ Basic error handling
 
 ### Nice to Have
@@ -676,6 +696,7 @@ describe('useCPIData', () => {
 **2024-10-24:** Initial plan created
 - Chose client-side implementation for consistency with demo mode
 - Decided on separate module (Option B) for clean architecture
+- Selected file upload approach to reuse existing infrastructure
 - Deferred server-side storage to future phase
 - Prioritized simplicity over feature completeness
 
@@ -685,9 +706,9 @@ describe('useCPIData', () => {
    - Current answer: No, CPI data is public reference data
    - Future: May add user preferences (requires auth)
 
-2. **How often should cache refresh?**
-   - Current answer: Manual only
-   - Future: Daily auto-refresh when backend is available
+2. **Should we support direct URL fetch in addition to file upload?**
+   - Current answer: No, file upload only for MVP
+   - Future: May add URL fetch option for convenience
 
 3. **Should we support multiple DOSM datasets?**
    - Current answer: No, start with single dataset
