@@ -282,22 +282,10 @@ interface FileRow {
   "DEPOSIT (RM)"?: string | number | null; // Made consistent with index signature
 }
 
-interface ChartDataset {
-  label?: string;
-  data: number[] | Array<{ x: number; y: number }>;
-  backgroundColor?: string | string[] | ((context: { raw: { x: number; y: number } }) => string);
-  borderColor?: string | string[];
-  borderWidth?: number;
-  tension?: number;
-  fill?: boolean;
-  pointRadius?: number;
-  pointHoverRadius?: number;
-  hoverOffset?: number;
-}
-
 interface ChartData {
   labels?: string[];
-  datasets: ChartDataset[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  datasets: any[];
 }
 
 interface PaymentFlowData {
@@ -423,8 +411,9 @@ onMounted(async () => {
         {
           label: "Sites",
           data: riskPoints,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           backgroundColor: (context: any) => {
-            const value = context.raw?.x;
+            const value = context.parsed?.x ?? context.raw?.x;
             if (value === undefined || value === null) return "rgba(107, 114, 128, 0.7)";
             if (value <= 0) return "rgba(239, 68, 68, 0.7)";
             if (value <= 30) return "rgba(245, 158, 11, 0.7)";
@@ -810,8 +799,9 @@ const refreshDashboard = async () => {
         {
           label: "Sites",
           data: riskPoints,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           backgroundColor: (context: any) => {
-            const value = context.raw?.x;
+            const value = context.parsed?.x ?? context.raw?.x;
             if (value === undefined || value === null) return "rgba(107, 114, 128, 0.7)";
             if (value <= 0) return "rgba(239, 68, 68, 0.7)";
             if (value <= 30) return "rgba(245, 158, 11, 0.7)";

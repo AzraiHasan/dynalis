@@ -11,7 +11,11 @@
       "Bash(npx eslint:*)",
       "Bash(bun eslint:*)",
       "Bash(bun add:*)",
-      "Bash(gh pr create:*)"
+      "Bash(gh pr create:*)",
+      "mcp__ide__getDiagnostics",
+      "Bash(npx vue-tsc:*)",
+      "Bash(git commit:*)",
+      "WebFetch(domain:storage.dosm.gov.my)"
     ],
     "deny": [],
     "additionalDirectories": [
