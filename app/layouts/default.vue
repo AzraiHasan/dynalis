@@ -66,7 +66,7 @@
                 :class="{ 'bg-blue-50 text-blue-700 border-blue-200': $route.path === '/dosmupload' }"
               >
                 <UIcon name="i-lucide-file-up" class="w-5 h-5" />
-                <span class="font-medium">DOSM Upload</span>
+                <span class="font-medium">CPI Dataset</span>
               </NuxtLink>
 
               <NuxtLink
@@ -75,7 +75,7 @@
                 :class="{ 'bg-blue-50 text-blue-700 border-blue-200': $route.path === '/dosm-dashboard' }"
               >
                 <UIcon name="i-lucide-chart-line" class="w-5 h-5" />
-                <span class="font-medium">DOSM Dashboard</span>
+                <span class="font-medium">CPI Dashboard</span>
               </NuxtLink>
             </div>
 
@@ -89,7 +89,7 @@
                 @click="console.log('DEBUG: Clicked GDP/GNI Upload link, navigating to /dosmgdp')"
               >
                 <UIcon name="i-lucide-trending-up" class="w-5 h-5" />
-                <span class="font-medium">GDP/GNI Upload</span>
+                <span class="font-medium">GDP/GNI Dataset</span>
               </NuxtLink>
 
               <NuxtLink

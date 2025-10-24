@@ -210,91 +210,37 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="container mx-auto px-4 py-8 max-w-6xl">
-    <UCard>
+  <div>
+    <UCard class="mb-6">
       <template #header>
-        <div class="flex items-center justify-between">
-          <div>
-            <h1 class="text-2xl font-bold">
-              GDP/GNI Data Upload
-            </h1>
-            <p class="text-sm text-gray-500 mt-1">
-              Upload and validate annual GDP & GNI data from DOSM
-            </p>
-          </div>
-        </div>
+        <h1 class="text-xl font-semibold">GDP/GNI Data Upload</h1>
       </template>
 
-      <!-- Stepper -->
-      <div class="mb-8">
-        <UStepper
-          v-model="currentStep"
-          :items="[
-            { title: 'Upload GDP/GNI File' },
-            { title: 'Validate Structure & Data' },
-            { title: 'Review Statistics & Commit' },
-          ]"
-        />
-      </div>
+      <!-- Step Indicator -->
+      <UStepper
+        v-model="currentStep"
+        :items="[
+          { title: 'Upload File', description: 'Select GDP/GNI CSV file' },
+          { title: 'Validate Data', description: 'Check data quality' },
+          { title: 'Review & Commit', description: 'Finalize upload' }
+        ]"
+        class="mb-6"
+      />
 
       <!-- Step 1: File Upload -->
-      <div v-show="currentStep === 1" class="space-y-6">
-        <!-- Info Card -->
-        <UCard>
-          <template #header>
-            <div class="flex items-center gap-2">
-              <UIcon name="i-lucide-info" class="w-5 h-5 text-blue-500" />
-              <h3 class="font-semibold">
-                DOSM Data Source
-              </h3>
-            </div>
-          </template>
-
-          <div class="space-y-3 text-sm">
-            <p>
-              <strong>Official Dataset:</strong>
-              <a
-                href="https://storage.dosm.gov.my/gdp/gdp_gni_annual_real.csv"
-                target="_blank"
-                class="text-blue-600 hover:underline ml-1"
-              >
-                GDP & GNI Annual Real Values
-              </a>
-            </p>
-            <p>
-              <strong>Expected Columns:</strong> series, date, gdp, gni, gdp_capita, gni_capita
-            </p>
-            <p>
-              <strong>Date Range:</strong> 1970-2024
-            </p>
-            <p>
-              <strong>Series Types:</strong> "abs" (absolute values in RM millions/RM) and "growth_yoy" (year-over-year growth in %)
-            </p>
-          </div>
-        </UCard>
-
+      <div v-if="currentStep === 1" class="space-y-4">
         <!-- Drag & Drop Zone -->
         <div
-          class="border-2 border-dashed rounded-lg p-12 text-center cursor-pointer transition-colors"
-          :class="{
-            'border-blue-500 bg-blue-50': isDragging,
-            'border-gray-300 hover:border-gray-400': !isDragging,
-          }"
-          @dragenter="handleDragEnter"
-          @dragleave="handleDragLeave"
-          @dragover="handleDragOver"
-          @drop="handleDrop"
+          class="border-2 border-dashed rounded-lg p-10 text-center cursor-pointer hover:bg-gray-50 transition"
+          :class="
+            isDragging ? 'border-primary-500 bg-primary-50' : 'border-gray-300'
+          "
+          @dragenter.prevent="handleDragEnter"
+          @dragleave.prevent="handleDragLeave"
+          @dragover.prevent="handleDragOver"
+          @drop.prevent="handleDrop"
           @click="triggerFileInput"
         >
-          <UIcon name="i-lucide-upload" class="w-12 h-12 mx-auto text-gray-400 mb-4" />
-
-          <p class="text-lg font-medium mb-2">
-            {{ isDragging ? 'Drop file here' : 'Drag & drop your CSV file' }}
-          </p>
-          <p class="text-sm text-gray-500">
-            or click to browse (max 5MB)
-          </p>
-
           <input
             id="file-input"
             type="file"
@@ -302,45 +248,91 @@ onMounted(() => {
             class="hidden"
             @change="onFileInputChange"
           >
+
+          <div v-if="!selectedFile?.name" class="space-y-2">
+            <Icon
+              name="i-lucide-upload-cloud"
+              class="text-gray-400 mx-auto h-12 w-12"
+            />
+            <h3 class="text-lg font-medium">
+              {{ isDragging ? 'Drop file here' : 'Drag and drop your CSV file here' }}
+            </h3>
+            <p class="text-sm text-gray-500">
+              or click to browse files
+            </p>
+            <p class="text-xs text-gray-400">
+              Supports CSV files only
+            </p>
+          </div>
+
+          <div v-else class="space-y-2">
+            <Icon
+              name="i-lucide-file"
+              class="text-primary-500 mx-auto h-12 w-12"
+            />
+            <h3 class="text-lg font-medium text-primary-700">
+              {{ selectedFile?.name }}
+            </h3>
+            <p class="text-sm text-gray-500">File selected</p>
+          </div>
         </div>
 
-        <!-- Selected File Info -->
-        <div v-if="hasFile" class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-          <div class="flex items-center gap-3">
-            <UIcon name="i-lucide-file-text" class="w-8 h-8 text-blue-500" />
-            <div>
-              <p class="font-medium">
-                {{ selectedFile?.name }}
+        <!-- DOSM Data Source Info -->
+        <UCard class="bg-blue-50 border-blue-200 border">
+          <div class="flex items-start space-x-3">
+            <Icon
+              name="i-lucide-info"
+              class="text-blue-600 h-5 w-5 flex-shrink-0 mt-0.5"
+            />
+            <div class="flex-1">
+              <h4 class="font-medium text-blue-900 mb-2">DOSM GDP/GNI Data Source</h4>
+              <p class="text-sm text-blue-800 mb-3">
+                Download the official GDP & GNI data from Malaysia's Department of Statistics:
               </p>
-              <p class="text-sm text-gray-500">
-                {{ formatFileSize(selectedFile?.size || 0) }}
+              <a
+                href="https://storage.dosm.gov.my/gdp/gdp_gni_annual_real.csv"
+                target="_blank"
+                class="text-sm text-blue-600 hover:text-blue-800 underline flex items-center"
+              >
+                <Icon name="i-lucide-download" class="h-4 w-4 mr-1" />
+                gdp_gni_annual_real.csv
+              </a>
+              <p class="text-xs text-blue-700 mt-2">
+                Expected columns: series, date, gdp, gni, gdp_capita, gni_capita
+              </p>
+              <p class="text-xs text-blue-700 mt-1">
+                Date range: 1970-2024 | Series types: "abs" (absolute values) and "growth_yoy" (% growth)
               </p>
             </div>
           </div>
-
-          <UButton
-            color="gray"
-            variant="ghost"
-            icon="i-lucide-x"
-            @click="selectedFile = null"
-          />
-        </div>
+        </UCard>
 
         <!-- Error Message -->
-        <UAlert
+        <div
           v-if="errorMessage"
-          color="red"
-          variant="soft"
-          :title="errorMessage"
-          icon="i-lucide-alert-circle"
-        />
+          class="bg-red-50 text-red-500 p-4 rounded-lg text-sm"
+        >
+          {{ errorMessage }}
+        </div>
 
         <!-- Process Button -->
-        <div class="flex justify-end">
+        <div class="flex justify-between">
           <UButton
-            size="lg"
-            :disabled="!hasFile || isProcessing"
+            v-if="selectedFile?.name"
+            icon="i-lucide-x"
+            color="neutral"
+            variant="soft"
+            @click="selectedFile = null; errorMessage = ''"
+          >
+            Change File
+          </UButton>
+
+          <UButton
+            v-if="selectedFile?.name"
+            icon="i-lucide-file-check"
+            color="primary"
             :loading="isProcessing"
+            class="ml-auto"
             @click="processFile"
           >
             Process File
@@ -349,7 +341,7 @@ onMounted(() => {
       </div>
 
       <!-- Step 2: Data Validation -->
-      <div v-show="currentStep === 2" class="space-y-6">
+      <div v-if="currentStep === 2" class="space-y-6">
         <!-- Summary Statistics -->
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
           <UCard>
@@ -484,7 +476,7 @@ onMounted(() => {
             >
               <div class="flex items-center justify-between mb-2">
                 <div class="flex items-center gap-2">
-                  <UIcon name="i-lucide-table" class="w-4 h-4" />
+                  <Icon name="i-lucide-table" class="w-4 h-4" />
                   <span class="font-medium">{{ cv.column }}</span>
                 </div>
                 <div class="flex gap-2">
@@ -515,13 +507,17 @@ onMounted(() => {
         <!-- Navigation Buttons -->
         <div class="flex justify-between">
           <UButton
-            variant="outline"
+            icon="i-lucide-arrow-left"
+            color="neutral"
+            variant="soft"
             @click="currentStep = 1"
           >
             Back to Upload
           </UButton>
-
           <UButton
+            icon="i-lucide-arrow-right"
+            color="primary"
+            trailing
             :disabled="hasCriticalErrors"
             @click="currentStep = 3"
           >
@@ -531,7 +527,7 @@ onMounted(() => {
       </div>
 
       <!-- Step 3: Review & Commit -->
-      <div v-show="currentStep === 3" class="space-y-6">
+      <div v-if="currentStep === 3" class="space-y-6">
         <!-- Basic Statistics -->
         <div v-if="basicStats" class="grid grid-cols-2 md:grid-cols-4 gap-4">
           <UCard>
@@ -671,38 +667,47 @@ onMounted(() => {
         </div>
 
         <!-- Dataset Information -->
-        <UCard>
-          <template #header>
-            <h3 class="font-semibold">
-              Dataset Information
-            </h3>
-          </template>
-
-          <div class="space-y-2 text-sm">
-            <p><strong>Dataset:</strong> Annual Real GDP & GNI</p>
-            <p><strong>File Name:</strong> {{ selectedFile?.name }}</p>
-            <p><strong>Source:</strong> Department of Statistics Malaysia (DOSM)</p>
-            <p><strong>License:</strong> CC BY 4.0</p>
-            <p><strong>Last DOSM Update:</strong> February 2025</p>
-            <p><strong>Next Update:</strong> February 2026</p>
+        <UCard class="bg-green-50 border-green-200 border">
+          <div class="flex items-start space-x-3">
+            <Icon
+              name="i-lucide-check-circle"
+              class="text-green-600 h-5 w-5 flex-shrink-0 mt-0.5"
+            />
+            <div class="flex-1">
+              <h4 class="font-medium text-green-900 mb-2">Ready to Commit</h4>
+              <p class="text-sm text-green-800 mb-2">
+                This GDP/GNI data from DOSM will be saved to your browser's local storage.
+              </p>
+              <p class="text-sm text-green-800 font-medium">
+                File: {{ selectedFile?.name }}
+              </p>
+              <div class="mt-3 text-xs text-green-700 space-y-1">
+                <p><strong>Dataset:</strong> Annual Real GDP & GNI</p>
+                <p><strong>Source:</strong> Department of Statistics Malaysia (DOSM)</p>
+                <p><strong>License:</strong> CC BY 4.0</p>
+              </div>
+            </div>
           </div>
         </UCard>
 
         <!-- Navigation Buttons -->
         <div class="flex justify-between">
           <UButton
-            variant="outline"
+            icon="i-lucide-arrow-left"
+            color="neutral"
+            variant="soft"
             @click="currentStep = 2"
           >
             Back to Validation
           </UButton>
 
           <UButton
-            size="lg"
+            icon="i-lucide-check"
+            color="primary"
             :loading="isProcessing"
             @click="commitData"
           >
-            Commit Data & View Dashboard
+            Commit Data & Continue
           </UButton>
         </div>
       </div>
