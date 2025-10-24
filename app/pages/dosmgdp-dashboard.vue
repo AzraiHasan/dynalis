@@ -264,9 +264,8 @@ function calculateYoYChange(metric: MetricType): number {
           <label class="block text-sm font-medium mb-2">Metric</label>
           <USelectMenu
             v-model="selectedMetric"
-            :options="metricOptions"
-            value-attribute="value"
-            option-attribute="label"
+            :items="metricOptions"
+            value-key="value"
           >
             <template #label>
               <div class="flex items-center gap-2">
