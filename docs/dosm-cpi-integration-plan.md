@@ -2,8 +2,8 @@
 
 **Branch:** `dosm_demo`
 **Target Data Source:** https://storage.dosm.gov.my/cpi/cpi_2d_annual_inflation.csv
-**Implementation Approach:** Option B - Separate Module with File Upload
-**Estimated Effort:** 3-4 hours
+**Implementation Approach:** 3-Step Upload Flow + Full Dashboard (Similar to dataupload.vue)
+**Estimated Effort:** 6-8 hours
 
 ---
 
@@ -115,190 +115,301 @@ date,division,inflation
 - ✅ Can be developed/tested independently
 
 ### Decision 4: UI Integration
-**Choice:** New dedicated page (`/cpi-analytics`)
+**Choice:** 3-Step Upload Flow (`/dosmupload`) + Full Dashboard (`/dosm-dashboard`)
 
 **Rationale:**
-- ✅ Focused analytics interface
-- ✅ Doesn't clutter existing upload workflow
-- ✅ Room for data visualizations
-- ✅ Can add to navigation menu
+- ✅ Consistent user experience with existing site data workflow
+- ✅ Familiar 3-step pattern: Upload → Validate → Review & Commit
+- ✅ Separate upload and analytics concerns
+- ✅ Full-featured dashboard for data exploration
+- ✅ Sidebar navigation integration (below dataupload button)
+- ✅ Professional data management workflow
+
+**Architecture:**
+- `/dosmupload` - 3-step file upload flow (similar to dataupload.vue)
+  - Step 1: File Upload with drag & drop
+  - Step 2: Data Validation with strict checks
+  - Step 3: Review & Commit with basic statistics
+- `/dosm-dashboard` - Full analytics dashboard
+  - Multiple chart types (line, bar, comparison)
+  - Advanced filtering and date range selection
+  - Export functionality
+  - Data table with sorting
 
 ---
 
 ## Implementation Plan
 
-### Phase 1: Data Layer (1-2 hours)
+### Phase 1: Data Layer & Foundation (1.5 hours)
 
-#### 1.1 Create Data Types
+#### 1.1 Create Type Definitions
 **File:** `app/types/cpi.ts`
 
 ```typescript
+/**
+ * Single CPI inflation record
+ */
 export interface CPIRecord {
-  date: string;          // ISO date format
-  division: string;      // 'overall' or '01'-'13'
-  inflation: number;     // Inflation rate
+  date: string;          // ISO 8601 date (YYYY-MM-DD)
+  division: string;      // 'overall' or '01' through '13'
+  inflation: number;     // Inflation rate (can be negative)
 }
 
+/**
+ * Complete CPI dataset with metadata
+ */
 export interface CPIDataset {
   records: CPIRecord[];
-  lastUpdated: string;   // Timestamp of last fetch
-  source: string;        // URL of data source
+  lastUpdated: string;   // ISO timestamp of last upload
+  fileName: string;      // Uploaded file name
   metadata: {
-    dateRange: { start: string; end: string };
-    divisions: string[];
-    recordCount: number;
+    dateRange: {
+      start: string;     // Earliest date in dataset
+      end: string;       // Latest date in dataset
+    };
+    divisions: string[]; // Unique division codes
+    recordCount: number; // Total number of records
   };
+}
+
+/**
+ * Validation error for CPI data
+ */
+export interface CPIValidationError {
+  row: number;
+  column: string;
+  value: any;
+  error: string;
+}
+
+/**
+ * Column validation result
+ */
+export interface CPIColumnValidation {
+  emptyCells: number;
+  invalidCells: number;
+  errors: CPIValidationError[];
+}
+
+/**
+ * Basic statistics for Step 3 Review
+ */
+export interface CPIBasicStats {
+  totalRecords: number;
+  dateRange: { start: string; end: string };
+  numberOfDivisions: number;
+  latestYear: string;
 }
 ```
 
-#### 1.2 Create Composable for CPI Data Management
-**File:** `app/composables/useCPIData.ts`
+#### 1.2 Create localStorage Utilities
+**File:** `app/utils/cpiStorage.ts`
 
-**Responsibilities:**
-- Adapt uploaded file data to CPI format
-- Validate CPI CSV structure (date, division, inflation columns)
-- Cache in localStorage
-- Provide data access methods
-- Handle data queries and filtering
+**Functions:**
+- `saveCPIData(data: CPIDataset)` - Save to localStorage
+- `loadCPIData(): CPIDataset | null` - Load from localStorage
+- `clearCPIData()` - Remove from localStorage
+- `getCacheAge(): number` - Calculate cache age in milliseconds
 
-**Key Functions:**
-- `processCPIFile(file: File)` - Leverage existing `useFileUpload` for parsing
-- `validateCPIStructure(data)` - Ensure required columns exist
-- `getCachedData()` - Retrieve from localStorage
-- `getOverallInflation()` - Filter for overall category
-- `getDivisionInflation(division)` - Filter by division
-- `getYearRange(startYear, endYear)` - Date range filter
+**Storage Key:** `dynalis-cpi-data`
 
-#### 1.3 Create Store for CPI Data
+#### 1.3 Create CPI Store
 **File:** `app/stores/cpiStore.ts`
 
 **State:**
 - `cpiData: CPIDataset | null`
 - `isLoading: boolean`
 - `error: Error | null`
-- `lastFetchedAt: Date | null`
+- `lastUploadedAt: Date | null`
 
 **Actions:**
-- `loadData()` - Load from cache or uploaded file
-- `setUploadedData(data)` - Store uploaded CPI data
-- `clearData()` - Clear cache
+- `loadFromCache()` - Load data from localStorage
+- `setUploadedData(data: CPIRecord[], fileName: string)` - Process and store uploaded data
+- `clearData()` - Clear cache and reset state
+- `getBasicStats(): CPIBasicStats` - Calculate statistics for Step 3
 
-### Phase 2: Storage & Validation Layer (0.5 hour)
+### Phase 2: Validation & Business Logic (1.5 hours)
 
-#### 2.1 localStorage Management
-**File:** `app/utils/cpiStorage.ts`
+#### 2.1 Create CPI Data Composable
+**File:** `app/composables/useCPIData.ts`
 
-**Functions:**
-- `saveCPIData(data)` - Save to localStorage
-- `loadCPIData()` - Load from localStorage
-- `clearCPIData()` - Remove from localStorage
-- `getCacheAge()` - Calculate cache age
+**Key Functions:**
+- `processCPIFile(file: File): Promise<CPIRecord[]>` - Parse CSV using PapaParse
+- `validateCPIStructure(data: any[]): CPIValidationError[]` - Strict validation:
+  - Check required columns exist (date, division, inflation)
+  - Validate date format (ISO YYYY-MM-DD)
+  - Validate division values ('overall' or '01'-'13')
+  - Validate inflation is numeric (can be negative)
+  - Check for empty/missing values
+- `getColumnValidation(column: string, data: any[]): CPIColumnValidation`
+- `calculateBasicStats(records: CPIRecord[]): CPIBasicStats`
+- `filterByDivision(division: string): CPIRecord[]`
+- `filterByDateRange(start: string, end: string): CPIRecord[]`
 
-**Storage Key:** `dynalis-cpi-data`
+### Phase 3: Upload Page - 3-Step Flow (2-3 hours)
 
-### Phase 3: UI Components (2-3 hours)
+#### 3.1 Create Upload Page
+**File:** `app/pages/dosmupload.vue`
 
-#### 3.1 Main CPI Analytics Page
-**File:** `app/pages/cpi-analytics.vue`
+**Step 1: File Upload**
+- Drag & drop file upload zone (similar to dataupload.vue)
+- File type validation (.csv only)
+- File size display
+- "Process File" button
+- Error message display
+- Info card: "Download CSV from DOSM and upload here"
 
-**Sections:**
-1. **Header**
-   - Title: "CPI Inflation Analytics"
-   - Data source info (link to DOSM)
-   - Instructions: "Download CSV from DOSM and upload below"
-   - Last uploaded timestamp
+**Step 2: Data Validation**
+- Summary statistics cards:
+  - Total Rows
+  - Total Columns (should be 3)
+  - Missing Values count
+  - Invalid Values count
+- Data preview table (first 5 rows)
+- Column quality check cards (one per column):
+  - Empty cells count
+  - Invalid cells count
+  - Validation errors list
+- Data quality alert (warning if issues detected)
+- Navigation: Back to Upload | Continue to Review
 
-2. **File Upload Section**
-   - File input (accepts .csv files)
-   - Upload button with loading state
-   - Reuse existing `useFileUpload` composable
-   - Validation: Check for required columns (date, division, inflation)
+**Step 3: Review & Commit**
+- Basic Statistics cards:
+  - Total Records
+  - Date Range (earliest to latest year)
+  - Number of Divisions
+  - Latest Year Available
+- Data type information card
+- Navigation: Back to Validation | Commit Data & Continue
+- On commit: Save to cpiStore, redirect to `/dosm-dashboard`
 
-3. **Data Status Card**
-   - Record count
-   - Date range
-   - Upload timestamp
-   - Clear data button
+#### 3.2 Create Upload Components
+**File:** `app/components/DOSM/UploadZone.vue`
+- Reusable drag & drop upload component
+- File selection state management
+- Visual feedback for drag events
 
-4. **Data Table**
-   - Sortable columns (date, division, inflation)
-   - Filterable by division
-   - Search by year
-   - Export to CSV option
+**File:** `app/components/DOSM/ValidationCard.vue`
+- Display column validation results
+- Empty/invalid cell counts
+- Error list display
 
-5. **Visualizations** (Optional - Nice to have)
-   - Line chart: Overall inflation trend over time
-   - Bar chart: Latest inflation by division
-   - Summary statistics
+**File:** `app/components/DOSM/StatsCard.vue`
+- Display basic statistics for Step 3
+- Icon + metric value + description layout
 
-#### 3.2 Reusable Components
+### Phase 4: Dashboard Page - Full Analytics (2-3 hours)
 
-**File:** `app/components/CPI/DataTable.vue`
-- Display CPI data in sortable table
-- Column sorting
+#### 4.1 Create Dashboard Page
+**File:** `app/pages/dosm-dashboard.vue`
+
+**Header Section:**
+- Page title: "DOSM CPI Analytics Dashboard"
+- Metadata display:
+  - Last uploaded: [timestamp]
+  - Record count: [number]
+  - Date range: [start] - [end]
+- "Upload New Data" button (redirects to /dosmupload)
+
+**Filter Controls Section:**
+- Division selector dropdown (overall, 01-13)
+- Date range picker (start year - end year)
+- "Reset Filters" button
+- "Export Data" button
+
+**Charts Section:**
+- Large line chart: Overall inflation trend over time (primary chart)
+- Bar chart: Latest year inflation by division
+- Multi-line comparison chart: Compare multiple divisions
+- Optional: Year-over-year change chart
+
+**Data Table Section:**
+- Sortable columns (date, division, inflation)
 - Pagination (50 rows per page)
+- Search/filter integration
+- Export to CSV functionality
+
+**No Data State:**
+- Empty state message: "No CPI data available"
+- Button: "Upload CPI Data" → redirects to /dosmupload
+
+#### 4.2 Create Dashboard Components
+
+**File:** `app/components/DOSM/InflationLineChart.vue`
+- Line chart for inflation trends
+- Chart.js integration (already installed)
+- Responsive design
+- Tooltip with formatted values
+
+**File:** `app/components/DOSM/DivisionBarChart.vue`
+- Bar chart for division comparison
+- Latest year data or selected year
+- Color-coded bars
+
+**File:** `app/components/DOSM/ComparisonChart.vue`
+- Multi-line chart for division comparison
+- Legend with division selection
+- Toggle divisions on/off
+
+**File:** `app/components/DOSM/CPIDataTable.vue`
+- Full-featured data table
+- Sorting, filtering, pagination
 - Export functionality
+- Responsive design
 
-**File:** `app/components/CPI/StatusCard.vue`
-- Show data status
-- Upload timestamp
-- Loading states
-- Error display
+**File:** `app/components/DOSM/DashboardHeader.vue`
+- Metadata display
+- Action buttons
+- Status indicators
 
-**File:** `app/components/CPI/InflationChart.vue` (Optional)
-- Chart.js integration
-- Time-series line chart
-- Division comparison
+### Phase 5: Navigation & Integration (0.5 hour)
 
-#### 3.3 Navigation Integration
-**File:** `app/layouts/default.vue` (or navigation component)
+#### 5.1 Update Navigation
+**File:** `app/layouts/default.vue` (or relevant navigation component)
 
-Add menu item:
+Add sidebar links below dataupload:
 ```vue
-<ULink to="/cpi-analytics">
-  CPI Analytics
+<ULink to="/dosmupload" icon="i-lucide-upload">
+  DOSM Upload
+</ULink>
+<ULink to="/dosm-dashboard" icon="i-lucide-chart-line">
+  DOSM Dashboard
 </ULink>
 ```
 
-### Phase 4: Error Handling & Edge Cases (0.5 hour)
+#### 5.2 Add Route Guards (if needed)
+- Check if CPI data exists before allowing dashboard access
+- Redirect to /dosmupload if no data
 
-#### Error Scenarios
-1. **Invalid File Type**
-   - Only accept .csv files
-   - Show clear error message
-   - Provide link to correct file format
+### Phase 6: Polish, Testing & Documentation (1 hour)
 
-2. **Invalid CSV Structure**
-   - Validate column names (date, division, inflation)
-   - Check data types
-   - Show validation errors with examples
+#### 6.1 Error Handling
+- File upload errors
+- Validation errors with clear messages
+- localStorage full error
+- Network errors (if any)
 
-3. **Empty File**
-   - Handle gracefully
-   - Show "File contains no data" message
+#### 6.2 Loading States
+- File processing spinner
+- Chart loading skeletons
+- Table loading states
 
-4. **File Too Large**
-   - Check file size (should be < 5MB for demo)
-   - Show size limit error
+#### 6.3 Empty States
+- No data uploaded yet
+- No records match filters
+- Missing columns in CSV
 
-5. **localStorage Full**
-   - Clear old data
-   - Show storage warning
+#### 6.4 Documentation
+- Update CLAUDE.md with new module
+- JSDoc comments for all public functions
+- README for DOSM module (optional)
 
-### Phase 5: Polish & Documentation (0.5 hour)
-
-1. **Code Documentation**
-   - JSDoc comments for public functions
-   - Type documentation
-   - Usage examples
-
-2. **User Documentation**
-   - Update CLAUDE.md with new module info
-   - Add comments in code
-
-3. **Demo Mode Integration**
-   - Ensure works in demo mode
-   - Add sample data if needed
+#### 6.5 Testing
+- Manual testing of 3-step flow
+- Validation with various CSV formats
+- Dashboard filtering and charts
+- Export functionality
+- Browser compatibility
 
 ---
 
@@ -308,20 +419,26 @@ Add menu item:
 dynalis/
 ├── app/
 │   ├── components/
-│   │   └── CPI/
-│   │       ├── DataTable.vue           # CPI data table component
-│   │       ├── StatusCard.vue          # Data status display
-│   │       └── InflationChart.vue      # Chart visualization (optional)
+│   │   └── DOSM/                       # DOSM-specific components
+│   │       ├── UploadZone.vue         # File upload drag & drop
+│   │       ├── ValidationCard.vue     # Step 2 validation display
+│   │       ├── StatsCard.vue          # Step 3 statistics display
+│   │       ├── DashboardHeader.vue    # Dashboard metadata header
+│   │       ├── InflationLineChart.vue # Line chart for trends
+│   │       ├── DivisionBarChart.vue   # Bar chart for divisions
+│   │       ├── ComparisonChart.vue    # Multi-line comparison
+│   │       └── CPIDataTable.vue       # Full-featured data table
 │   │
 │   ├── composables/
-│   │   ├── useCPIData.ts              # Main CPI data composable
-│   │   └── (reuses useFileUpload.ts)  # Existing file upload
+│   │   ├── useCPIData.ts              # CPI data logic & validation
+│   │   └── (reuses useFileUpload.ts)  # Existing file processing
 │   │
 │   ├── pages/
-│   │   └── cpi-analytics.vue          # Main CPI analytics page
+│   │   ├── dosmupload.vue             # 3-step upload flow
+│   │   └── dosm-dashboard.vue         # Full analytics dashboard
 │   │
 │   ├── stores/
-│   │   └── cpiStore.ts                # CPI data store
+│   │   └── cpiStore.ts                # CPI data store (separate from site data)
 │   │
 │   ├── types/
 │   │   └── cpi.ts                     # CPI type definitions
@@ -332,6 +449,14 @@ dynalis/
 └── docs/
     └── dosm-cpi-integration-plan.md   # This document
 ```
+
+**New Files:** 10 files
+- 2 pages (dosmupload.vue, dosm-dashboard.vue)
+- 8 components (DOSM folder)
+- 1 composable (useCPIData.ts)
+- 1 store (cpiStore.ts)
+- 1 type file (cpi.ts)
+- 1 utility file (cpiStorage.ts)
 
 ---
 
@@ -441,102 +566,178 @@ If backend is implemented later:
 
 ## UI Components
 
-### Page: CPI Analytics (`/cpi-analytics`)
+### Page: DOSM Upload (`/dosmupload`)
+
+**Layout:** 3-step stepper with progressive disclosure (similar to dataupload.vue)
+
+```vue
+<template>
+  <div>
+    <UCard class="mb-6">
+      <template #header>
+        <h1 class="text-xl font-semibold">DOSM CPI Data Upload</h1>
+      </template>
+
+      <!-- Step Indicator -->
+      <UStepper v-model="currentStep" :items="stepItems" class="mb-6" />
+
+      <!-- Step 1: File Upload -->
+      <div v-if="currentStep === 1" class="space-y-4">
+        <!-- Drag & drop upload zone -->
+        <!-- File selection display -->
+        <!-- Process button -->
+        <!-- Info card about data source -->
+      </div>
+
+      <!-- Step 2: Data Validation -->
+      <div v-if="currentStep === 2" class="space-y-6">
+        <!-- Summary statistics cards -->
+        <!-- Data preview table (first 5 rows) -->
+        <!-- Column quality check cards -->
+        <!-- Data quality alert -->
+        <!-- Navigation buttons -->
+      </div>
+
+      <!-- Step 3: Review & Commit -->
+      <div v-if="currentStep === 3" class="space-y-6">
+        <!-- Basic statistics cards -->
+        <!-- Data type information -->
+        <!-- Commit button -->
+      </div>
+    </UCard>
+  </div>
+</template>
+```
+
+**Key Features:**
+- UStepper component for step navigation
+- Disabled stepper until file is processed
+- Progressive validation (can't skip steps)
+- On commit: Save to cpiStore, redirect to /dosm-dashboard
+
+### Page: DOSM Dashboard (`/dosm-dashboard`)
+
+**Layout:** Full dashboard with header, filters, charts, and data table
 
 ```vue
 <template>
   <div class="container mx-auto p-6">
-    <!-- Header -->
-    <header class="mb-8">
-      <h1 class="text-3xl font-bold">CPI Inflation Analytics</h1>
-      <p class="text-gray-600">
-        Malaysia Consumer Price Index - Annual Inflation Data
-      </p>
-      <UAlert class="mt-4" color="blue" variant="soft">
-        Download CSV from <a href="https://storage.dosm.gov.my/cpi/cpi_2d_annual_inflation.csv"
-        target="_blank" class="underline">DOSM</a> and upload below
-      </UAlert>
-    </header>
-
-    <!-- File Upload Section -->
-    <div v-if="!hasData" class="mb-8">
-      <input
-        type="file"
-        accept=".csv"
-        @change="handleFileUpload"
-        ref="fileInput"
-      />
-      <UButton
-        :loading="isUploading"
-        @click="processFile"
-        :disabled="!selectedFile"
-      >
-        Upload CPI Data
-      </UButton>
-    </div>
-
-    <!-- Status Card (shown after upload) -->
-    <CPIStatusCard
-      v-if="hasData"
-      :last-updated="lastUpdated"
-      :record-count="recordCount"
-      :file-name="fileName"
-      @clear="clearData"
+    <!-- Header Section -->
+    <DOSMDashboardHeader
+      :last-updated="cpiStore.lastUploadedAt"
+      :record-count="cpiStore.metadata.recordCount"
+      :date-range="cpiStore.metadata.dateRange"
+      @upload-new="navigateToUpload"
     />
 
-    <!-- Filters -->
-    <div v-if="hasData" class="my-6">
-      <USelect
-        v-model="selectedDivision"
-        :options="divisions"
-        placeholder="Filter by division"
-      />
+    <!-- Filter Controls -->
+    <div class="my-6 flex gap-4">
+      <USelect v-model="selectedDivision" :options="divisionOptions" />
+      <UButton @click="resetFilters">Reset Filters</UButton>
+      <UButton @click="exportData" icon="i-lucide-download">Export</UButton>
+    </div>
+
+    <!-- Charts Section -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+      <DOSMInflationLineChart :data="chartData" class="lg:col-span-2" />
+      <DOSMDivisionBarChart :data="latestYearData" />
+      <DOSMComparisonChart :data="comparisonData" />
     </div>
 
     <!-- Data Table -->
-    <CPIDataTable
-      v-if="hasData"
+    <DOSMCPIDataTable
       :data="filteredData"
       :loading="isLoading"
+      @sort="handleSort"
       @export="exportData"
-    />
-
-    <!-- Chart (Optional) -->
-    <CPIInflationChart
-      v-if="hasData && chartData"
-      :data="chartData"
-      class="mt-8"
     />
   </div>
 </template>
 ```
 
-### Component: Status Card
+**Key Features:**
+- Full-width header with metadata
+- Filter controls for division and date range
+- Multiple chart types (line, bar, comparison)
+- Sortable, filterable data table
+- Export functionality
+- No data state with redirect to upload
 
-**Features:**
-- Upload timestamp display
-- File name display
-- Record count badge
-- Date range display
-- Clear data button
-- Error display
+### Component Specifications
 
-### Component: Data Table
+#### UploadZone.vue
+- **Props:** `disabled: boolean`
+- **Events:** `@file-selected`, `@file-dropped`
+- **Features:**
+  - Drag & drop zone with visual feedback
+  - Click to browse files
+  - File type validation (.csv only)
+  - File size display
+  - Error message display
 
-**Features:**
-- Sortable columns (click header to sort)
-- Sticky header
-- Responsive design
-- Export to CSV button
-- Loading skeleton
-- Empty state
+#### ValidationCard.vue
+- **Props:** `column: string`, `validation: CPIColumnValidation`
+- **Features:**
+  - Column name header
+  - Empty cells count with badge
+  - Invalid cells count with badge
+  - Expandable error list
+  - Color-coded severity (green/yellow/red)
 
-### Component: Chart (Optional)
+#### StatsCard.vue
+- **Props:** `title: string`, `value: string | number`, `icon: string`, `description?: string`
+- **Features:**
+  - Icon + title + value layout
+  - Optional description text
+  - Responsive design
+  - Color variants
 
-**Chart Types:**
-1. **Line Chart** - Overall inflation trend
-2. **Bar Chart** - Division comparison
-3. **Scatter Plot** - Correlation analysis
+#### DashboardHeader.vue
+- **Props:** `lastUpdated: Date`, `recordCount: number`, `dateRange: { start, end }`
+- **Events:** `@upload-new`
+- **Features:**
+  - Page title
+  - Metadata display (upload date, record count, date range)
+  - "Upload New Data" button
+  - Status indicators
+
+#### InflationLineChart.vue
+- **Props:** `data: CPIRecord[]`, `division?: string`
+- **Features:**
+  - Chart.js line chart
+  - X-axis: Years
+  - Y-axis: Inflation rate (%)
+  - Tooltip with formatted values
+  - Responsive design
+  - Legend
+
+#### DivisionBarChart.vue
+- **Props:** `data: CPIRecord[]`, `year: string`
+- **Features:**
+  - Chart.js bar chart
+  - X-axis: Division codes
+  - Y-axis: Inflation rate (%)
+  - Color-coded bars
+  - Hover tooltips
+
+#### ComparisonChart.vue
+- **Props:** `data: CPIRecord[]`, `divisions: string[]`
+- **Features:**
+  - Multi-line chart
+  - Toggle divisions on/off via legend
+  - Compare multiple divisions over time
+  - Interactive legend
+
+#### CPIDataTable.vue
+- **Props:** `data: CPIRecord[]`, `loading: boolean`
+- **Events:** `@sort`, `@export`
+- **Features:**
+  - Sortable columns (date, division, inflation)
+  - Pagination (50 rows per page)
+  - Search functionality
+  - Loading skeleton
+  - Empty state
+  - Export to CSV button
 
 ---
 
@@ -544,50 +745,183 @@ If backend is implemented later:
 
 ### Manual Testing Checklist
 
-#### File Upload & Processing
-- [ ] File upload works for .csv files
-- [ ] Data is correctly parsed
-- [ ] Data is cached in localStorage
-- [ ] Cache is loaded on page refresh
-- [ ] Re-upload replaces existing data
-- [ ] Invalid file types rejected
-- [ ] Invalid CSV structure detected
+#### Step 1: File Upload
+- [ ] Drag & drop works for .csv files
+- [ ] Click to browse works
+- [ ] File selection displays file name and size
+- [ ] Invalid file types are rejected (.xlsx, .txt, etc.)
+- [ ] "Process File" button is disabled until file selected
+- [ ] Processing shows loading state
+- [ ] Auto-advance to Step 2 after successful processing
 
-#### Data Display
-- [ ] Table shows all records
-- [ ] Sorting works for all columns
-- [ ] Filters work correctly
-- [ ] Export generates valid CSV
-- [ ] Loading states display properly
-- [ ] Empty state displays when no data
+#### Step 2: Data Validation
+- [ ] Summary statistics cards display correctly
+  - [ ] Total Rows count is accurate
+  - [ ] Total Columns shows 3 (date, division, inflation)
+  - [ ] Missing Values count is correct
+  - [ ] Invalid Values count is correct
+- [ ] Data preview table shows first 5 rows
+- [ ] Column quality check cards display for all 3 columns
+  - [ ] Empty cells count per column
+  - [ ] Invalid cells count per column
+  - [ ] Validation errors list (if any)
+- [ ] Data quality alert shows when issues detected
+- [ ] "Back to Upload" button returns to Step 1
+- [ ] "Continue to Review" button advances to Step 3
+- [ ] Can't skip steps using stepper
+
+#### Step 3: Review & Commit
+- [ ] Basic statistics cards display:
+  - [ ] Total Records
+  - [ ] Date Range (earliest to latest year)
+  - [ ] Number of Divisions
+  - [ ] Latest Year Available
+- [ ] "Back to Validation" button returns to Step 2
+- [ ] "Commit Data & Continue" button:
+  - [ ] Shows loading state during commit
+  - [ ] Saves data to cpiStore
+  - [ ] Saves data to localStorage
+  - [ ] Redirects to /dosm-dashboard
+
+#### Dashboard: Header & Navigation
+- [ ] Dashboard header displays:
+  - [ ] Last uploaded timestamp
+  - [ ] Record count
+  - [ ] Date range (start - end)
+- [ ] "Upload New Data" button redirects to /dosmupload
+- [ ] No data state displays when localStorage empty
+- [ ] "Upload CPI Data" button in empty state works
+
+#### Dashboard: Filter Controls
+- [ ] Division selector dropdown:
+  - [ ] Shows all divisions (overall, 01-13)
+  - [ ] Filtering updates charts and table
+  - [ ] Default shows all divisions
+- [ ] Date range picker (if implemented):
+  - [ ] Start year selector works
+  - [ ] End year selector works
+  - [ ] Filtering updates charts and table
+- [ ] "Reset Filters" button clears all filters
+- [ ] "Export Data" button downloads CSV
+
+#### Dashboard: Charts
+- [ ] Line chart (Overall Inflation Trend):
+  - [ ] X-axis shows years correctly
+  - [ ] Y-axis shows inflation rates
+  - [ ] Line renders correctly
+  - [ ] Tooltips show on hover
+  - [ ] Responsive on mobile
+- [ ] Bar chart (Division Comparison):
+  - [ ] Bars render for all divisions
+  - [ ] Colors are distinct
+  - [ ] Tooltips show values
+  - [ ] Responsive layout
+- [ ] Comparison chart (Multi-line):
+  - [ ] Multiple lines render
+  - [ ] Legend works
+  - [ ] Can toggle divisions on/off
+  - [ ] Interactive and smooth
+
+#### Dashboard: Data Table
+- [ ] Table displays all records
+- [ ] Sorting works:
+  - [ ] Sort by date (asc/desc)
+  - [ ] Sort by division (asc/desc)
+  - [ ] Sort by inflation (asc/desc)
+- [ ] Pagination works (50 rows per page)
+- [ ] Search functionality works (if implemented)
+- [ ] Export button downloads filtered data
+- [ ] Loading skeleton displays while loading
+- [ ] Empty state shows when no results
+
+#### Data Persistence
+- [ ] Data persists after page refresh
+- [ ] Data persists after browser close/reopen
+- [ ] Re-uploading replaces existing data
+- [ ] localStorage key is correct: `dynalis-cpi-data`
+- [ ] Data structure matches CPIDataset interface
+
+#### Validation: Strict Checks
+- [ ] Date column validation:
+  - [ ] Accepts ISO format (YYYY-MM-DD)
+  - [ ] Rejects invalid dates
+  - [ ] Rejects empty dates
+- [ ] Division column validation:
+  - [ ] Accepts "overall"
+  - [ ] Accepts "01" through "13"
+  - [ ] Rejects other values
+  - [ ] Rejects empty values
+- [ ] Inflation column validation:
+  - [ ] Accepts positive numbers
+  - [ ] Accepts negative numbers
+  - [ ] Accepts decimal values
+  - [ ] Rejects non-numeric values
+  - [ ] Rejects empty values
 
 #### Edge Cases
-- [ ] Large file handling (within 5MB limit)
 - [ ] Empty CSV file
+- [ ] CSV with missing columns
+- [ ] CSV with extra columns (should still work)
+- [ ] CSV with wrong column names
+- [ ] Large file (close to 5MB limit)
 - [ ] localStorage full scenario
 - [ ] Corrupted cache data
 - [ ] Browser with localStorage disabled
 
-#### Browser Compatibility
-- [ ] Chrome/Edge
-- [ ] Firefox
-- [ ] Safari
+#### Navigation & Sidebar
+- [ ] "DOSM Upload" link in sidebar works
+- [ ] "DOSM Dashboard" link in sidebar works
+- [ ] Links positioned below "Data Upload" in sidebar
+- [ ] Active route highlighting works
+- [ ] Navigation maintains scroll position (if needed)
 
-#### Demo Mode
+#### Browser Compatibility
+- [ ] Chrome/Edge (latest)
+- [ ] Firefox (latest)
+- [ ] Safari (latest)
+- [ ] Mobile browsers (Chrome, Safari iOS)
+
+#### Demo Mode Integration
 - [ ] Works in demo mode
-- [ ] Data persists across sessions
-- [ ] Clear demo data removes CPI data
+- [ ] No conflicts with site data workflow
+- [ ] Separate from site data in localStorage
+- [ ] Can use both DOSM and site upload simultaneously
 
 ### Future: Automated Tests
 
 ```typescript
-// Example test structure
+// Unit Tests
 describe('useCPIData', () => {
-  it('uploads and parses CPI file', async () => {})
-  it('validates CSV structure', async () => {})
-  it('caches data in localStorage', async () => {})
+  it('processes and parses CPI CSV file', async () => {})
+  it('validates CSV structure with strict rules', async () => {})
+  it('detects invalid date formats', () => {})
+  it('detects invalid division codes', () => {})
+  it('accepts negative inflation values', () => {})
+  it('calculates basic statistics correctly', () => {})
   it('filters by division', () => {})
-  it('handles invalid file types', async () => {})
+  it('filters by date range', () => {})
+})
+
+describe('cpiStore', () => {
+  it('loads data from localStorage', () => {})
+  it('saves data to localStorage', () => {})
+  it('clears data correctly', () => {})
+  it('calculates metadata correctly', () => {})
+})
+
+// Integration Tests
+describe('DOSM Upload Flow', () => {
+  it('completes full 3-step upload flow', async () => {})
+  it('validates data in Step 2', async () => {})
+  it('commits data and redirects to dashboard', async () => {})
+  it('handles validation errors gracefully', async () => {})
+})
+
+describe('DOSM Dashboard', () => {
+  it('loads cached data on mount', async () => {})
+  it('renders all charts correctly', async () => {})
+  it('filters data by division', async () => {})
+  it('exports data to CSV', async () => {})
 })
 ```
 
@@ -595,39 +929,160 @@ describe('useCPIData', () => {
 
 ## Timeline
 
-### Day 1: Core Implementation (3-4 hours)
+### Total Estimated Time: 6-8 hours
 
-**Hour 1: Data Layer**
-- ✅ Create type definitions (`app/types/cpi.ts`)
-- ✅ Create localStorage utilities (`app/utils/cpiStorage.ts`)
-- ✅ Create CPI store (`app/stores/cpiStore.ts`)
+This is a significant increase from the original 3-4 hour estimate due to:
+- Full 3-step upload flow (similar to dataupload.vue)
+- Multiple chart components for dashboard
+- Full-featured data table with filtering/export
+- Comprehensive validation logic
+- Navigation integration
 
-**Hour 2: Business Logic**
-- ✅ Implement CPI data composable (`app/composables/useCPIData.ts`)
-- ✅ Integrate with existing `useFileUpload` composable
-- ✅ Add CSV validation for CPI structure
-- ✅ Add error handling
+---
 
-**Hour 3: Basic UI**
-- ✅ Create main page (`app/pages/cpi-analytics.vue`)
-- ✅ Add file upload interface
-- ✅ Implement status card component
-- ✅ Add basic data table
+### Phase 1: Data Layer & Foundation (1.5 hours)
 
-**Hour 4: Testing & Polish** (Optional)
-- ✅ Manual testing
-- ✅ Fix bugs
-- ✅ Add loading states
-- ✅ Error messages
-- ✅ Add filtering and sorting
+**Task Breakdown:**
+- Create type definitions with validation types (30 min)
+- Create localStorage utilities (15 min)
+- Create CPI store with actions and getters (45 min)
 
-### Enhancement Phase (1-2 hours) - Optional
+**Deliverables:**
+- `app/types/cpi.ts` - All interfaces defined
+- `app/utils/cpiStorage.ts` - Storage functions working
+- `app/stores/cpiStore.ts` - Store ready for use
 
-**Hour 1: Visualization**
-- Integrate Chart.js
-- Create line chart for overall inflation trends
-- Add bar chart for division comparison
-- Add interactivity
+---
+
+### Phase 2: Validation & Business Logic (1.5 hours)
+
+**Task Breakdown:**
+- Create useCPIData composable (30 min)
+- Implement strict validation logic (45 min):
+  - Date format validation (ISO YYYY-MM-DD)
+  - Division code validation (overall, 01-13)
+  - Inflation numeric validation
+  - Empty/missing value checks
+- Implement filtering and stats calculation (15 min)
+
+**Deliverables:**
+- `app/composables/useCPIData.ts` - Complete with all validation
+
+---
+
+### Phase 3: Upload Page - 3-Step Flow (2-3 hours)
+
+**Task Breakdown:**
+- **Hour 1: Page Structure & Step 1**
+  - Create dosmupload.vue with UStepper (15 min)
+  - Implement Step 1: File Upload with drag & drop (45 min)
+  - Add file processing and navigation logic (15 min + 15 min buffer)
+
+- **Hour 2: Steps 2 & 3**
+  - Implement Step 2: Validation UI (45 min)
+    - Summary cards
+    - Data preview table
+    - Column quality check cards
+  - Implement Step 3: Review & Commit (30 min)
+    - Basic statistics cards
+    - Commit logic and navigation
+
+- **Hour 3: Upload Components** (Optional, can inline in page)
+  - Create UploadZone.vue (30 min)
+  - Create ValidationCard.vue (30 min)
+  - Create StatsCard.vue (30 min)
+
+**Deliverables:**
+- `app/pages/dosmupload.vue` - Complete 3-step flow
+- `app/components/DOSM/` - Reusable upload components
+
+---
+
+### Phase 4: Dashboard Page - Full Analytics (2-3 hours)
+
+**Task Breakdown:**
+- **Hour 1: Dashboard Page & Header**
+  - Create dosm-dashboard.vue structure (15 min)
+  - Implement DashboardHeader component (30 min)
+  - Add filter controls (division selector, export button) (30 min)
+  - Handle no data state (15 min)
+
+- **Hour 2: Charts**
+  - Implement InflationLineChart.vue (45 min)
+  - Implement DivisionBarChart.vue (30 min)
+  - Implement ComparisonChart.vue (45 min)
+
+- **Hour 3: Data Table & Polish**
+  - Implement CPIDataTable.vue (45 min)
+  - Add sorting, pagination, export (30 min)
+  - Testing and bug fixes (45 min)
+
+**Deliverables:**
+- `app/pages/dosm-dashboard.vue` - Complete dashboard
+- `app/components/DOSM/` - All chart and table components
+
+---
+
+### Phase 5: Navigation & Integration (0.5 hour)
+
+**Task Breakdown:**
+- Update sidebar navigation (15 min)
+- Test navigation flow (10 min)
+- Add route guards if needed (10 min)
+- Final integration testing (15 min)
+
+**Deliverables:**
+- Updated `app/layouts/default.vue` (or navigation component)
+- Working navigation links
+
+---
+
+### Phase 6: Polish, Testing & Documentation (1 hour)
+
+**Task Breakdown:**
+- Error handling and edge cases (20 min)
+- Loading states and empty states (15 min)
+- Manual testing of entire flow (20 min)
+- Bug fixes (20 min)
+- Update CLAUDE.md (10 min)
+- JSDoc comments (15 min)
+
+**Deliverables:**
+- Polished, production-ready module
+- Updated documentation
+
+---
+
+### Optional Enhancements (if time permits)
+
+**Advanced Features (1-2 hours):**
+- Date range picker for filtering (30 min)
+- Year-over-year change calculations (30 min)
+- Advanced export options (PDF, formatted Excel) (45 min)
+- Mobile responsive optimization (30 min)
+- Keyboard shortcuts for navigation (15 min)
+
+---
+
+### Breakdown by Complexity
+
+**Easy Tasks (Total: 2 hours):**
+- Type definitions
+- localStorage utilities
+- Basic page structure
+- Simple components (StatsCard)
+
+**Medium Tasks (Total: 3 hours):**
+- Store implementation
+- Validation logic
+- Upload flow Steps 1-3
+- Data table with sorting/pagination
+
+**Complex Tasks (Total: 2-3 hours):**
+- Chart components (3 types)
+- Dashboard with filtering
+- Full integration testing
+- Error handling and edge cases
 
 ---
 
@@ -665,20 +1120,31 @@ describe('useCPIData', () => {
 ## Success Criteria
 
 ### Minimum Viable Product (MVP)
-- ✅ Upload CPI CSV file
+- ✅ 3-step upload flow (Upload → Validate → Review & Commit)
+- ✅ Upload CPI CSV file with drag & drop
+- ✅ Strict validation (date format, division codes, numeric inflation)
 - ✅ Parse and validate CSV structure
-- ✅ Cache in localStorage
-- ✅ Display in sortable table
+- ✅ Cache in localStorage (separate from site data)
+- ✅ Full analytics dashboard (`/dosm-dashboard`)
+- ✅ Multiple chart types (line chart, bar chart, comparison chart)
+- ✅ Display in sortable, paginated table
+- ✅ Filter by division
+- ✅ Export to CSV
 - ✅ Show upload status and metadata
 - ✅ Clear/re-upload functionality
-- ✅ Basic error handling
+- ✅ Comprehensive error handling
+- ✅ Loading and empty states
+- ✅ Sidebar navigation integration
 
-### Nice to Have
-- 📊 Data visualization (charts)
-- 📥 Export to CSV
-- 🔍 Advanced filtering
-- 📱 Mobile responsive
-- 🎨 Polished UI/UX
+### Nice to Have (Future Enhancements)
+- 📅 Date range picker for filtering
+- 📊 Year-over-year change calculations
+- 📥 Advanced export (PDF, formatted Excel)
+- 📱 Mobile responsive optimization
+- ⌨️ Keyboard shortcuts
+- 🔍 Search within table
+- 📈 Trend forecasting (simple moving average)
+- 🎨 Custom chart themes
 
 ### Quality Standards
 - 🔒 Type-safe (no `any` types without ESLint disable)
@@ -693,12 +1159,28 @@ describe('useCPIData', () => {
 
 ### Design Decisions Log
 
-**2024-10-24:** Initial plan created
+**2024-10-24 (v1.0):** Initial plan created
 - Chose client-side implementation for consistency with demo mode
 - Decided on separate module (Option B) for clean architecture
 - Selected file upload approach to reuse existing infrastructure
 - Deferred server-side storage to future phase
 - Prioritized simplicity over feature completeness
+- Original estimate: 3-4 hours
+
+**2024-10-24 (v2.0):** Major architecture revision based on user requirements
+- **Key Change:** Replaced simple single-page upload with 3-step flow similar to dataupload.vue
+- **Key Change:** Replaced basic analytics page with full dashboard experience
+- Added comprehensive validation (strict checks for date, division, inflation)
+- Included multiple chart types in MVP (line, bar, comparison)
+- Added sidebar navigation integration
+- Separate store and localStorage key for data isolation
+- Updated estimate: 6-8 hours (due to increased scope and complexity)
+
+**Rationale for v2.0 Changes:**
+- Consistency: Match existing upload workflow for familiar UX
+- Professional: Full dashboard provides better data exploration
+- Complete: Charts included in MVP for immediate value
+- Scalable: Modular component architecture for future enhancements
 
 ### Open Questions
 
@@ -725,7 +1207,25 @@ describe('useCPIData', () => {
 
 ---
 
-**Document Version:** 1.0
+**Document Version:** 2.0
 **Last Updated:** 2024-10-24
 **Author:** Claude Code
-**Status:** Draft → Ready for Implementation
+**Status:** Ready for Implementation
+
+---
+
+## Revision History
+
+**v1.0 (2024-10-24):**
+- Initial plan with simple file upload page and basic analytics
+- Estimated 3-4 hours
+- Single page: cpi-analytics.vue
+
+**v2.0 (2024-10-24):**
+- Major revision based on user clarifications
+- Changed to 3-step upload flow + full dashboard
+- Estimated 6-8 hours
+- Two pages: dosmupload.vue + dosm-dashboard.vue
+- 8 new components in DOSM folder
+- Comprehensive validation and multiple chart types in MVP
+- Sidebar navigation integration
