@@ -26,82 +26,73 @@
         </div>
 
         <!-- Navigation -->
-        <nav class="flex-1 p-4 space-y-2">
-          <!-- Demo Mode Information -->
-          <div class=" p-4 bg-blue-50 rounded-lg border border-blue-200 mb-4">
-            <p class="font-medium mb-2">💡 Getting Started</p>
-            <ul class="space-y-1 text-xs text-blue-700">
-              <li>• Download the sample template from the sidebar</li>
-              <li>• Fill in your property data</li>
-              <li>• Upload and analyze your data</li>
-            </ul>
+        <nav class="flex-1 p-4 flex flex-col">
+          <div class="space-y-2">
+            <!-- Demo Mode Information -->
+            <div class=" p-4 bg-blue-50 rounded-lg border border-blue-200 mb-4">
+              <p class="font-medium mb-2">💡 Getting Started</p>
+              <ul class="space-y-1 text-xs text-blue-700">
+                <li>• Download the sample template from the sidebar</li>
+                <li>• Fill in your property data</li>
+                <li>• Upload and analyze your data</li>
+              </ul>
             </div>
-          
-          <!-- Main Navigation -->
-          <NuxtLink
-            to="/dashboard"
-            class="flex items-center gap-3 px-4 py-3 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
-            :class="{ 'bg-emerald-50 text-emerald-700 border-emerald-200': $route.path === '/dashboard' }"
-          >
-            <UIcon name="i-lucide-layout-dashboard" class="w-5 h-5" />
-            <span class="font-medium">Dashboard</span>
-          </NuxtLink>
 
-          <NuxtLink
-            to="/dataupload"
-            class="flex items-center gap-3 px-4 py-3 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
-            :class="{ 'bg-emerald-50 text-emerald-700 border-emerald-200': $route.path === '/dataupload' }"
-          >
-            <UIcon name="i-lucide-upload" class="w-5 h-5" />
-            <span class="font-medium">Data Upload</span>
-          </NuxtLink>
-
-          <!-- DOSM CPI Section -->
-          <div class="pt-4 border-t border-gray-200">
-            <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">DOSM CPI</p>
+            <!-- Main Navigation -->
             <NuxtLink
-              to="/dosmupload"
+              to="/dashboard"
               class="flex items-center gap-3 px-4 py-3 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
-              :class="{ 'bg-blue-50 text-blue-700 border-blue-200': $route.path === '/dosmupload' }"
+              :class="{ 'bg-emerald-50 text-emerald-700 border-emerald-200': $route.path === '/dashboard' }"
             >
-              <UIcon name="i-lucide-file-up" class="w-5 h-5" />
-              <span class="font-medium">DOSM Upload</span>
+              <UIcon name="i-lucide-layout-dashboard" class="w-5 h-5" />
+              <span class="font-medium">Dashboard</span>
             </NuxtLink>
 
             <NuxtLink
-              to="/dosm-dashboard"
+              to="/dataupload"
               class="flex items-center gap-3 px-4 py-3 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
-              :class="{ 'bg-blue-50 text-blue-700 border-blue-200': $route.path === '/dosm-dashboard' }"
+              :class="{ 'bg-emerald-50 text-emerald-700 border-emerald-200': $route.path === '/dataupload' }"
             >
-              <UIcon name="i-lucide-chart-line" class="w-5 h-5" />
-              <span class="font-medium">DOSM Dashboard</span>
+              <UIcon name="i-lucide-upload" class="w-5 h-5" />
+              <span class="font-medium">Data Upload</span>
             </NuxtLink>
+
+            <!-- DOSM CPI Section -->
+            <div class="pt-4 border-t border-gray-200">
+              <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">DOSM CPI</p>
+              <NuxtLink
+                to="/dosmupload"
+                class="flex items-center gap-3 px-4 py-3 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
+                :class="{ 'bg-blue-50 text-blue-700 border-blue-200': $route.path === '/dosmupload' }"
+              >
+                <UIcon name="i-lucide-file-up" class="w-5 h-5" />
+                <span class="font-medium">DOSM Upload</span>
+              </NuxtLink>
+
+              <NuxtLink
+                to="/dosm-dashboard"
+                class="flex items-center gap-3 px-4 py-3 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
+                :class="{ 'bg-blue-50 text-blue-700 border-blue-200': $route.path === '/dosm-dashboard' }"
+              >
+                <UIcon name="i-lucide-chart-line" class="w-5 h-5" />
+                <span class="font-medium">DOSM Dashboard</span>
+              </NuxtLink>
+            </div>
           </div>
 
-          <!-- Template Download (Always Available) -->
-          <div class="pt-4 border-t border-gray-200">
-            <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Resources</p>
-            <a
-              href="/templates/dynalis-sample-data.xlsx"
-              download
-              class="flex items-center gap-3 px-4 py-3 text-gray-600 rounded-lg hover:bg-blue-50 hover:text-blue-700 transition-colors"
+          <!-- Spacer to push Reset Demo to bottom -->
+          <div class="flex-1"></div>
+
+          <!-- Reset Demo Button -->
+          <div class="pt-3 border-t border-gray-200">
+            <button
+              class="flex items-center gap-3 px-4 py-3 text-gray-600 rounded-lg hover:bg-red-50 hover:text-red-700 transition-colors w-full"
+              @click="resetDemo"
             >
-              <UIcon name="i-lucide-download" class="w-5 h-5" />
-              <span class="font-medium">Sample Template</span>
-            </a>
-            <p class="text-xs text-gray-400 px-4 mt-1">Prepare your data before upload</p>
-            
-            <!-- Reset Demo Button -->
-            <div class="mt-3 pt-3 border-t border-gray-100">
-              <button
-                class="flex items-center gap-3 px-4 py-3 text-gray-600 rounded-lg hover:bg-red-50 hover:text-red-700 transition-colors w-full"
-                @click="resetDemo"
-              >
-                <UIcon name="i-lucide-trash-2" class="w-5 h-5" />
-                <span class="font-medium">Reset Demo</span>
-              </button>
-              <p class="text-xs text-gray-400 px-4 mt-1">Clear all data to start fresh</p>
-            </div>
+              <UIcon name="i-lucide-trash-2" class="w-5 h-5" />
+              <span class="font-medium">Reset Demo</span>
+            </button>
+            <p class="text-xs text-gray-400 px-4 mt-1">Clear all data to start fresh</p>
           </div>
         </nav>
 

@@ -68,6 +68,33 @@
           {{ errorMessage }}
         </div>
 
+        <!-- Sample Template Download -->
+        <UCard class="bg-blue-50 border-blue-200 border">
+          <div class="flex items-start space-x-3">
+            <Icon
+              name="i-lucide-info"
+              class="text-blue-600 h-5 w-5 flex-shrink-0 mt-0.5"
+            />
+            <div class="flex-1">
+              <h4 class="font-medium text-blue-900 mb-2">Use this template for the demo</h4>
+              <p class="text-sm text-blue-800 mb-3">
+                Download the sample template to see the expected data format:
+              </p>
+              <a
+                href="/templates/dynalis-sample-data.xlsx"
+                download
+                class="text-sm text-blue-600 hover:text-blue-800 underline flex items-center"
+              >
+                <Icon name="i-lucide-download" class="h-4 w-4 mr-1" />
+                dynalis-sample-data.xlsx
+              </a>
+              <p class="text-xs text-blue-700 mt-2">
+                Fill in your property data and upload it here to analyze.
+              </p>
+            </div>
+          </div>
+        </UCard>
+
         <div class="flex justify-between">
           <UButton
             v-if="selectedFileName"
