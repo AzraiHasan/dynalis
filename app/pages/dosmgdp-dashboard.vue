@@ -76,6 +76,46 @@ const metricOptions = [
   { label: 'GNI per Capita', value: 'gni_capita', icon: 'i-lucide-users' },
 ]
 
+// Table columns - simplified
+const tableColumns = [
+  {
+    accessorKey: 'year',
+    header: 'Year',
+  },
+  {
+    accessorKey: 'gdp_abs',
+    header: 'GDP (RM M)',
+  },
+  {
+    accessorKey: 'gdp_growth',
+    header: 'GDP Growth (%)',
+  },
+  {
+    accessorKey: 'gni_abs',
+    header: 'GNI (RM M)',
+  },
+  {
+    accessorKey: 'gni_growth',
+    header: 'GNI Growth (%)',
+  },
+  {
+    accessorKey: 'gdp_capita_abs',
+    header: 'GDP/Capita (RM)',
+  },
+  {
+    accessorKey: 'gdp_capita_growth',
+    header: 'GDP/Capita Growth (%)',
+  },
+  {
+    accessorKey: 'gni_capita_abs',
+    header: 'GNI/Capita (RM)',
+  },
+  {
+    accessorKey: 'gni_capita_growth',
+    header: 'GNI/Capita Growth (%)',
+  },
+]
+
 // Table data - combined view
 const tableData = computed(() => {
   const years = new Set<number>()
@@ -89,7 +129,7 @@ const tableData = computed(() => {
   })
 
   // Create row for each year
-  return Array.from(years)
+  const data = Array.from(years)
     .sort((a, b) => b - a) // Descending order
     .map((year) => {
       const absRecord = absRecords.value.find(r => new Date(r.date).getFullYear() === year)
@@ -107,6 +147,9 @@ const tableData = computed(() => {
         gni_capita_growth: growthRecord?.gni_capita ?? 0,
       }
     })
+
+  console.log('Table data:', data.length, 'rows', data[0])
+  return data
 })
 
 // Actions
@@ -639,52 +682,9 @@ function calculateYoYChange(metric: MetricType): number {
         </template>
 
         <UTable
-          :rows="tableData"
-          :columns="[
-            { key: 'year', label: 'Year', sortable: true },
-            { key: 'gdp_abs', label: 'GDP (RM M)' },
-            { key: 'gdp_growth', label: 'GDP Growth (%)' },
-            { key: 'gni_abs', label: 'GNI (RM M)' },
-            { key: 'gni_growth', label: 'GNI Growth (%)' },
-            { key: 'gdp_capita_abs', label: 'GDP/Capita (RM)' },
-            { key: 'gdp_capita_growth', label: 'GDP/Capita Growth (%)' },
-            { key: 'gni_capita_abs', label: 'GNI/Capita (RM)' },
-            { key: 'gni_capita_growth', label: 'GNI/Capita Growth (%)' },
-          ]"
-        >
-          <template #gdp_abs-data="{ row }">
-            {{ formatNumber(row.gdp_abs, 0) }}
-          </template>
-          <template #gdp_growth-data="{ row }">
-            <span :class="getGrowthColor(row.gdp_growth)">
-              {{ formatNumber(row.gdp_growth, 2) }}%
-            </span>
-          </template>
-          <template #gni_abs-data="{ row }">
-            {{ formatNumber(row.gni_abs, 0) }}
-          </template>
-          <template #gni_growth-data="{ row }">
-            <span :class="getGrowthColor(row.gni_growth)">
-              {{ formatNumber(row.gni_growth, 2) }}%
-            </span>
-          </template>
-          <template #gdp_capita_abs-data="{ row }">
-            {{ formatNumber(row.gdp_capita_abs, 2) }}
-          </template>
-          <template #gdp_capita_growth-data="{ row }">
-            <span :class="getGrowthColor(row.gdp_capita_growth)">
-              {{ formatNumber(row.gdp_capita_growth, 2) }}%
-            </span>
-          </template>
-          <template #gni_capita_abs-data="{ row }">
-            {{ formatNumber(row.gni_capita_abs, 2) }}
-          </template>
-          <template #gni_capita_growth-data="{ row }">
-            <span :class="getGrowthColor(row.gni_capita_growth)">
-              {{ formatNumber(row.gni_capita_growth, 2) }}%
-            </span>
-          </template>
-        </UTable>
+          :data="tableData"
+          :columns="tableColumns"
+        />
       </UCard>
     </div>
   </div>
