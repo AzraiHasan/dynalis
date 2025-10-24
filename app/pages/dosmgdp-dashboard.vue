@@ -39,6 +39,11 @@ const endYear = ref(2024)
 const showMilestones = ref(true)
 const viewMode = ref<'charts' | 'table'>('charts')
 
+// Debug watcher
+watch(selectedMetric, (newVal) => {
+  console.log('selectedMetric changed to:', newVal)
+})
+
 // Computed
 const absRecords = computed(() =>
   gdpGniData.value ? filterBySeriesType(gdpGniData.value.records, 'abs') : [],
@@ -266,14 +271,7 @@ function calculateYoYChange(metric: MetricType): number {
             v-model="selectedMetric"
             :items="metricOptions"
             value-key="value"
-          >
-            <template #label>
-              <div class="flex items-center gap-2">
-                <UIcon :name="metricOptions.find(m => m.value === selectedMetric)?.icon || 'i-lucide-trending-up'" class="w-4 h-4" />
-                {{ metricOptions.find(m => m.value === selectedMetric)?.label }}
-              </div>
-            </template>
-          </USelectMenu>
+          />
         </div>
 
         <!-- Date Range -->

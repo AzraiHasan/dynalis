@@ -39,7 +39,9 @@ function createChart() {
 
   // Destroy existing chart
   if (chartInstance) {
+    console.log('Destroying old chart instance')
     chartInstance.destroy()
+    chartInstance = null
   }
 
   // Early return if no data
@@ -51,6 +53,11 @@ function createChart() {
   // Prepare data
   const absLabels = props.absRecords.map(r => new Date(r.date).getFullYear())
   const absData = props.absRecords.map(r => r[props.metric])
+
+  // Debug logging
+  console.log('DualAxisChart - Creating chart for metric:', props.metric)
+  console.log('Sample absData:', absData.slice(0, 5))
+  console.log('Data range:', Math.min(...absData.filter(v => v != null)), 'to', Math.max(...absData.filter(v => v != null)))
 
   // Align growth data with absLabels - find matching year or use null
   const growthData = absLabels.map(year => {
@@ -197,6 +204,9 @@ function createChart() {
       scales: scalesConfig,
     },
   })
+
+  console.log('Chart created successfully with y-axis title:', scalesConfig.y.title.text)
+  console.log('Dataset label:', datasets[0].label)
 }
 
 // Watch for changes and recreate chart
