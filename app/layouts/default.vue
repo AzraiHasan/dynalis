@@ -78,10 +78,34 @@
                 <span class="font-medium">DOSM Dashboard</span>
               </NuxtLink>
             </div>
+
+            <!-- DOSM GDP/GNI Section -->
+            <div class="pt-4 border-t border-gray-200">
+              <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">DOSM GDP/GNI</p>
+              <NuxtLink
+                to="/dosmgdp"
+                class="flex items-center gap-3 px-4 py-3 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
+                :class="{ 'bg-purple-50 text-purple-700 border-purple-200': $route.path === '/dosmgdp' }"
+                @click="console.log('DEBUG: Clicked GDP/GNI Upload link, navigating to /dosmgdp')"
+              >
+                <UIcon name="i-lucide-trending-up" class="w-5 h-5" />
+                <span class="font-medium">GDP/GNI Upload</span>
+              </NuxtLink>
+
+              <NuxtLink
+                to="/dosmgdp-dashboard"
+                class="flex items-center gap-3 px-4 py-3 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
+                :class="{ 'bg-purple-50 text-purple-700 border-purple-200': $route.path === '/dosmgdp-dashboard' }"
+                @click="console.log('DEBUG: Clicked GDP/GNI Dashboard link, navigating to /dosmgdp-dashboard')"
+              >
+                <UIcon name="i-lucide-line-chart" class="w-5 h-5" />
+                <span class="font-medium">GDP/GNI Dashboard</span>
+              </NuxtLink>
+            </div>
           </div>
 
           <!-- Spacer to push Reset Demo to bottom -->
-          <div class="flex-1"></div>
+          <div class="flex-1" />
 
           <!-- Reset Demo Button -->
           <div class="pt-3 border-t border-gray-200">
