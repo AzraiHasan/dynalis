@@ -42,10 +42,24 @@ function createChart() {
     chartInstance.destroy()
   }
 
+  // Early return if no data
+  if (!props.absRecords || props.absRecords.length === 0) {
+    console.warn('No absolute records available for chart')
+    return
+  }
+
   // Prepare data
   const absLabels = props.absRecords.map(r => new Date(r.date).getFullYear())
   const absData = props.absRecords.map(r => r[props.metric])
-  const growthData = props.growthRecords.map(r => r[props.metric])
+
+  // Align growth data with absLabels - find matching year or use null
+  const growthData = absLabels.map(year => {
+    const growthRecord = props.growthRecords.find(r => new Date(r.date).getFullYear() === year)
+    return growthRecord ? growthRecord[props.metric] : null
+  })
+
+  // Check if there's any valid growth data
+  const hasGrowthData = growthData.some(val => val !== null && val !== undefined && !isNaN(val as number))
 
   // Create milestone annotations
   const annotations: Record<string, unknown> = {}
@@ -70,30 +84,86 @@ function createChart() {
   const ctx = chartCanvas.value.getContext('2d')
   if (!ctx) return
 
+  // Build datasets array
+  const datasets: any[] = [
+    {
+      label: `${metricLabels[props.metric]} (${metricUnits[props.metric]})`,
+      data: absData,
+      borderColor: 'rgb(59, 130, 246)',
+      backgroundColor: 'rgba(59, 130, 246, 0.1)',
+      yAxisID: 'y',
+      tension: 0.3,
+      fill: true,
+    },
+  ]
+
+  // Only add growth dataset if there's valid data
+  if (hasGrowthData) {
+    datasets.push({
+      label: `${metricLabels[props.metric]} Growth (%)`,
+      data: growthData,
+      borderColor: 'rgb(249, 115, 22)',
+      backgroundColor: 'rgba(249, 115, 22, 0.1)',
+      yAxisID: 'y1',
+      tension: 0.3,
+      borderDash: [5, 5],
+      spanGaps: true,
+    })
+  }
+
+  // Build scales configuration
+  const scalesConfig: any = {
+    x: {
+      display: true,
+      title: {
+        display: true,
+        text: 'Year',
+      },
+    },
+    y: {
+      type: 'linear',
+      display: true,
+      position: 'left',
+      title: {
+        display: true,
+        text: metricUnits[props.metric],
+      },
+      ticks: {
+        callback: (tickValue: string | number) => {
+          const value = typeof tickValue === 'string' ? parseFloat(tickValue) : tickValue
+          return value.toLocaleString()
+        },
+      },
+    },
+  }
+
+  // Add y1 axis only if there's growth data
+  if (hasGrowthData) {
+    scalesConfig.y1 = {
+      type: 'linear',
+      display: true,
+      position: 'right',
+      title: {
+        display: true,
+        text: 'Growth Rate (%)',
+      },
+      grid: {
+        drawOnChartArea: false,
+      },
+      ticks: {
+        callback: (tickValue: string | number) => {
+          const value = typeof tickValue === 'string' ? parseFloat(tickValue) : tickValue
+          return `${value.toFixed(1)}%`
+        },
+      },
+    }
+  }
+
   chartInstance = new Chart(ctx, {
     type: 'line',
     data: {
       labels: absLabels,
-      datasets: [
-        {
-          label: `${metricLabels[props.metric]} (${metricUnits[props.metric]})`,
-          data: absData,
-          borderColor: 'rgb(59, 130, 246)',
-          backgroundColor: 'rgba(59, 130, 246, 0.1)',
-          yAxisID: 'y',
-          tension: 0.3,
-          fill: true,
-        },
-        {
-          label: `${metricLabels[props.metric]} Growth (%)`,
-          data: growthData,
-          borderColor: 'rgb(249, 115, 22)',
-          backgroundColor: 'rgba(249, 115, 22, 0.1)',
-          yAxisID: 'y1',
-          tension: 0.3,
-          borderDash: [5, 5],
-        },
-      ],
+      datasets,
     },
     options: {
       responsive: true,
@@ -124,46 +194,7 @@ function createChart() {
           },
         },
       },
-      scales: {
-        x: {
-          display: true,
-          title: {
-            display: true,
-            text: 'Year',
-          },
-        },
-        y: {
-          type: 'linear',
-          display: true,
-          position: 'left',
-          title: {
-            display: true,
-            text: metricUnits[props.metric],
-          },
-          ticks: {
-            callback: (value) => {
-              return value.toLocaleString()
-            },
-          },
-        },
-        y1: {
-          type: 'linear',
-          display: true,
-          position: 'right',
-          title: {
-            display: true,
-            text: 'Growth Rate (%)',
-          },
-          grid: {
-            drawOnChartArea: false,
-          },
-          ticks: {
-            callback: (value) => {
-              return `${value}%`
-            },
-          },
-        },
-      },
+      scales: scalesConfig,
     },
   })
 }

@@ -34,6 +34,52 @@ function createChart() {
   const ctx = chartCanvas.value.getContext('2d')
   if (!ctx) return
 
+  // Build scales configuration
+  const scalesConfig: any = {
+    x: {
+      display: true,
+      title: {
+        display: true,
+        text: 'Year',
+      },
+    },
+    y: {
+      type: 'linear',
+      display: true,
+      position: 'left',
+      title: {
+        display: true,
+        text: isGrowth ? 'Growth Rate (%)' : 'GDP/GNI (RM millions)',
+      },
+      ticks: {
+        callback: (value: any) => {
+          return isGrowth ? `${value}%` : value.toLocaleString()
+        },
+      },
+    },
+  }
+
+  // Only add y1 axis for absolute values (not growth)
+  if (!isGrowth) {
+    scalesConfig.y1 = {
+      type: 'linear',
+      display: true,
+      position: 'right',
+      title: {
+        display: true,
+        text: 'Per Capita (RM)',
+      },
+      grid: {
+        drawOnChartArea: false,
+      },
+      ticks: {
+        callback: (value: any) => {
+          return value.toLocaleString()
+        },
+      },
+    }
+  }
+
   chartInstance = new Chart(ctx, {
     type: 'line',
     data: {
@@ -102,48 +148,7 @@ function createChart() {
           },
         },
       },
-      scales: {
-        x: {
-          display: true,
-          title: {
-            display: true,
-            text: 'Year',
-          },
-        },
-        y: {
-          type: 'linear',
-          display: true,
-          position: 'left',
-          title: {
-            display: true,
-            text: isGrowth ? 'Growth Rate (%)' : 'GDP/GNI (RM millions)',
-          },
-          ticks: {
-            callback: (value) => {
-              return isGrowth ? `${value}%` : value.toLocaleString()
-            },
-          },
-        },
-        y1: isGrowth
-          ? undefined
-          : {
-              type: 'linear',
-              display: true,
-              position: 'right',
-              title: {
-                display: true,
-                text: 'Per Capita (RM)',
-              },
-              grid: {
-                drawOnChartArea: false,
-              },
-              ticks: {
-                callback: (value) => {
-                  return value.toLocaleString()
-                },
-              },
-            },
-      },
+      scales: scalesConfig,
     },
   })
 }

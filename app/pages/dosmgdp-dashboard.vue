@@ -5,8 +5,6 @@ import type { MetricType } from '~/types/gdp'
 import { useGDPStore } from '~/stores/gdpStore'
 import { useGDPGNIData } from '~/composables/useGDPGNIData'
 
-console.log('DEBUG: dosmgdp-dashboard.vue page loading...')
-
 definePageMeta({
   layout: 'default',
 })
@@ -14,8 +12,6 @@ definePageMeta({
 useHead({
   title: 'GDP/GNI Dashboard - Dynalis',
 })
-
-console.log('DEBUG: dosmgdp-dashboard.vue page setup complete')
 
 const router = useRouter()
 const toast = useToast()
@@ -344,7 +340,7 @@ function calculateYoYChange(metric: MetricType): number {
           </div>
 
           <div class="flex items-center gap-2">
-            <UToggle v-model="showMilestones" />
+            <USwitch v-model="showMilestones" />
             <span class="text-sm">Show Historical Milestones</span>
           </div>
         </div>
